@@ -41,3 +41,448 @@ h1 { font: 700 clamp(45px, 5vw, 76px)/1.05 Manrope, sans-serif; letter-spacing: 
 .role-icon-placeholder { width:100%; height:100%; display:grid; place-items:center; position:relative; overflow:hidden; border-radius:50%; color:#67808b; font:700 8px Manrope,sans-serif; text-transform:uppercase; letter-spacing:.08em; }.role-icon-placeholder img { position:absolute; inset:0; width:100%; height:100%; object-fit:contain; }.role-badge .role-icon-placeholder>span { color:#67808b; margin:0; font-size:8px; }
 .asset-icon-placeholder { width:100%; height:100%; display:grid; place-items:center; position:relative; overflow:hidden; color:#48636e; font:700 9px Manrope,sans-serif; text-transform:uppercase; letter-spacing:.08em; }.asset-icon-placeholder img { position:absolute; inset:0; width:100%; height:100%; object-fit:contain; }
 @media(max-width:720px){.how-it-works{width:calc(100% - 42px);display:block;padding:74px 0 82px}.section-heading{text-align:center}.section-heading h2{font-size:36px;margin:15px 0}.section-heading p{font-size:14px;margin:auto}.steps{display:grid;grid-template-columns:1fr;gap:12px;margin-top:36px}.step-card{min-height:0;padding:17px 18px 18px;display:grid;grid-template-columns:64px 1fr;column-gap:16px}.step-card>b{position:absolute;right:18px;top:18px}.step-symbol{grid-row:span 2;margin:5px 0 0;width:60px;height:60px;border-radius:15px}.step-card h3{margin:6px 28px 7px 0;font-size:16px}.step-card p{font-size:12px}.step-card:after{display:none}}
+/* ===========================================
+   LOGIN PAGE REDESIGN
+=========================================== */
+
+.login-page{
+    min-height:100vh;
+    display:flex;
+    justify-content:center;
+    align-items:center;
+
+    background:
+        linear-gradient(rgba(6,26,39,.78),rgba(6,26,39,.78)),
+        url("/login-bg.png");
+
+    background-size:cover;
+    background-position:center;
+}
+
+.login-overlay{
+    width:100%;
+    display:flex;
+    justify-content:center;
+    align-items:center;
+    padding:40px 20px;
+}
+
+.login-card{
+
+    width:390px;
+    max-width:100%;
+
+    padding:40px 30px;
+
+    border-radius:28px;
+
+    background:rgba(130,170,190,.20);
+
+    backdrop-filter:blur(18px);
+
+    border:1px solid rgba(255,255,255,.15);
+
+    box-shadow:0 25px 50px rgba(0,0,0,.35);
+
+    text-align:center;
+
+}
+
+.login-logo{
+
+    width:120px;
+    height:120px;
+
+    margin:auto;
+
+    border-radius:50%;
+
+    background:#27495c;
+
+    display:flex;
+    justify-content:center;
+    align-items:center;
+
+    font-weight:bold;
+    color:white;
+
+    margin-bottom:18px;
+
+}
+
+.login-card h1{
+
+    margin:0;
+
+    color:white;
+
+    font-size:38px;
+
+    letter-spacing:8px;
+
+}
+
+.login-subtitle{
+
+    margin-top:15px;
+
+    color:#dde8ee;
+
+    line-height:1.4;
+
+    font-size:15px;
+
+    margin-bottom:30px;
+
+}
+
+.role-circle{
+
+    width:74px;
+    height:74px;
+
+    margin:auto;
+
+    border-radius:50%;
+
+    background:#19384b;
+
+    display:flex;
+    align-items:center;
+    justify-content:center;
+
+    color:white;
+    font-weight:bold;
+
+}
+
+.login-card h2{
+
+    margin-top:18px;
+    margin-bottom:8px;
+
+    color:white;
+
+}
+
+.role-description{
+
+    color:#d7e2e7;
+
+    font-size:14px;
+
+    line-height:1.5;
+
+    margin-bottom:25px;
+
+}
+
+.restricted-box{
+
+    margin-bottom:22px;
+
+    padding:15px;
+
+    border-radius:14px;
+
+    background:rgba(255,194,40,.12);
+
+    border:1px solid rgba(255,194,40,.45);
+
+}
+
+.restricted-box strong{
+
+    color:#ffd54f;
+
+}
+
+.restricted-box p{
+
+    margin-top:8px;
+
+    color:white;
+
+    font-size:13px;
+
+    line-height:1.4;
+
+}
+
+.login-card label{
+
+    display:block;
+
+    text-align:left;
+
+    color:white;
+
+    font-size:13px;
+
+    font-weight:700;
+
+    margin-bottom:16px;
+
+}
+
+.input-group{
+
+    margin-top:8px;
+
+    display:flex;
+
+    align-items:center;
+
+    background:white;
+
+    border-radius:12px;
+
+    overflow:hidden;
+
+}
+
+.input-icon{
+
+    width:48px;
+
+    display:flex;
+
+    justify-content:center;
+
+    align-items:center;
+
+    color:#666;
+
+    font-size:11px;
+
+    font-weight:bold;
+
+}
+
+.input-group input{
+
+    flex:1;
+
+    border:none;
+
+    outline:none;
+
+    padding:14px;
+
+    background:transparent;
+
+    font-size:15px;
+
+}
+
+.eye-button{
+
+    width:50px;
+
+    border:none;
+
+    background:none;
+
+    cursor:pointer;
+
+    font-size:11px;
+
+}
+
+.forgot-password{
+
+    text-align:right;
+
+    color:white;
+
+    font-size:12px;
+
+    margin-top:-4px;
+
+    margin-bottom:20px;
+
+    cursor:pointer;
+
+}
+
+.login-button{
+
+    width:100%;
+
+    border:none;
+
+    background:#2196F3;
+
+    color:white;
+
+    border-radius:30px;
+
+    padding:14px;
+
+    font-size:16px;
+
+    font-weight:bold;
+
+    cursor:pointer;
+
+    transition:.25s;
+
+}
+
+.login-button:hover{
+
+    background:#1976D2;
+
+}
+
+.login-divider{
+
+    display:flex;
+
+    align-items:center;
+
+    gap:15px;
+
+    color:white;
+
+    margin:28px 0;
+
+}
+
+.login-divider span{
+
+    flex:1;
+
+    height:2px;
+
+    background:white;
+
+    opacity:.4;
+
+}
+
+.signup-text{
+
+    color:white;
+
+    font-size:15px;
+
+}
+
+.signup-link{
+
+    background:none;
+
+    border:none;
+
+    color:#8ec9ff;
+
+    font-weight:bold;
+
+    cursor:pointer;
+
+    margin-left:5px;
+
+}
+
+.bottom-buttons{
+
+    margin-top:25px;
+
+    display:flex;
+
+    gap:12px;
+
+}
+
+.back-role{
+
+    flex:1;
+
+    border:none;
+
+    border-radius:12px;
+
+    padding:12px;
+
+    background:#2d5164;
+
+    color:white;
+
+    cursor:pointer;
+
+}
+
+.back-role:hover{
+
+    background:#3c6980;
+
+}
+
+.logo-placeholder,
+.role-image-placeholder{
+
+    display:flex;
+    justify-content:center;
+    align-items:center;
+
+    color:white;
+    font-weight:bold;
+
+    background:#35586b;
+
+    border-radius:14px;
+
+}
+
+.login-logo img{
+
+    width:90px;
+    height:90px;
+    object-fit:contain;
+
+}
+
+.role-circle img{
+
+    width:42px;
+    height:42px;
+    object-fit:contain;
+
+}
+
+.input-icon img{
+
+    width:20px;
+    height:20px;
+}
+
+.eye-button img{
+
+    width:20px;
+    height:20px;
+}
+
+.login-card{
+
+    animation:fadeIn .45s ease;
+
+}
+
+@keyframes fadeIn{
+
+    from{
+
+        opacity:0;
+        transform:translateY(30px);
+
+    }
+
+    to{
+
+        opacity:1;
+        transform:translateY(0);
+
+    }
+
+}

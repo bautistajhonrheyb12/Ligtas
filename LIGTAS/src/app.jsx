@@ -52,18 +52,288 @@ function IconPlaceholder({ name, label = 'Icon' }) {
   return <span class="asset-icon-placeholder"><span>{label}</span><img src={`/${name}.png`} alt="" onError={(event) => { event.currentTarget.style.display = 'none' }} /></span>
 }
 
-function AuthScreen({ role, mode, onChooseRole, onBack, onClose, onModeChange }) {
-  const selectedRole = roles.find(item => item.id === role)
-  if (!selectedRole) return <section class="auth-screen" aria-label="Choose account type">
-    <div class="auth-top"><button class="back-button" onClick={onClose}>← Back</button><Logo small /></div>
-    <div class="auth-intro"><Logo /><h2>LIGTAS</h2><span>Log in to continue</span><p>Choose an account type to access the tools made for your role in the community.</p></div>
-    <div class="role-list">{roles.map(item => <button class="role-card" onClick={() => onChooseRole(item.id)} key={item.id}><i><RoleIcon type={item.icon} /></i><span><b>{item.name}</b><small>{item.description}</small></span><em>›</em></button>)}</div>
-  </section>
+function AuthScreen({
+  role,
+  mode,
+  onChooseRole,
+  onBack,
+  onClose,
+  onModeChange
+}) {
 
-  return <section class="auth-screen form-screen" aria-label={`${mode} as ${selectedRole.name}`}>
-    <div class="auth-top"><button class="back-button" onClick={onBack}>← Account type</button><Logo small /></div>
-    <div class="form-wrap"><div class="role-badge"><i><RoleIcon type={selectedRole.icon} /></i>{selectedRole.name}{selectedRole.id === 'admin' && <span>Superadmin</span>}</div><h2>{mode === 'login' ? 'Welcome back.' : 'Create your account.'}</h2><p>{mode === 'login' ? `Log in as a ${selectedRole.name.toLowerCase()} to continue.` : `Sign up as a ${selectedRole.name.toLowerCase()} to get started.`}</p><div class="mode-switch"><button class={mode === 'login' ? 'selected' : ''} onClick={() => onModeChange('login')}>Log in</button><button class={mode === 'signup' ? 'selected' : ''} onClick={() => onModeChange('signup')}>Sign up</button></div><form onSubmit={(event) => event.preventDefault()}><label>Email address<input type="email" placeholder="you@example.com" required /></label><label>Password<input type="password" placeholder="••••••••" required /></label>{mode === 'signup' && <label>Confirm password<input type="password" placeholder="••••••••" required /></label>}<button class="submit-auth" type="submit">{mode === 'login' ? 'Log in' : 'Create account'} <b>→</b></button></form></div>
-  </section>
+  const selectedRole = roles.find(r => r.id === role)
+
+  if (!selectedRole) {
+    return (
+      <section class="auth-screen">
+
+        <div class="auth-top">
+          <button class="back-button" onClick={onClose}>
+            ← Back
+          </button>
+
+          <Logo small />
+        </div>
+
+        <div class="auth-intro">
+
+          <div class="logo-placeholder">
+            LOGO
+          </div>
+
+          <h2>LIGTAS</h2>
+
+          <p>
+            Choose how you want to access the system.
+          </p>
+
+        </div>
+
+        <div class="role-list">
+
+          {roles.map(item => (
+
+            <button
+              key={item.id}
+              class="role-card"
+              onClick={() => onChooseRole(item.id)}
+            >
+
+              <div class="role-image-placeholder">
+
+                {item.name}
+
+                <br />
+
+                ICON
+
+              </div>
+
+              <div>
+
+                <b>{item.name}</b>
+
+                <small>{item.description}</small>
+
+              </div>
+
+            </button>
+
+          ))}
+
+        </div>
+
+      </section>
+    )
+  }
+
+  return (
+
+<section class="login-page">
+
+<div class="login-overlay">
+
+<div class="login-card">
+
+<div class="login-logo">
+
+<img
+    src="/LigtasLogo.png"
+    alt="LIGTAS Logo"
+/>
+</div>
+<h1>LIGTAS</h1>
+
+<p class="login-subtitle">
+
+Localized Intelligent Geographic
+Tagging & Safety Mapping System
+
+</p>
+
+<div class="role-circle">
+
+<img
+    src={`/roles/${selectedRole.id}.png`}
+    alt=""
+/>
+
+</div>
+<h2>{selectedRole.name}</h2>
+
+<p class="role-description">
+
+{selectedRole.id === "citizen" &&
+"View disaster zones, evacuation centers, and stay informed during emergencies."}
+
+{selectedRole.id === "rescuer" &&
+"Coordinate rescue operations and emergency response."}
+
+{selectedRole.id === "admin" &&
+"Manage the entire LIGTAS platform."}
+
+</p>
+
+{selectedRole.id !== "citizen" && (
+
+<div class="restricted-box">
+
+<strong>⚠ Restricted Access</strong>
+
+<p>
+
+{selectedRole.id === "rescuer"
+? "Rescuer accounts are created by the Super Administrator."
+: "Only authorized personnel may access this portal."}
+
+</p>
+
+</div>
+
+)}
+
+<form>
+
+<label>
+
+EMAIL
+
+<div class="input-group">
+
+<div class="input-icon">
+
+<img
+    src="/icons/email.png"
+    alt=""
+/>
+
+</div>
+
+<input
+type="email"
+placeholder="Enter your email"
+/>
+
+</div>
+
+</label>
+
+<label>
+
+PASSWORD
+
+<div class="input-group">
+
+<div class="input-icon">
+
+<img
+    src="/icons/lock.png"
+    alt=""
+/>
+
+</div>
+<input
+type="password"
+placeholder="Enter your password"
+/>
+
+<button
+type="button"
+class="eye-button"
+>
+
+<img
+    src="/icons/eye.png"
+    alt=""
+/>
+
+</button>
+
+</div>
+
+</label>
+
+<div class="forgot-password">
+
+Forgot Password?
+
+</div>
+
+<button
+type="submit"
+class="login-button"
+>
+
+LOG IN
+
+</button>
+
+</form>
+
+{selectedRole.id === "citizen" && (
+
+<>
+
+<div class="login-divider">
+
+<span></span>
+
+OR
+
+<span></span>
+
+</div>
+
+<p class="signup-text">
+
+Don't have an account?
+
+<button
+type="button"
+class="signup-link"
+onClick={() => onModeChange("signup")}
+>
+
+Sign Up
+
+</button>
+
+</p>
+
+</>
+
+)}
+
+<div class="bottom-buttons">
+
+<button
+class="back-role"
+onClick={onBack}
+>
+
+Change Role
+
+</button>
+
+<button
+class="back-role"
+onClick={onClose}
+>
+
+Back Home
+
+</button>
+
+</div>
+
+</div>
+
+</div>
+
+</section>
+
+  )
+
 }
 
 function Illustration({ type }) {
