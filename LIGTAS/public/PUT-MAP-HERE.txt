@@ -1,0 +1,6 @@
+Replace this file with the map image you want to show in the LIGTAS landing page.
+
+Name the image exactly: ligtas-map.png
+Put it in this same public folder.
+
+Recommended: a landscape image (about 3:2), at least 1200 pixels wide.

@@ -1,0 +1,7 @@
+Add your final role icons to this public folder using these exact names:
+
+citizen-icon.png
+rescuer-icon.png
+admin-icon.png
+
+Square PNG files with transparent backgrounds work best. The role cards will use each image automatically.

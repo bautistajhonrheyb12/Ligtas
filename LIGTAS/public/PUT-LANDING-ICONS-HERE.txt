@@ -1,0 +1,7 @@
+Add the final landing-page icons to this public folder using these exact names:
+
+verified-alert-icon.png
+hazard-map-icon.png
+community-response-icon.png
+
+Square PNG files with transparent backgrounds work best. Each will replace its matching How LIGTAS works icon automatically.

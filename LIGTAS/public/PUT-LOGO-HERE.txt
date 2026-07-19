@@ -1,0 +1,6 @@
+Replace this file with your final PNG logo.
+
+Name the image exactly: ligtas-logo.png
+Put it in this same public folder.
+
+Recommended: a square PNG with a transparent background, at least 512 x 512 pixels.
