@@ -1,4 +1,6 @@
-import { useEffect, useState } from 'preact/hooks'
+import { useEffect, useRef, useState } from 'preact/hooks'
+import L from 'leaflet'
+import 'leaflet/dist/leaflet.css'
 import './app.css'
 
 const slides = [
@@ -58,10 +60,40 @@ function AuthScreen({
   onChooseRole,
   onBack,
   onClose,
-  onModeChange
+  onModeChange,
+  onLogin
 }) {
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
+  const [confirmPassword, setConfirmPassword] = useState('')
+  const [showPassword, setShowPassword] = useState(false)
+  const [error, setError] = useState('')
 
   const selectedRole = roles.find(r => r.id === role)
+
+  const handleSubmit = (e) => {
+    e.preventDefault()
+    setError('')
+
+    if (!email || !password) {
+      setError('Please fill in all fields')
+      return
+    }
+
+    if (mode === 'signup' && password !== confirmPassword) {
+      setError('Passwords do not match')
+      return
+    }
+
+    if (mode === 'signup' && password.length < 6) {
+      setError('Password must be at least 6 characters')
+      return
+    }
+
+    // For now, just call onLogin to complete the flow
+    // In production, this would validate against a backend
+    onLogin(role)
+  }
 
   if (!selectedRole) {
     return (
@@ -192,7 +224,9 @@ Tagging & Safety Mapping System
 
 )}
 
-<form>
+<form onSubmit={handleSubmit}>
+
+{error && <div class="form-error">{error}</div>}
 
 <label>
 
@@ -212,6 +246,9 @@ EMAIL
 <input
 type="email"
 placeholder="Enter your email"
+value={email}
+onChange={(e) => setEmail(e.target.value)}
+onInput={(e) => setEmail(e.target.value)}
 />
 
 </div>
@@ -233,13 +270,20 @@ PASSWORD
 
 </div>
 <input
-type="password"
+type={showPassword ? "text" : "password"}
 placeholder="Enter your password"
+value={password}
+onChange={(e) => setPassword(e.target.value)}
+onInput={(e) => setPassword(e.target.value)}
 />
 
 <button
 type="button"
 class="eye-button"
+onClick={(e) => {
+  e.preventDefault()
+  setShowPassword(!showPassword)
+}}
 >
 
 <img
@@ -253,18 +297,46 @@ class="eye-button"
 
 </label>
 
-<div class="forgot-password">
+{mode === 'signup' && (
+<label>
+
+CONFIRM PASSWORD
+
+<div class="input-group">
+
+<div class="input-icon">
+
+<img
+    src="/icons/lock.png"
+    alt=""
+/>
+
+</div>
+<input
+type={showPassword ? "text" : "password"}
+placeholder="Confirm your password"
+value={confirmPassword}
+onChange={(e) => setConfirmPassword(e.target.value)}
+onInput={(e) => setConfirmPassword(e.target.value)}
+/>
+
+</div>
+
+</label>
+)}
+
+{mode === 'login' && <div class="forgot-password">
 
 Forgot Password?
 
-</div>
+</div>}
 
 <button
 type="submit"
 class="login-button"
 >
 
-LOG IN
+{mode === 'signup' ? 'Create account →' : 'LOG IN'}
 
 </button>
 
@@ -336,6 +408,211 @@ Back Home
 
 }
 
+const citizenHazards = [
+  {
+    name: 'Flood risk',
+    severity: 'High',
+    area: 'Brgy. Santa Maria',
+    description: 'Low-lying road near Tungkong Mangga Rd is flooding quickly.',
+    lat: 14.846,
+    lng: 120.995,
+  },
+  {
+    name: 'Power outage',
+    severity: 'Medium',
+    area: 'Poblacion',
+    description: 'Residents reported a temporary outage affecting the east side.',
+    lat: 14.833,
+    lng: 120.982,
+  },
+  {
+    name: 'Landslide watch',
+    severity: 'High',
+    area: 'Hilltop barangay',
+    description: 'Heavy rain has raised slope movement risk near the ridge.',
+    lat: 14.858,
+    lng: 120.972,
+  },
+]
+
+function CitizenHazardMap({ isFullscreen, onToggleFullscreen }) {
+  const mapRef = useRef(null)
+
+  useEffect(() => {
+    if (!mapRef.current) return undefined
+
+    const map = L.map(mapRef.current, {
+      zoomControl: true,
+      scrollWheelZoom: true,
+      doubleClickZoom: true,
+      dragging: true,
+      touchZoom: true,
+      boxZoom: true,
+    }).setView([14.842, 120.985], 12)
+
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '&copy; OpenStreetMap contributors',
+    }).addTo(map)
+
+    L.control.zoom({ position: 'bottomright' }).addTo(map)
+
+    citizenHazards.forEach((hazard) => {
+      const marker = L.circleMarker([hazard.lat, hazard.lng], {
+        radius: 12,
+        color: hazard.severity === 'High' ? '#ff6b6b' : '#ffb547',
+        fillColor: hazard.severity === 'High' ? '#ff6b6b' : '#ffb547',
+        fillOpacity: 0.82,
+        weight: 2,
+      }).addTo(map)
+
+      marker.bindPopup(`<strong>${hazard.name}</strong><br />${hazard.description}<br /><small>${hazard.area}</small>`, {
+        maxWidth: 220,
+        autoPan: true,
+        autoPanPadding: [20, 20],
+      })
+    })
+
+    return () => map.remove()
+  }, [])
+
+  return <div class="real-map-shell">
+    <div class="map-toolbar">
+      <div>
+        <strong>Citizen hazard map</strong>
+        <span>Sample pins only • no database needed yet</span>
+      </div>
+      <button
+        type="button"
+        class="map-fullscreen-btn"
+        onClick={onToggleFullscreen}
+        aria-label={isFullscreen ? 'Exit full screen map' : 'Open full screen map'}
+      >
+        {isFullscreen ? '⤡' : '▢'}
+      </button>
+    </div>
+    <div class="real-map" ref={mapRef} />
+    <div class="map-legend">
+      <span><i class="legend-red" /> High risk</span>
+      <span><i class="legend-yellow" /> Medium risk</span>
+    </div>
+  </div>
+}
+
+function CitizenDashboard({ onLogout }) {
+  const [alertOpen, setAlertOpen] = useState(false)
+  const [activeTab, setActiveTab] = useState('map')
+  const [evacIndex, setEvacIndex] = useState(0)
+  const [isMapFullscreen, setIsMapFullscreen] = useState(false)
+
+  const stats = {
+    evacCenters: 6,
+    availableSlots: 5278,
+    currentOccupants: 1480,
+    highRiskZones: 3
+  }
+
+
+  
+  const evacCenters = [
+    { name: 'Catmon Elem. School', location: 'School Gymnasium', capacity: 600, occupants: 480 },
+    { name: 'San Miguel HS', location: 'Covered Court', capacity: 420, occupants: 112 },
+    { name: 'Brgy Hall Evac', location: 'Evacuation Hall', capacity: 300, occupants: 220 },
+  ]
+
+  const nextEvac = () => setEvacIndex(i => (i + 1) % evacCenters.length)
+  const prevEvac = () => setEvacIndex(i => (i - 1 + evacCenters.length) % evacCenters.length)
+  const currentEvac = evacCenters[evacIndex]
+
+  return <main class="citizen-ui">
+    <div class="citizen-top">
+      <Logo small />
+      <div class="citizen-actions">
+        <button class="icon-btn" onClick={() => setActiveTab('map')}>📍 Map</button>
+        <button class="icon-btn" onClick={() => setActiveTab('alerts')}>🔔 Alerts</button>
+        <button class="icon-btn" onClick={() => setActiveTab('warnings')}>⚠️ Warnings</button>
+        <button class="logout" onClick={onLogout}>Logout</button>
+      </div>
+    </div>
+
+    <div class="stats-row">
+      <div class="stat-card stat-blue">
+        <span class="stat-value">{stats.evacCenters}</span>
+        <span class="stat-label">Evac Centers</span>
+      </div>
+      <div class="stat-card stat-green">
+        <span class="stat-value">{stats.availableSlots.toLocaleString()}</span>
+        <span class="stat-label">Available Slots</span>
+      </div>
+      <div class="stat-card stat-orange">
+        <span class="stat-value">{stats.currentOccupants.toLocaleString()}</span>
+        <span class="stat-label">Current Occupants</span>
+      </div>
+      <div class="stat-card stat-red">
+        <span class="stat-value">{stats.highRiskZones}</span>
+        <span class="stat-label">High Risk Zones</span>
+      </div>
+    </div>
+
+    <div class="alert-banner" onClick={() => setAlertOpen(true)}>
+      <div class="alert-icon">⚠️</div>
+      <div>
+        <strong>Heavy Rainfall Alert</strong>
+        <span>Santa Maria, Bulacan • Updated 2 hours ago</span>
+      </div>
+    </div>
+
+    <div class="map-section">
+      <div className={`map-frame${isMapFullscreen ? ' is-fullscreen' : ''}`}>
+        <CitizenHazardMap isFullscreen={isMapFullscreen} onToggleFullscreen={() => setIsMapFullscreen(v => !v)} />
+        <div class="evac-carousel">
+          <button class="carousel-prev" onClick={prevEvac}>‹</button>
+          <div class="evac-card">
+            <h3>{currentEvac.name}</h3>
+            <small>{currentEvac.location}</small>
+            <div class="evac-progress">
+              <div class="bar" style={{ width: `${(currentEvac.occupants / currentEvac.capacity) * 100}%` }}></div>
+              <div class="counts">{currentEvac.occupants} / {currentEvac.capacity} people</div>
+            </div>
+          </div>
+          <button class="carousel-next" onClick={nextEvac}>›</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="footer-controls">
+      <button class={activeTab === 'map' ? 'active' : ''} onClick={() => setActiveTab('map')}>Map Overview</button>
+      <button class={activeTab === 'alerts' ? 'active' : ''} onClick={() => { setActiveTab('alerts'); setAlertOpen(true) }}>Alerts</button>
+      <button class={activeTab === 'warnings' ? 'active' : ''} onClick={() => setActiveTab('warnings')}>Warnings</button>
+    </div>
+
+    {alertOpen && <div class="modal-overlay" onClick={() => setAlertOpen(false)}>
+      <div class="modal" onClick={(e) => e.stopPropagation()}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+          <h2>Alert Details</h2>
+          <button class="close-btn" onClick={() => setAlertOpen(false)}>✕</button>
+        </div>
+        <div class="alert-list">
+          <div style={{ padding: '12px 0', borderBottom: '1px solid #eee' }}>
+            <strong>Heavy Rainfall Alert</strong>
+            <p style={{ marginTop: '4px', fontSize: '14px' }}>Santa Maria, Bulacan</p>
+            <small>Updated 2 hours ago</small>
+          </div>
+          <div style={{ padding: '12px 0', borderBottom: '1px solid #eee' }}>
+            <strong>Flood Warning</strong>
+            <p style={{ marginTop: '4px', fontSize: '14px' }}>Low-lying areas near Tungkong Mangga Rd</p>
+            <small>Updated 1 hour ago</small>
+          </div>
+          <div style={{ padding: '12px 0' }}>
+            <strong>High Wind Advisory</strong>
+            <p style={{ marginTop: '4px', fontSize: '14px' }}>Coastal areas and elevated regions</p>
+            <small>Updated 30 minutes ago</small>
+          </div>
+        </div>
+      </div>
+    </div>}
+  </main>
+}
+
 function Illustration({ type }) {
   if (type === 'map') return <div class="map-visual" aria-hidden="true">
     <MapPhoto />
@@ -363,7 +640,25 @@ export function App() {
   const [authRole, setAuthRole] = useState(null)
   const [authMode, setAuthMode] = useState('login')
   const [menuOpen, setMenuOpen] = useState(false)
+  const [isAuthenticated, setIsAuthenticated] = useState(false)
+  const [userRole, setUserRole] = useState(null)
   const slide = slides[active]
+
+  const handleLogin = (roleId) => {
+    setIsAuthenticated(true)
+    setUserRole(roleId)
+    setShowAuth(false)
+  }
+
+  // Show dashboard for authenticated citizens
+  if (isAuthenticated && userRole === 'citizen') {
+    return <CitizenDashboard onLogout={() => { setIsAuthenticated(false); setUserRole(null) }} />
+  }
+
+  // Show non-citizen restricted message
+  if (isAuthenticated && userRole !== 'citizen') {
+    return <main class="site auth-site"><section class="form-screen"><div class="form-wrap"><div style="text-align: center; padding: 40px;"><h2>Access Restricted</h2><p>Only citizen accounts can access the dashboard.</p><button onClick={() => { setIsAuthenticated(false); setUserRole(null) }}>Back to Home</button></div></div></section></main>
+  }
 
   useEffect(() => {
     if (paused) return undefined
@@ -374,7 +669,7 @@ export function App() {
   const advance = () => setActive(current => (current + 1) % slides.length)
 
   const openAuth = () => { setMenuOpen(false); setAuthRole(null); setAuthMode('login'); setShowAuth(true) }
-  if (showAuth) return <main class="site auth-site"><AuthScreen role={authRole} mode={authMode} onChooseRole={setAuthRole} onModeChange={setAuthMode} onBack={() => setAuthRole(null)} onClose={() => setShowAuth(false)} /></main>
+  if (showAuth) return <main class="site auth-site"><AuthScreen role={authRole} mode={authMode} onChooseRole={setAuthRole} onModeChange={setAuthMode} onBack={() => setAuthRole(null)} onClose={() => setShowAuth(false)} onLogin={handleLogin} /></main>
 
   return <main class={`site stage-${slide.type}`}>
     <nav class="topbar">
