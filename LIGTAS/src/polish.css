@@ -1,0 +1,364 @@
+/* ==========================================================
+   LIGTAS polish layer
+   Loaded after motion.css. Color and layout refinements for the
+   landing, auth, citizen and admin screens, plus small shared pieces
+   (icons, hazard tones, segmented filters) used across dashboards.
+   ========================================================== */
+
+.ui-icon { display: block; flex: 0 0 auto; }
+
+/* Hazard tones keyed to incident type (see reportTypeStyles in app.jsx). */
+.rx-tone--blue { --tone: #2f78b7; --tone-soft: #e7f1fa; }
+.rx-tone--amber { --tone: #c27a1a; --tone-soft: #fdf1df; }
+.rx-tone--green { --tone: #3f8a4f; --tone-soft: #e7f4ea; }
+.rx-tone--violet { --tone: #7556c2; --tone-soft: #efeafb; }
+.rx-tone--red { --tone: #c94f4e; --tone-soft: #fdeceb; }
+
+/* Segmented filter used by the rescuer queue and the citizen alert list. */
+.rx-segment,
+.citizen-alert-filter {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 4px;
+  padding: 4px;
+  border-radius: 14px;
+  background: #e8eeea;
+}
+.rx-segment button,
+.citizen-alert-filter button {
+  min-height: 44px;
+  border: 0;
+  border-radius: 11px;
+  color: #5d7167;
+  background: transparent;
+  font-size: 13px;
+  font-weight: 800;
+  transition: background-color .2s ease, color .2s ease, box-shadow .2s ease, scale .12s ease;
+}
+.rx-segment button b,
+.citizen-alert-filter button b {
+  margin-left: 6px;
+  padding: 1px 7px;
+  border-radius: 999px;
+  background: rgba(32, 58, 53, .08);
+  font-size: 11px;
+  transition: background-color .2s ease, color .2s ease;
+}
+.rx-segment button.is-active,
+.citizen-alert-filter button.is-active {
+  color: var(--ui-ink);
+  background: #fff;
+  box-shadow: 0 2px 8px rgba(28, 58, 45, .1);
+}
+.rx-segment button.is-active b,
+.citizen-alert-filter button.is-active b {
+  color: #fff;
+  background: var(--seg-accent, var(--ui-green));
+}
+.rx-segment button:active,
+.citizen-alert-filter button:active { scale: .97; }
+
+/* app.css painted Cancel buttons green like the primary action. */
+.alert-cancel-button { border: 1px solid var(--ui-border); color: var(--ui-ink); background: #fff; }
+.alert-cancel-button:hover { background: #f3f6f4; }
+
+/* Error notices were styled like success messages. */
+.admin-notice[role="alert"],
+.admin-notice.is-error {
+  border-color: #f2c9c5;
+  color: #9b3330;
+  background: #fff3f2;
+}
+
+/* ==========================================================
+   Landing
+   ========================================================== */
+
+.step-card:nth-child(1) .step-symbol { color: #2f78b7; background: #e7f1fa; }
+.step-card:nth-child(2) .step-symbol { color: #c27a1a; background: #fdf1df; }
+.step-card:nth-child(3) .step-symbol { color: #3f8a4f; background: #e7f4ea; }
+.step-card:nth-child(1) > b { color: #2f78b7; }
+.step-card:nth-child(2) > b { color: #c27a1a; }
+.step-card:nth-child(3) > b { color: #3f8a4f; }
+.feature-strip > div:nth-child(1) { border-left-color: #a9cbe6; }
+.feature-strip > div:nth-child(2) { border-left-color: #ecc994; }
+.feature-strip > div:nth-child(3) { border-left-color: #a9d3b3; }
+.feature-strip > div:nth-child(1) b { color: #2f78b7; }
+.feature-strip > div:nth-child(2) b { color: #c27a1a; }
+
+/* ==========================================================
+   Role picker: stacked cards so descriptions get the full width
+   ========================================================== */
+
+.role-list { max-width: 880px; align-items: stretch; }
+.role-card {
+  display: flex;
+  min-height: 0;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 14px;
+  padding: 24px 22px 20px;
+  background: linear-gradient(180deg, color-mix(in srgb, var(--role) 9%, white) 0, #fff 62%);
+}
+.role-card .role-image-placeholder { width: 56px; height: 56px; flex: 0 0 auto; border-radius: 16px; }
+/* app.css pinned the icon image to the tile's top-left corner; center it instead. */
+.role-card .role-icon-placeholder { width: 100%; height: 100%; border-radius: inherit; }
+.role-card .role-icon-placeholder img { position: static; width: 62%; height: 62%; object-fit: contain; }
+.role-card-copy { display: grid; gap: 6px; }
+.role-card b { font-size: 19px; }
+.role-card small { margin-top: 0; font-size: 13.5px; line-height: 1.55; }
+.role-card-cta {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: auto;
+  padding: 9px 14px;
+  border-radius: 999px;
+  color: var(--role);
+  background: color-mix(in srgb, var(--role) 11%, white);
+  font-size: 13px;
+  font-weight: 800;
+  transition: background-color .2s ease, color .2s ease, gap .2s ease;
+}
+.role-card:hover .role-card-cta,
+.role-card:focus-visible .role-card-cta { gap: 10px; color: #fff; background: var(--role); }
+@media (max-width: 720px) {
+  .role-card {
+    display: grid;
+    grid-template-columns: 54px minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 14px;
+    padding: 16px;
+  }
+  .role-card .role-image-placeholder { width: 54px; height: 54px; }
+  .role-card b { font-size: 16px; }
+  .role-card small { font-size: 12.5px; }
+  .role-card-cta { margin: 0; padding: 9px; }
+  .role-card-cta > span { display: none; }
+}
+
+/* ==========================================================
+   Citizen
+   ========================================================== */
+
+.citizen-sheet-stat { border: 1px solid transparent; border-left-width: 1px; }
+.citizen-sheet-stat.stat-blue { border-color: #d6e7f4; background: linear-gradient(135deg, #e9f3fb, #f8fbfe); }
+.citizen-sheet-stat.stat-green { border-color: #d3eadb; background: linear-gradient(135deg, #e7f5ec, #f8fcf9); }
+.citizen-sheet-stat.stat-orange { border-color: #f1dfc4; background: linear-gradient(135deg, #fdf1e1, #fffbf6); }
+.citizen-sheet-stat.stat-red { border-color: #f3d4d1; background: linear-gradient(135deg, #fdecea, #fffaf9); }
+.citizen-sheet-stat.stat-blue strong { color: #285f8a; }
+.citizen-sheet-stat.stat-green strong { color: #2c6c45; }
+.citizen-sheet-stat.stat-orange strong { color: #985a17; }
+.citizen-sheet-stat.stat-red strong { color: #a73c38; }
+
+.citizen-ui .footer-controls button {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+}
+.tab-icon { display: inline-grid; place-items: center; }
+.tab-badge {
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: 999px;
+  color: #fff;
+  background: #d94b45;
+  font-size: 10px;
+  line-height: 18px;
+}
+nav.has-pill > button.active .tab-badge { color: #c94f4e; background: #fff; }
+@media (max-width: 600px) {
+  .tab-badge { position: absolute; top: 3px; left: calc(50% + 6px); }
+}
+
+.citizen-alert-filter { margin-bottom: 10px; }
+/* app.css forced every alert edge to red; restore the severity colors. */
+.alert-item.alert-item--yellow { border-left-color: #e2a93b; }
+.alert-item.alert-item--blue { border-left-color: #5ba4cf; }
+.alert-item__time { color: var(--ui-muted); font-size: 11px; font-weight: 700; }
+.citizen-sheet .alert-item--red { background: #fff7f6; }
+.citizen-sheet .alert-item--yellow { background: #fffaf0; }
+.citizen-sheet .alert-item--blue { background: #f5f9fd; }
+.incident-report-card .panel-header { font-weight: 800; }
+.incident-report-card { border-color: #f1dfc4; background: linear-gradient(135deg, #fff8ef, #fff); }
+.incident-report-card .incident-report-trigger { border-color: #e9c99c; color: #8f5414; background: #fff3e2; }
+.incident-report-card .incident-report-trigger:hover { border-color: #dcb07a; background: #ffeacf; }
+.citizen-sheet-scroll > .form-notice { margin-bottom: 12px; }
+/* On phones the peek bar already carries a permanent "Report incident" button. */
+@media (max-width: 600px) {
+  .citizen-sheet .incident-report-card { display: none; }
+}
+
+/* ==========================================================
+   Admin
+   ========================================================== */
+
+/* The sidebar has no close button of its own; on overlay layouts the header
+   toggle (which becomes an X) sits on top of the open sidebar instead. */
+@media (max-width: 900px) {
+  .admin-nav-open .admin-nav-toggle { position: relative; z-index: 1201; }
+  .admin-sidebar-brand { padding-left: 52px; }
+}
+
+.admin-stats .ops-stat--blue { background: linear-gradient(135deg, #eaf3fa, #fff 70%); }
+.admin-stats .ops-stat--red { background: linear-gradient(135deg, #fdeeec, #fff 70%); }
+.admin-stats .ops-stat--orange { background: linear-gradient(135deg, #fdf2e3, #fff 70%); }
+.admin-stats .ops-stat--green { background: linear-gradient(135deg, #e9f5ed, #fff 70%); }
+
+.admin-count-chip {
+  display: inline-grid;
+  min-width: 22px;
+  height: 22px;
+  place-items: center;
+  margin-left: 6px;
+  padding: 0 6px;
+  border-radius: 999px;
+  color: #a0601d;
+  background: #fff1dc;
+  font-size: 11px;
+  vertical-align: 2px;
+}
+.admin-review-item {
+  display: grid;
+  grid-template-columns: 36px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 0;
+  border-top: 1px solid #eef2ef;
+}
+.admin-section-heading + .admin-review-item { border-top: 0; }
+.admin-review-icon {
+  display: grid;
+  width: 36px;
+  height: 36px;
+  place-items: center;
+  border-radius: 11px;
+  color: var(--tone);
+  background: var(--tone-soft);
+}
+.admin-review-item strong { display: block; color: var(--ui-ink); font-size: 13px; }
+.admin-review-item small {
+  display: block;
+  overflow: hidden;
+  color: var(--ui-muted);
+  font-size: 11px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.admin-review-actions { display: flex; gap: 6px; }
+.admin-review-actions button {
+  display: grid;
+  width: 34px;
+  height: 34px;
+  place-items: center;
+  border: 0;
+  border-radius: 10px;
+  transition: scale .12s ease, filter .2s ease;
+}
+.admin-review-actions button:hover:not(:disabled) { filter: brightness(.95); }
+.admin-review-actions button:active:not(:disabled) { scale: .92; }
+.admin-review-actions .reject-button .ui-icon { rotate: 45deg; }
+p.admin-review-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  margin: 6px 0 2px;
+  color: #2f7a4f;
+  font-weight: 700;
+}
+.admin-capacity-row { display: grid; gap: 6px; padding: 8px 0; }
+.admin-capacity-row > div:first-child {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  font-size: 12px;
+}
+.admin-capacity-row strong { overflow: hidden; color: var(--ui-ink); font-weight: 700; text-overflow: ellipsis; white-space: nowrap; }
+.admin-capacity-row > div:first-child span { color: var(--ui-muted); font-weight: 800; }
+.admin-capacity-panel .admin-center-capacity > div { height: 8px; }
+
+/* Session restore splash */
+.app-splash {
+  display: grid;
+  min-height: 100vh;
+  min-height: 100dvh;
+  place-content: center;
+  justify-items: center;
+  gap: 18px;
+  background: #f7f9f7;
+}
+.app-splash .btn-spinner { width: 22px; height: 22px; margin: 0; border-width: 3px; color: #27745b; }
+
+/* Forgot password is a real button now */
+button.forgot-password {
+  display: block;
+  margin-left: auto;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 700;
+}
+button.forgot-password:disabled { opacity: .6; cursor: progress; }
+
+/* Sign-up details */
+.signup-details { display: grid; }
+.signup-row { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 12px; }
+.input-group--plain input { padding-left: 14px; }
+.signup-help { margin: -6px 0 16px; color: var(--ui-muted); font-size: 12px; line-height: 1.45; text-align: left; }
+@media (max-width: 420px) {
+  .signup-row { grid-template-columns: 1fr; }
+}
+.app-splash-error { max-width: 300px; margin: 0; color: #8b2d2d; font-size: 14px; line-height: 1.5; text-align: center; }
+
+/* Admin two-step sign-in */
+.two-step-steps {
+  display: grid;
+  gap: 12px;
+  margin: 4px 0 18px;
+  padding-left: 20px;
+  color: var(--ui-ink);
+  font-size: 13.5px;
+  line-height: 1.5;
+  text-align: left;
+}
+.two-step-steps li::marker { color: var(--ui-green); font-weight: 800; }
+.two-step-qr {
+  display: grid;
+  width: 196px;
+  height: 196px;
+  margin: 10px auto 6px;
+  place-items: center;
+  border: 1px solid var(--ui-border);
+  border-radius: 14px;
+  background: #fff;
+}
+.two-step-qr img { display: block; width: 180px; height: 180px; }
+.two-step-qr .btn-spinner { margin: 0; color: var(--ui-green); }
+.two-step-qr-error { display: grid; gap: 8px; padding: 12px; text-align: center; }
+.two-step-qr-error p { margin: 0; color: #8b2d2d; font-size: 12px; line-height: 1.4; }
+.two-step-key { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 6px 12px; }
+.two-step-key code {
+  padding: 6px 10px;
+  border-radius: 8px;
+  color: var(--ui-ink);
+  background: #f1f5f2;
+  font: 700 13px/1.4 ui-monospace, Consolas, monospace;
+  letter-spacing: .06em;
+  word-break: break-all;
+}
+.two-step-key .signup-link { font-size: 12.5px; }
+.input-group input.two-step-code {
+  font: 800 24px/1 ui-monospace, Consolas, monospace;
+  letter-spacing: .4em;
+  text-align: center;
+}
+.two-step-help { margin: 14px 0 0; color: var(--ui-muted); font-size: 12px; line-height: 1.45; }
+
+/* Matches the faded area outside Santa Maria, where no map tiles load. */
+.leaflet-container { background: #eef2ef; }

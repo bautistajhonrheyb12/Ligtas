@@ -1,0 +1,4 @@
+{
+  "deno.enablePaths": ["LIGTAS/supabase/functions"],
+  "deno.lint": true
+}
