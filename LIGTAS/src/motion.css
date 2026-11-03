@@ -34,10 +34,6 @@
   0% { opacity: .6; transform: scale(1); }
   80%, 100% { opacity: 0; transform: scale(2.6); }
 }
-@keyframes ligtas-ring-out {
-  0% { opacity: .55; transform: scale(1); }
-  100% { opacity: 0; transform: scale(1.65); }
-}
 @keyframes ligtas-siren {
   0% { box-shadow: 0 0 0 0 rgba(217, 84, 82, .5); }
   70%, 100% { box-shadow: 0 0 0 11px rgba(217, 84, 82, 0); }
@@ -563,15 +559,6 @@ span.capacity-chip.capacity-chip--critical::before { animation: ligtas-siren 1.8
 .auth-top { animation: ligtas-fade .4s ease both; }
 .auth-intro { animation: ligtas-rise .5s var(--ease-out) both; }
 .auth-intro > .logo-slot { animation: ligtas-pop .6s var(--ease-spring) both; }
-.auth-intro > .logo-slot::after,
-.login-logo::after {
-  position: absolute;
-  inset: -4px;
-  border: 2px solid rgba(39, 116, 91, .35);
-  border-radius: 50%;
-  content: '';
-  animation: ligtas-ring-out 2.8s var(--ease-out) infinite;
-}
 
 .role-card {
   --role: #27745b;
@@ -633,16 +620,6 @@ span.capacity-chip.capacity-chip--critical::before { animation: ligtas-siren 1.8
 }
 .role-circle--rescuer { --role: #c0622a; --role-2: #e0894a; }
 .role-circle--admin { --role: #2f6f9f; --role-2: #4f97c6; }
-.role-circle::before,
-.role-circle::after {
-  position: absolute;
-  inset: 0;
-  border: 2px solid var(--role);
-  border-radius: 50%;
-  content: '';
-  animation: ligtas-ring-out 2.6s var(--ease-out) infinite;
-}
-.role-circle::after { animation-delay: 1.3s; }
 
 /* app.css still carried dark-theme colors here (white text on cream). */
 .restricted-box { border-left: 4px solid #e0a43a; }
