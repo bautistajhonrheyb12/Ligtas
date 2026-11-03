@@ -137,8 +137,6 @@ export function AuthScreen({
           <button class="back-button" onClick={onClose}>
             ← Back
           </button>
-
-          <Logo small />
         </div>
 
         <div class="auth-intro">
@@ -155,7 +153,7 @@ export function AuthScreen({
 
         {authMessage && <div class="form-error">{authMessage}</div>}
 
-        <div class="role-list">
+        <div class={`role-list role-list--${visibleRoles.length}`}>
 
           {visibleRoles.map(item => (
 

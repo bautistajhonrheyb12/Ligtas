@@ -91,6 +91,23 @@
    ========================================================== */
 
 .role-list { max-width: 880px; align-items: stretch; }
+/* The public page shows two roles (Admin is behind the staff link): keep them centered. */
+@media (min-width: 901px) {
+  .role-list--2 { grid-template-columns: repeat(2, minmax(0, 340px)); justify-content: center; }
+}
+/* Same dark badge as the login card, so the logo stays crisp on the light page. */
+.auth-intro > .logo-slot {
+  width: 84px;
+  height: 84px;
+  border-radius: 50%;
+  background: #27495c;
+  box-shadow: 0 10px 26px rgba(23, 57, 74, .2);
+}
+/* The logo image has empty margins, so it is drawn slightly larger than the badge (as on the login card). */
+.auth-intro > .logo-slot img { inset: -8px; width: calc(100% + 16px); height: calc(100% + 16px); }
+@media (max-width: 720px) {
+  .auth-intro > .logo-slot { width: 72px; height: 72px; }
+}
 .role-card {
   display: flex;
   min-height: 0;
