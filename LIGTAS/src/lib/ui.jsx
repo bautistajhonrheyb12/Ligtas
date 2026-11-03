@@ -187,6 +187,13 @@ export function formatDistance(km) {
   return km < 1 ? `${Math.round(km * 1000)} m` : `${km.toFixed(1)} km`
 }
 
+// Same rule as Supabase's password settings (see SETUP.md); returns '' when fine.
+export function passwordProblem(password) {
+  if (password.length < 8) return 'Password must be at least 8 characters'
+  if (!/[A-Za-z]/.test(password) || !/\d/.test(password)) return 'Use both letters and numbers in your password'
+  return ''
+}
+
 export function getCurrentPosition() {
   return new Promise((resolve, reject) => {
     if (!navigator.geolocation) {
@@ -199,12 +206,70 @@ export function getCurrentPosition() {
         longitude: position.coords.longitude,
         accuracy: position.coords.accuracy,
       }),
-      (error) => reject(new Error(error.code === error.PERMISSION_DENIED
-        ? 'Location permission was denied. Allow location access in your browser settings.'
-        : 'Could not get your location. Move to an open area and try again.')),
+      (error) => reject(new Error(locationErrorMessage(error))),
       { enableHighAccuracy: true, timeout: 15000, maximumAge: 30000 },
     )
   })
+}
+
+function locationErrorMessage(error) {
+  return error.code === error.PERMISSION_DENIED
+    ? 'Location permission was denied. Allow location access in your browser settings.'
+    : 'Could not get your location. Move to an open area and try again.'
+}
+
+// Follows the device's location so people always see themselves on the map.
+// Tracking pauses while the app is in the background to save battery, and stops
+// if location permission is refused until `retry` is called.
+export function useLivePosition() {
+  const [position, setPosition] = useState(null)
+  const [error, setError] = useState('')
+  const [attempt, setAttempt] = useState(0)
+
+  useEffect(() => {
+    if (!navigator.geolocation) {
+      setError('This device cannot share its location.')
+      return undefined
+    }
+    let watchId = null
+    let isDenied = false
+    const stop = () => {
+      if (watchId != null) navigator.geolocation.clearWatch(watchId)
+      watchId = null
+    }
+    const start = () => {
+      if (watchId != null || isDenied || document.hidden) return
+      watchId = navigator.geolocation.watchPosition(
+        (next) => {
+          setError('')
+          setPosition({ latitude: next.coords.latitude, longitude: next.coords.longitude, accuracy: next.coords.accuracy })
+        },
+        (watchError) => {
+          setError(locationErrorMessage(watchError))
+          if (watchError.code === watchError.PERMISSION_DENIED) {
+            isDenied = true
+            stop()
+          }
+        },
+        { enableHighAccuracy: true, maximumAge: 10000, timeout: 30000 },
+      )
+    }
+    const followVisibility = () => (document.hidden ? stop() : start())
+    start()
+    document.addEventListener('visibilitychange', followVisibility)
+    return () => {
+      stop()
+      document.removeEventListener('visibilitychange', followVisibility)
+    }
+  }, [attempt])
+
+  // The error clears in the same render, so callers never act on the old one.
+  const retry = () => {
+    setError('')
+    setAttempt((count) => count + 1)
+  }
+
+  return { position, error, retry }
 }
 
 export function directionsUrl({ latitude, longitude, location }) {
@@ -279,7 +344,11 @@ export function OfflineBanner({ isOnline, label = 'You are offline. Showing the 
 
 export function downloadCsv(filename, rows) {
   const escape = (value) => {
-    const text = value == null ? '' : String(value)
+    let text = value == null ? '' : String(value)
+    // Report notes come from the public. Excel runs a cell starting with = + - @
+    // as a formula, so those are prefixed with ' to keep them as plain text.
+    // Plain numbers such as +639171234567 are safe and left as they are.
+    if (typeof value === 'string' && /^[=+\-@\t\r]/.test(text) && !/^[+-]?\d[\d .]*$/.test(text)) text = `'${text}`
     return /[",\n]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text
   }
   const csv = rows.map((row) => row.map(escape).join(',')).join('\r\n')

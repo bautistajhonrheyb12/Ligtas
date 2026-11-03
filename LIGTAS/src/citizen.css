@@ -102,6 +102,36 @@
   content: '';
   animation: ligtas-ping 2s var(--ease-out) infinite;
 }
+
+/* "Show my location" button on the citizen map, just under the header */
+.citizen-map-shell { position: relative; }
+.map-locate {
+  position: absolute;
+  /* Above Leaflet's map panes (400) and below its controls (800). */
+  z-index: 650;
+  top: 88px;
+  left: max(20px, calc((100% - 1280px) / 2));
+  display: grid;
+  width: 44px;
+  height: 44px;
+  place-items: center;
+  border: 1px solid rgba(222, 233, 225, .9);
+  border-radius: 12px;
+  color: #53675e;
+  background: rgba(255, 255, 255, .96);
+  box-shadow: 0 5px 18px rgba(26, 53, 39, .14);
+  cursor: pointer;
+  transition: color .2s ease, background-color .2s ease;
+}
+.map-locate:hover { background: #fff; }
+.map-locate:focus-visible { outline: 3px solid #2f78b766; outline-offset: 2px; }
+.map-locate.is-found { color: #2f78b7; }
+.map-locate.is-off { color: #a0aca6; }
+.map-locate .btn-spinner { margin: 0; color: #2f78b7; }
+@media (max-width: 600px) {
+  .map-locate { top: calc(72px + env(safe-area-inset-top)); left: 12px; }
+}
+
 .pin-marker span,
 .report-marker span {
   display: block;

@@ -3,7 +3,9 @@ import {
   clearCachedData,
   getProfileRole,
   getTwoStepStatus,
+  isGoogleSession,
   supabase,
+  takeGoogleSignIn,
 } from './lib/supabase.js'
 import { Logo } from './lib/ui.jsx'
 import { slides, IconPlaceholder, Illustration } from './screens/landing.jsx'
@@ -53,17 +55,30 @@ function useDashboard(role) {
 // restricts admin access.
 const isStaffAddress = () => window.location.hash === '#staff'
 
+const wasGoogleSignIn = takeGoogleSignIn()
+
+// When Google sign-in is cancelled or an email link has expired, Supabase sends
+// the person back with the reason in the address. Read it before anything else
+// changes the URL.
+const returnError = (() => {
+  const params = new URLSearchParams(`${window.location.search.slice(1)}&${window.location.hash.slice(1)}`)
+  const reason = params.get('error_description') ?? params.get('error')
+  if (!reason) return ''
+  window.history.replaceState(null, '', window.location.pathname)
+  if (!wasGoogleSignIn) return `That link didn't work: ${reason}. Request a new one and try again.`
+  return params.get('error') === 'access_denied' ? 'Google sign-in was cancelled.' : `Google sign-in didn't finish: ${reason}`
+})()
+
 export function App() {
   const [active, setActive] = useState(0)
-  const [paused, setPaused] = useState(false)
   const [isStaffAccess, setIsStaffAccess] = useState(isStaffAddress)
-  const [showAuth, setShowAuth] = useState(isStaffAddress)
-  const [authRole, setAuthRole] = useState(null)
+  const [showAuth, setShowAuth] = useState(() => isStaffAddress() || Boolean(returnError))
+  const [authRole, setAuthRole] = useState(returnError && wasGoogleSignIn ? 'citizen' : null)
   const [authMode, setAuthMode] = useState('login')
   const [menuOpen, setMenuOpen] = useState(false)
   const [isAuthenticated, setIsAuthenticated] = useState(false)
   const [userRole, setUserRole] = useState(null)
-  const [authMessage, setAuthMessage] = useState('')
+  const [authMessage, setAuthMessage] = useState(returnError)
   // True until the saved session is checked, so signed-in people never see the landing page flash.
   const [isRestoring, setIsRestoring] = useState(Boolean(supabase))
   // Reset links land here with type=recovery in the address; Supabase removes it once read.
@@ -188,6 +203,16 @@ export function App() {
 
       try {
         const role = await getProfileRole(data.session.user.id)
+        // Rescuer and admin accounts must use their email and password, even
+        // when Google is linked to the same email address.
+        if (role !== 'citizen' && isGoogleSession(data.session)) {
+          await supabase.auth.signOut()
+          if (isMounted) {
+            setAuthMessage('Google sign-in is for citizen accounts only. Sign in with your email and password instead.')
+            setShowAuth(true)
+          }
+          return
+        }
         if (isMounted) await completeSignIn(role)
       } catch (profileError) {
         await supabase.auth.signOut()
@@ -208,10 +233,9 @@ export function App() {
 
   // Restarts on every slide change so the progress bar fill stays in sync with the timer.
   useEffect(() => {
-    if (paused) return undefined
     const timer = setTimeout(() => setActive(current => (current + 1) % slides.length), 4000)
     return () => clearTimeout(timer)
-  }, [paused, active])
+  }, [active])
 
   useEffect(() => {
     window.scrollTo(0, 0)
@@ -254,14 +278,14 @@ export function App() {
     </nav>
     {menuOpen && <div class="mobile-nav"><a href="#how-it-works" onClick={() => setMenuOpen(false)}>How it works</a><a href="#features" onClick={() => setMenuOpen(false)}>Features</a><button onClick={openAuth}>Log in <b>→</b></button></div>}
 
-    <section class="hero" id="top" onMouseEnter={() => setPaused(true)} onMouseLeave={() => setPaused(false)}>
+    <section class="hero" id="top">
       <div class="hero-copy">
         <div class="kicker"><span class="pulse" /> <span class="kicker-text" key={`kicker-${active}`}>{slide.eyebrow}</span></div>
         <Logo />
         <h1 class="hero-title" key={`title-${active}`}>{slide.title.split('\n').map((line, i) => <span key={line}>{line}{i === 0 && <br />}</span>)}</h1>
         <p class="hero-lede" key={`copy-${active}`}>{slide.copy}</p>
-        <div class="hero-actions"><button class="primary" onClick={openAuth}>Get started <b>→</b></button><button class="ghost" onClick={() => setPaused(!paused)}>{paused ? 'Play slideshow' : 'Pause slideshow'}</button></div>
-        <div class={`progress${paused ? ' is-paused' : ''}`} aria-label={`Slide ${active + 1} of ${slides.length}`}>{slides.map((_, index) => <button key={index} class={index === active ? 'active' : ''} onClick={() => setActive(index)} aria-label={`Go to slide ${index + 1}`} />)}</div>
+        <div class="hero-actions"><button class="primary" onClick={openAuth}>Get started <b>→</b></button></div>
+        <div class="progress" aria-label={`Slide ${active + 1} of ${slides.length}`}>{slides.map((_, index) => <button key={index} class={index === active ? 'active' : ''} onClick={() => setActive(index)} aria-label={`Go to slide ${index + 1}`} />)}</div>
       </div>
       <div class="hero-art">
         <div class="glow" />

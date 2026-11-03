@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'preact/hooks'
+import { PhoneInput } from '../../components/PhoneInput.jsx'
 import { hotlines } from '../../lib/hotlines.js'
+import { toStoredMobile } from '../../lib/phone.js'
 import { Icon } from '../../lib/ui.jsx'
 
 const CHECKLIST_KEY = 'ligtas-gobag'
@@ -14,7 +16,8 @@ function readChecklist() {
 
 const profileDraft = (profile) => ({
   displayName: profile?.display_name ?? '',
-  phone: profile?.phone ?? '',
+  // Numbers saved before the +63 format are shown and re-saved in it.
+  phone: toStoredMobile(profile?.phone),
   barangay: profile?.barangay ?? '',
 })
 
@@ -42,12 +45,12 @@ export function PreparePanel({ t, lang, setLang, profile, onSaveProfile }) {
     ? current.filter((item) => item !== index)
     : [...current, index])
 
-  const editField = (field) => (event) => {
-    const { value } = event.currentTarget
+  const editValue = (field) => (value) => {
     setDraft((current) => ({ ...current, [field]: value }))
     setSaveState('idle')
     setSaveError('')
   }
+  const editField = (field) => (event) => editValue(field)(event.currentTarget.value)
 
   const saveProfile = async (event) => {
     event.preventDefault()
@@ -114,7 +117,7 @@ export function PreparePanel({ t, lang, setLang, profile, onSaveProfile }) {
         </label>
         <label>
           {t('phoneLabel')}
-          <input name="phone" type="tel" inputMode="tel" autoComplete="tel" value={draft.phone} maxLength="20" pattern="\+?[0-9][0-9 \-]{5,19}" title={t('phoneInvalid')} placeholder="0917 123 4567" onInput={editField('phone')} />
+          <PhoneInput class="phone-field phone-field--boxed" name="phone" title={t('phoneInvalid')} value={draft.phone} onChange={editValue('phone')} />
           <small>{t('phoneHelp')}</small>
         </label>
         <label>

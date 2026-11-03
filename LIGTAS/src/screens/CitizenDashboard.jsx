@@ -15,6 +15,7 @@ import {
 } from '../lib/supabase.js'
 import { useLanguage } from '../lib/i18n.js'
 import { flushQueuedReports, getQueuedReports } from '../lib/offlineQueue.js'
+import { isInsideSantaMaria } from '../lib/santaMaria.js'
 import {
   CountUp,
   Icon,
@@ -27,10 +28,10 @@ import {
   directionsUrl,
   distanceKm,
   formatDistance,
-  getCurrentPosition,
   playAlertChime,
   timeAgo,
   toAlertView,
+  useLivePosition,
   useOnlineStatus,
   useTabIndicator,
   useToasts,
@@ -82,8 +83,12 @@ export function CitizenDashboard({ onSignOut }) {
   const [checkin, setCheckin] = useState(null)
   const [isSavingCheckin, setIsSavingCheckin] = useState(false)
 
-  const [userPosition, setUserPosition] = useState(null)
-  const [isLocating, setIsLocating] = useState(false)
+  // Followed continuously so the person always sees themselves on the map.
+  const livePosition = useLivePosition()
+  const userPosition = livePosition.position
+  const [wantsMyLocation, setWantsMyLocation] = useState(false)
+  const isLocating = wantsMyLocation && !userPosition
+  const isOutsideArea = Boolean(userPosition) && !isInsideSantaMaria(userPosition.latitude, userPosition.longitude)
   const [focusTarget, setFocusTarget] = useState(null)
   const [dialog, setDialog] = useState(null)
 
@@ -175,18 +180,31 @@ export function CitizenDashboard({ onSignOut }) {
     .sort((a, b) => (userPosition ? (a.distance ?? Infinity) - (b.distance ?? Infinity) : b.available - a.available))
     .slice(0, 3)
 
-  const locateMe = async () => {
-    setIsLocating(true)
-    try {
-      const position = await getCurrentPosition()
-      setUserPosition(position)
-      setFocusTarget({ ...position })
-    } catch (error) {
-      pushToast(error.message, 'urgent')
-    } finally {
-      setIsLocating(false)
-    }
+  // Centers the map on the person, waiting for the first location fix if needed.
+  const locateMe = () => {
+    if (livePosition.error) livePosition.retry()
+    setWantsMyLocation(true)
   }
+
+  useEffect(() => {
+    if (!wantsMyLocation) return
+    if (userPosition) {
+      setWantsMyLocation(false)
+      if (isOutsideArea) pushToast(t('outsideArea'), 'info')
+      else setFocusTarget({ ...userPosition })
+    } else if (livePosition.error) {
+      setWantsMyLocation(false)
+      pushToast(livePosition.error, 'urgent')
+    }
+  }, [wantsMyLocation, userPosition, livePosition.error])
+
+  // The map only covers Santa Maria, so say why the "You" dot is missing.
+  const toldOutsideRef = useRef(false)
+  useEffect(() => {
+    if (!isOutsideArea || toldOutsideRef.current) return
+    toldOutsideRef.current = true
+    pushToast(t('outsideArea'), 'info')
+  }, [isOutsideArea])
 
   const markSafe = async () => {
     setIsSavingCheckin(true)
@@ -207,7 +225,7 @@ export function CitizenDashboard({ onSignOut }) {
       ...current,
       display_name: details.displayName.trim() || null,
       barangay: details.barangay.trim() || null,
-      phone: details.phone.trim() || null,
+      phone: details.phone || null,
     }))
   }
 
@@ -254,7 +272,7 @@ export function CitizenDashboard({ onSignOut }) {
     </header>
     <div class="map-section">
       <div class={`map-frame${isMapFullscreen ? ' is-fullscreen' : ''}`}>
-        <CitizenMap points={points} centers={centers} userPosition={userPosition} focusTarget={focusTarget} t={t} />
+        <CitizenMap points={points} centers={centers} userPosition={isOutsideArea ? null : userPosition} focusTarget={focusTarget} locationError={livePosition.error} isLocating={isLocating} onLocate={locateMe} t={t} />
       </div>
     </div>
 

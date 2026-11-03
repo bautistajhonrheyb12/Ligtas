@@ -120,12 +120,12 @@ export async function getMyProfile() {
 export async function updateMyProfile({ displayName, barangay, phone }) {
   const { error } = await requireClient()
     .from('profiles')
-    .update({ display_name: displayName?.trim() || null, barangay: barangay?.trim() || null, phone: phone?.trim() || null })
+    .update({ display_name: displayName?.trim() || null, barangay: barangay?.trim() || null, phone: phone || null })
     .eq('id', await currentUserId())
 
   if (error) {
     throw new Error(/profiles_phone_check/.test(error.message)
-      ? 'Enter a valid mobile number, for example 0917 123 4567.'
+      ? 'Enter the 10 digits after +63, for example 917 123 4567.'
       : `Could not save your details: ${error.message}`)
   }
 }
@@ -179,6 +179,46 @@ export async function sendPasswordReset(email) {
 
   if (error) {
     throw new Error(`Could not send the reset email: ${error.message}`)
+  }
+}
+
+// Google sign-in is offered to citizens only. The flag tells the app, when
+// Google sends the person back, that a problem in the address is about Google.
+const GOOGLE_PENDING_KEY = 'ligtas-google-sign-in'
+
+export async function signInWithGoogle() {
+  try {
+    sessionStorage.setItem(GOOGLE_PENDING_KEY, '1')
+  } catch {
+    // Errors on return are then described as a general link problem.
+  }
+  const { error } = await requireClient().auth.signInWithOAuth({
+    provider: 'google',
+    options: { redirectTo: window.location.origin },
+  })
+
+  if (error) {
+    throw new Error(`Could not open Google sign-in: ${error.message}`)
+  }
+}
+
+// The session token lists how the person signed in; Google sign-in shows as 'oauth'.
+export function isGoogleSession(session) {
+  try {
+    const payload = JSON.parse(atob(session.access_token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')))
+    return payload.amr?.some((entry) => entry.method === 'oauth') ?? false
+  } catch {
+    return false
+  }
+}
+
+export function takeGoogleSignIn() {
+  try {
+    const isPending = sessionStorage.getItem(GOOGLE_PENDING_KEY) === '1'
+    sessionStorage.removeItem(GOOGLE_PENDING_KEY)
+    return isPending
+  } catch {
+    return false
   }
 }
 

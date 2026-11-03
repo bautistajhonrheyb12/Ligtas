@@ -42,6 +42,7 @@ import {
   reportTypeStyle,
   timeAgo,
   toAlertView,
+  useLivePosition,
   useOnlineStatus,
   useTabIndicator,
   useToasts,
@@ -61,6 +62,7 @@ function RescuerSituationMap({ reports, points, centers, myPosition, isFullscree
   const mapRef = useRef(null)
   const mapInstanceRef = useRef(null)
   const layerRef = useRef(null)
+  const userLayerRef = useRef(null)
   const fittedCountRef = useRef(0)
   const userMovedRef = useRef(false)
 
@@ -69,12 +71,15 @@ function RescuerSituationMap({ reports, points, centers, myPosition, isFullscree
     const map = createLigtasMap(mapRef.current, mapCenter, 13)
     mapInstanceRef.current = map
     layerRef.current = L.layerGroup().addTo(map)
+    // Kept apart so frequent location updates don't redraw every marker.
+    userLayerRef.current = L.layerGroup().addTo(map)
     // Keep auto-framing new data until the person pans the map themselves.
     map.on('dragstart', () => { userMovedRef.current = true })
     const stopWatching = watchMapSize(map, mapRef.current)
     return () => {
       stopWatching()
       layerRef.current = null
+      userLayerRef.current = null
       mapInstanceRef.current = null
       removeLigtasMap(map)
     }
@@ -88,14 +93,20 @@ function RescuerSituationMap({ reports, points, centers, myPosition, isFullscree
     drawMapPoints(layer, points)
     drawEvacuationCenters(layer, centers)
     drawReports(layer, reports)
-    drawUserPosition(layer, myPosition)
     const located = reports.filter((report) => report.latitude != null).map((report) => [report.latitude, report.longitude])
     const frame = located.length ? located : points.map((point) => [point.latitude, point.longitude])
     if (!userMovedRef.current && frame.length > fittedCountRef.current) {
       fitToContent(map, frame)
       fittedCountRef.current = frame.length
     }
-  }, [reports, points, centers, myPosition])
+  }, [reports, points, centers])
+
+  useEffect(() => {
+    const layer = userLayerRef.current
+    if (!layer) return
+    layer.clearLayers()
+    drawUserPosition(layer, myPosition)
+  }, [myPosition])
 
   const unlocated = reports.filter((report) => report.latitude == null).length
 
@@ -176,7 +187,10 @@ export function RescuerDashboard({ onSignOut }) {
   const [lastUpdated, setLastUpdated] = useState(null)
   const [isRefreshing, setIsRefreshing] = useState(false)
   const [isSharingLocation, setIsSharingLocation] = useState(false)
-  const [myPosition, setMyPosition] = useState(null)
+  const [sharedPosition, setSharedPosition] = useState(null)
+  // Shown on the map at all times; uploading it to operations is separate (on duty).
+  const livePosition = useLivePosition()
+  const myPosition = (isSharingLocation && sharedPosition) || livePosition.position
   const watchIdRef = useRef(null)
   const lastSharedRef = useRef(0)
   const rescuerNavRef = useTabIndicator(activeTab)
@@ -245,7 +259,7 @@ export function RescuerDashboard({ onSignOut }) {
     watchIdRef.current = navigator.geolocation.watchPosition(
       (position) => {
         const coords = { latitude: position.coords.latitude, longitude: position.coords.longitude, accuracy: position.coords.accuracy }
-        setMyPosition(coords)
+        setSharedPosition(coords)
         // Upload at most every 20 seconds to save battery and data.
         if (Date.now() - lastSharedRef.current > 20000) {
           lastSharedRef.current = Date.now()

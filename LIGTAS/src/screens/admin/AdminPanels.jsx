@@ -1,6 +1,6 @@
 import { useState } from 'preact/hooks'
 import { createRescuerAccount, deleteEvacuationCenter, publishAlert, saveEvacuationCenter } from '../../lib/supabase.js'
-import { Icon, LoadingCards, capacityLevel, reportTypeStyle, timeAgo } from '../../lib/ui.jsx'
+import { Icon, LoadingCards, capacityLevel, passwordProblem, reportTypeStyle, timeAgo } from '../../lib/ui.jsx'
 
 // A destructive button that asks for a second tap within four seconds.
 function ConfirmButton({ class: className, label, confirmLabel, onConfirm, disabled, children }) {
@@ -134,7 +134,14 @@ export function TeamsPanel({ staff, locations, reports, onCreated, onNotice, onD
 
   const submit = async (event) => {
     event.preventDefault()
-    const form = new FormData(event.currentTarget)
+    // Kept because event.currentTarget is cleared once the request is awaited.
+    const formElement = event.currentTarget
+    const form = new FormData(formElement)
+    const problem = passwordProblem(form.get('password'))
+    if (problem) {
+      setError(problem)
+      return
+    }
     setIsSaving(true)
     setError('')
     try {
@@ -143,7 +150,7 @@ export function TeamsPanel({ staff, locations, reports, onCreated, onNotice, onD
         password: form.get('password'),
         displayName: form.get('displayName').trim(),
       })
-      event.currentTarget.reset()
+      formElement.reset()
       setIsFormOpen(false)
       onNotice(`Rescuer account created for ${form.get('displayName').trim()}. Share the email and password with them securely.`)
       onCreated()
@@ -163,7 +170,7 @@ export function TeamsPanel({ staff, locations, reports, onCreated, onNotice, onD
       <label>Team or rescuer name<input name="displayName" required minLength="2" maxLength="80" placeholder="e.g. Team Alpha" /></label>
       <div class="admin-form-row">
         <label>Email<input name="email" type="email" required autoComplete="off" placeholder="rescuer@example.com" /></label>
-        <label>Temporary password<input name="password" type="password" required minLength="8" autoComplete="new-password" placeholder="At least 8 characters" /></label>
+        <label>Temporary password<input name="password" type="password" required minLength="8" autoComplete="new-password" placeholder="8+ characters, letters and numbers" /></label>
       </div>
       {error && <p class="form-error" role="alert" key={error}>{error}</p>}
       <div class="alert-form-actions"><button type="submit" class="add-alert-button" disabled={isSaving}>{isSaving && <span class="btn-spinner" aria-hidden="true" />}Create rescuer account</button></div>

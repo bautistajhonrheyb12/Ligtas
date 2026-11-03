@@ -60,6 +60,7 @@ Deno.serve(async (req) => {
   const displayName = payload.displayName?.trim() ?? ''
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return json({ error: 'Enter a valid email address.' }, 400)
   if (password.length < 8) return json({ error: 'Password must be at least 8 characters.' }, 400)
+  if (!/[A-Za-z]/.test(password) || !/\d/.test(password)) return json({ error: 'Use both letters and numbers in the password.' }, 400)
   if (displayName.length < 2 || displayName.length > 80) return json({ error: 'Enter a team or rescuer name (2–80 characters).' }, 400)
 
   const { data: created, error: createError } = await admin.auth.admin.createUser({

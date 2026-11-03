@@ -308,7 +308,6 @@ span.capacity-chip.capacity-chip--critical::before { animation: ligtas-siren 1.8
   transform-origin: left;
   animation: slide-timer 4s linear both;
 }
-.progress.is-paused button.active::after { animation: none; }
 @keyframes slide-timer {
   from { transform: scaleX(0); }
   to { transform: scaleX(1); }

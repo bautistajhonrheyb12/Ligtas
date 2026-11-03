@@ -314,6 +314,57 @@ button.forgot-password:disabled { opacity: .6; cursor: progress; }
 @media (max-width: 420px) {
   .signup-row { grid-template-columns: 1fr; }
 }
+
+/* Philippine mobile number: a fixed +63 in front of the 10 digits */
+.phone-field { display: flex; align-items: stretch; }
+.phone-prefix {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  padding: 0 10px 0 13px;
+  border-right: 1px solid #dbe5de;
+  color: #3d554b;
+  font-size: 14px;
+  font-weight: 800;
+  letter-spacing: .02em;
+}
+.phone-field input.phone-input {
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  padding: 0 12px;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  box-shadow: none;
+}
+.input-group.phone-field input.phone-input { padding: 14px 12px; }
+.phone-field--boxed { min-height: 44px; border: 1px solid #dbe5de; border-radius: 10px; background: #fbfcfb; overflow: hidden; }
+.phone-field--boxed:focus-within { border-color: #75a88c; box-shadow: 0 0 0 3px #27745b1a; }
+.phone-field--boxed:has(input:user-invalid) { border-color: #e2a19c; }
+
+/* Continue with Google (citizens only) */
+button.google-button {
+  display: flex;
+  width: 100%;
+  min-height: 48px;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  margin: 0 0 18px;
+  border: 1px solid #dadce0;
+  border-radius: 10px;
+  color: #1f1f1f;
+  background: #fff;
+  font: 600 14.5px 'DM Sans', sans-serif;
+  cursor: pointer;
+  transition: background-color .2s ease, border-color .2s ease, box-shadow .2s ease;
+}
+button.google-button:hover:not(:disabled) { border-color: #c6cacf; background: #f8faff; box-shadow: 0 2px 8px #1f1f1f14; }
+button.google-button:focus-visible { outline: 3px solid #27745b40; outline-offset: 2px; }
+button.google-button:disabled { opacity: .7; cursor: progress; }
+button.google-button .btn-spinner { margin: 0; color: #27745b; }
+.google-mark { flex: 0 0 auto; }
 .app-splash-error { max-width: 300px; margin: 0; color: #8b2d2d; font-size: 14px; line-height: 1.5; text-align: center; }
 
 /* Admin two-step sign-in */
