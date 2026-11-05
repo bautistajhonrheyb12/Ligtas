@@ -332,6 +332,42 @@ button.forgot-password:disabled { opacity: .6; cursor: progress; }
   .signup-row { grid-template-columns: 1fr; }
 }
 
+/* A report whose position failed the location check (admin and rescuer cards) */
+p.location-warning {
+  display: flex;
+  align-items: flex-start;
+  gap: 7px;
+  margin: 0;
+  padding: 8px 10px;
+  border: 1px solid #ecd7a8;
+  border-radius: 10px;
+  color: #7a5714;
+  background: #fff8e6;
+  font-size: 12.5px;
+  font-weight: 600;
+  line-height: 1.45;
+}
+p.location-warning .ui-icon { flex: 0 0 auto; margin-top: 2px; }
+
+/* A report whose signature no longer matches (changed outside the app) */
+p.integrity-warning {
+  display: flex;
+  align-items: flex-start;
+  gap: 7px;
+  margin: 0;
+  padding: 8px 10px;
+  border: 1px solid #f1c4c0;
+  border-radius: 10px;
+  color: #9b2f2b;
+  background: #fff1ef;
+  font-size: 12.5px;
+  font-weight: 600;
+  line-height: 1.45;
+}
+p.integrity-warning .ui-icon { flex: 0 0 auto; margin-top: 2px; }
+.admin-report-tags > span.is-signed { color: #2f6148; background: #e7f4eb; }
+.admin-report-tags > span.is-unsigned { color: #6b7a73; background: #f0f2f1; }
+
 /* Philippine mobile number: a fixed +63 in front of the 10 digits */
 .phone-field { display: flex; align-items: stretch; }
 .phone-prefix {

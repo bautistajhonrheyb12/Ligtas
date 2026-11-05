@@ -41,7 +41,7 @@ function RejectControl({ disabled, onReject }) {
   </div>
 }
 
-export function ReportsPanel({ reports, loading, staff, updatingReportId, onUpdate, initialFilter = 'All' }) {
+export function ReportsPanel({ reports, integrity = {}, loading, staff, updatingReportId, onUpdate, initialFilter = 'All' }) {
   const [filter, setFilter] = useState(initialFilter)
   const [search, setSearch] = useState('')
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE)
@@ -110,6 +110,12 @@ export function ReportsPanel({ reports, loading, staff, updatingReportId, onUpda
             <p class="admin-report-location"><Icon name="pin" size={14} /> {report.location}
               {report.latitude != null && <a href={`https://www.google.com/maps?q=${report.latitude},${report.longitude}`} target="_blank" rel="noreferrer">Open map</a>}
             </p>
+            {integrity[report.id] === 'tampered' && <p class="integrity-warning" role="alert">
+              <Icon name="alert" size={14} /><span><b>Changed outside the app.</b> This report's location, notes or contact no longer match its signature. Check with the reporter before acting on it.</span>
+            </p>}
+            {report.location_flag && <p class="location-warning" role="note">
+              <Icon name="alert" size={14} /><span><b>Location check:</b> {report.location_flag}</span>
+            </p>}
             <p>{report.notes}</p>
             {(report.contact_name || report.contact_phone) && <p class="admin-report-contact">
               <Icon name="user" size={13} /> {report.contact_name || 'Reporter'}
@@ -119,6 +125,8 @@ export function ReportsPanel({ reports, loading, staff, updatingReportId, onUpda
               {report.people_affected > 0 && <span><Icon name="users" size={13} /> {report.people_affected} affected</span>}
               {report.vulnerable_people && <span class="is-vulnerable"><Icon name="heart" size={13} /> Vulnerable people</span>}
               {report.photo_path && <ReportPhotoLink path={report.photo_path} />}
+              {integrity[report.id] === 'valid' && <span class="is-signed" title="The signature matches: not changed since it was sent"><Icon name="shield" size={13} /> Signed</span>}
+              {integrity[report.id] === 'unsigned' && <span class="is-unsigned" title="Sent before signing was set up, or the signature could not be saved">Not signed</span>}
             </div>
             {report.resolution_note && <p class="admin-report-resolution"><b>{report.status === 'Rejected' ? 'Rejected:' : 'Resolution:'}</b> {report.resolution_note}</p>}
           </div>

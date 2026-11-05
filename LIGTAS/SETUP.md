@@ -55,6 +55,22 @@ the server should:
 - only SOS reports can be marked Critical
 - at most 10 alerts per person every 10 minutes
 
+`20261107090000_location_checks.sql` checks every report's position (see section 10):
+
+- positions outside Santa Maria's border are refused
+- a GPS report impossibly far from the same person's last GPS report (faster than
+  150 km/h, ignoring hops under 3 km) is refused; pinned and offline reports skip
+  this, since a pin may be anywhere in town
+- an SOS is never refused: it goes through marked, so rescuers call first
+- reports from networks outside the Philippines are marked (when Supabase passes on
+  the network country)
+- every problem is saved as a security flag for admins (*Security* page)
+
+`20261107091000_report_integrity.sql` adds the signature column for tamper detection
+(section 10). `20261107092000_session_revocation.sql` makes a token stop working the
+moment its session ends. `20261107093000_abuse_limits.sql` pauses accounts with
+repeated flags, caps photo uploads and strips hidden characters from text.
+
 The screens expect the newest migration. Until it is applied, report lists fail to load
 with a "column does not exist" error.
 
@@ -184,6 +200,87 @@ that own the project. Anyone who gets into one of them controls the app.
 **Keys:** only the publishable (anon) key belongs in the app and in Vercel. Never put
 the service role key in `.env.local`, Vercel or the code. If it is ever exposed,
 rotate it under *Project Settings → API Keys*.
+
+## 10. Fake reports, tampering and stolen logins
+
+### Location checks (anti-spoofing)
+
+A web app cannot detect GPS-spoofing apps on a phone, so the database checks whether
+each position makes sense instead (migration `20261107090000`). What happens:
+
+| Situation | Ordinary report | SOS |
+|---|---|---|
+| Position outside Santa Maria | refused, flagged | sent, marked, flagged |
+| GPS position impossibly far from the last GPS report | refused, flagged | sent, marked, flagged |
+| Network outside the Philippines | sent, marked, flagged | sent, marked, flagged |
+| 3 open flags within a day | paused until an admin clears them | always sent |
+
+Admins review flags on the **Security** page, call the person if needed, and clear
+them. The Security page also shows whether the network-country check is working:
+it relies on Supabase passing on Cloudflare's country header. IP location is never
+used to block anyone. Mobile networks in the Philippines put thousands of people
+behind one IP address, and an IP block during a typhoon could cut off a barangay.
+Only a one-way hash of the IP is stored, to spot one person using several accounts.
+
+### Tamper detection (signatures)
+
+Each new report is signed by the `report-integrity` Edge Function with an HMAC key
+that exists only in that function's secrets, never in the database or the app.
+Rescuer and admin screens check the signatures. A report whose position, notes or
+contact was changed outside the app shows **Changed outside the app** in red; signed
+reports show **Signed**; reports from before signing was set up show **Not signed**.
+Signatures cannot be changed or removed once written.
+
+Set it up once (any long random value works as the key):
+
+```bash
+node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
+npx supabase secrets set REPORT_SIGNING_KEY=<the value printed above>
+npx supabase functions deploy report-integrity
+```
+
+Keep the key secret and never change it: changing it makes every signed report look
+tampered. Without the function deployed, reports still work; they just show as not
+signed.
+
+### Stolen logins (instant sign-out)
+
+Migration `20261107092000` makes the database check, on every request, that the
+token's sign-in session still exists. So:
+
+- **Sign out** ends the session on Supabase's servers, and a copy of that token
+  stops working immediately, even before it expires
+- admins can end a rescuer's sessions with **Teams → Sign out everywhere** (lost
+  phone, suspected stolen login); **Deactivate** also signs them out
+- open admin and rescuer screens check every minute and close if their session was
+  ended elsewhere
+
+Also set in the Supabase dashboard:
+
+- *Project Settings → JWT Keys* (or *Authentication → Sessions*): set the **access
+  token expiry** to 900 seconds (15 minutes). The app refreshes tokens on its own.
+- *Authentication → Sessions / Attack Protection:* keep **Detect and revoke
+  potentially compromised refresh tokens** (refresh token reuse detection) on.
+
+The app is a static website with no server of its own, so tokens are kept in the
+browser, not in HttpOnly cookies. The Content Security Policy (section 9) is what
+stops injected scripts from reading them.
+
+### Rate limits and upload limits
+
+| Limit | Where |
+|---|---|
+| 5 reports and 3 SOS per person per 10 minutes | database |
+| 10 alerts per person per 10 minutes | database |
+| 10 photo uploads per person per 10 minutes, 5 MB each, JPEG/PNG/WebP only | storage |
+| Unknown fields in a request are refused | Supabase API |
+| Text lengths, hidden and control characters stripped | database |
+| Sign-in and sign-up attempts | Supabase Auth rate limits |
+
+Floods of traffic (DDoS) are absorbed by Vercel's and Supabase's networks before they
+reach the app. If you want more, Vercel's *Firewall* can add rate-limit rules for the
+website (check your plan), and Supabase can add CAPTCHA to sign-up under
+*Authentication → Attack Protection*.
 
 ## Notes
 

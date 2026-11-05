@@ -574,3 +574,80 @@ span.capacity-chip.capacity-chip--closed { color: #5d6964; background: #e6ebe8; 
 /* Severity edge colors (a later shared rule had reset every alert to red) */
 .ops-alert-item--yellow { border-left-color: #d9a63b; }
 .ops-alert-item--blue { border-left-color: #4796b4; }
+
+/* Rescuer card actions: sign out everywhere, deactivate */
+.admin-team-actions { display: flex; flex-wrap: wrap; grid-column: 1 / -1; justify-content: flex-end; gap: 6px; }
+.admin-team-actions .admin-team-deactivate { grid-column: auto; }
+.admin-team-signout {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-height: 30px;
+  padding: 0 10px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  color: var(--ui-muted);
+  background: transparent;
+  font-size: 11.5px;
+  font-weight: 800;
+  cursor: pointer;
+}
+.admin-team-signout:hover:not(:disabled) { border-color: #c9d9e6; color: #2f6f9f; background: #f1f7fb; }
+.admin-team-signout.is-confirming { border-color: #2f6f9f; color: #fff; background: #2f6f9f; }
+
+/* Security page: location and network checks, flagged accounts */
+.admin-security-panel { display: grid; gap: 14px; }
+.admin-security-checks { display: grid; gap: 8px; }
+.admin-security-checks p {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin: 0;
+  padding: 10px 12px;
+  border: 1px solid #cfe5d7;
+  border-radius: 12px;
+  color: #2f5a45;
+  background: #f1f8f3;
+  font-size: 12.5px;
+  line-height: 1.5;
+}
+.admin-security-checks p .ui-icon { flex: 0 0 auto; margin-top: 2px; }
+.admin-security-checks p.is-off { border-color: #ecd7a8; color: #7a5714; background: #fff8e6; }
+.admin-security-list { display: grid; gap: 10px; }
+.admin-security-card {
+  display: grid;
+  gap: 10px;
+  padding: 14px;
+  border: 1px solid #f0d2cf;
+  border-left: 4px solid #d95452;
+  border-radius: 14px;
+  background: #fff;
+  animation: ligtas-rise .4s var(--ease-out) both;
+}
+.admin-security-head { display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: 8px; }
+.admin-security-head strong { display: block; color: var(--ui-ink); font-size: 15px; }
+.admin-security-head small { color: var(--ui-muted); font-size: 12px; text-transform: capitalize; }
+.admin-security-head a { display: inline-flex; align-items: center; gap: 5px; color: #2f78b7; font-size: 12px; font-weight: 800; text-decoration: none; }
+.admin-security-card ul { display: grid; gap: 8px; margin: 0; padding: 0; list-style: none; }
+.admin-security-card li { display: grid; gap: 3px; padding: 8px 10px; border-radius: 10px; background: #f8faf9; font-size: 12.5px; color: #3f564b; }
+.admin-security-card li small { color: var(--ui-muted); font-size: 11px; }
+.admin-flag { justify-self: start; padding: 2px 8px; border-radius: 999px; color: #a2453f; background: #fdeceb; font-size: 10.5px; font-weight: 800; letter-spacing: .02em; text-transform: uppercase; }
+.admin-flag--foreign_network { color: #7a5714; background: #fff3d6; }
+.admin-security-paused { display: flex; align-items: center; gap: 6px; margin: 0; color: #a2453f; font-size: 12px; font-weight: 800; }
+.admin-security-clear {
+  display: inline-flex;
+  justify-self: end;
+  align-items: center;
+  gap: 5px;
+  min-height: 32px;
+  padding: 0 12px;
+  border: 1px solid var(--ui-border);
+  border-radius: 8px;
+  color: #2f6148;
+  background: #f5faf6;
+  font-size: 12px;
+  font-weight: 800;
+  cursor: pointer;
+}
+.admin-security-clear:hover:not(:disabled) { border-color: #9cc9ad; background: #eaf5ee; }
+.admin-security-clear.is-confirming { border-color: #27745b; color: #fff; background: #27745b; }

@@ -47,6 +47,7 @@ import {
   useTabIndicator,
   useToasts,
 } from '../lib/ui.jsx'
+import { markTampered, useReportIntegrity } from '../lib/integrity.js'
 
 const priorityRank = { Critical: 0, Urgent: 1, Normal: 2 }
 const nextStage = { Assigned: 'En route', 'En route': 'On scene' }
@@ -191,6 +192,7 @@ export function RescuerDashboard({ onSignOut }) {
   // Shown on the map at all times; uploading it to operations is separate (on duty).
   const livePosition = useLivePosition()
   const myPosition = (isSharingLocation && sharedPosition) || livePosition.position
+  const integrity = useReportIntegrity(reports)
   const watchIdRef = useRef(null)
   const lastSharedRef = useRef(0)
   const rescuerNavRef = useTabIndicator(activeTab)
@@ -480,6 +482,12 @@ export function RescuerDashboard({ onSignOut }) {
                   : report.priority !== 'Normal' && <span class={`rx-priority rx-priority--${report.priority.toLowerCase()}`}>{report.priority}</span>}
               </div>
               <p class="rx-call-location"><Icon name="pin" size={18} /><span>{report.location}</span></p>
+              {integrity[report.id] === 'tampered' && !isResolved && <p class="integrity-warning" role="alert">
+                <Icon name="alert" size={15} /><span><b>Changed outside the app.</b> This call's details don't match what the reporter sent. Confirm with operations before going.</span>
+              </p>}
+              {report.location_flag && !isResolved && <p class="location-warning" role="note">
+                <Icon name="alert" size={15} /><span><b>Check before going:</b> {report.location_flag}. Call the reporter to confirm where they are.</span>
+              </p>}
               {(report.people_affected > 0 || report.vulnerable_people) && <div class="rx-call-tags">
                 {report.people_affected > 0 && <span><Icon name="users" size={14} /> {report.people_affected} {report.people_affected === 1 ? 'person' : 'people'}</span>}
                 {report.vulnerable_people && <span class="is-vulnerable"><Icon name="heart" size={14} /> Children, elderly or PWD</span>}
@@ -509,7 +517,7 @@ export function RescuerDashboard({ onSignOut }) {
 
       {activeTab === 'map' && <section class="rx-panel rx-map">
         <RescuerSituationMap
-          reports={activeReports}
+          reports={markTampered(activeReports, integrity)}
           points={points}
           centers={centers}
           myPosition={myPosition}

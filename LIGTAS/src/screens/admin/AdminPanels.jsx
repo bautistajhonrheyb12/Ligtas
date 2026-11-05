@@ -3,7 +3,7 @@ import { createRescuerAccount, deleteEvacuationCenter, publishAlert, saveEvacuat
 import { Icon, LoadingCards, capacityLevel, passwordProblem, reportTypeStyle, timeAgo } from '../../lib/ui.jsx'
 
 // A destructive button that asks for a second tap within four seconds.
-function ConfirmButton({ class: className, label, confirmLabel, onConfirm, disabled, children }) {
+export function ConfirmButton({ class: className, label, confirmLabel, onConfirm, disabled, children }) {
   const [state, setState] = useState('idle')
   const press = async () => {
     if (state === 'idle') {
@@ -126,7 +126,7 @@ export function CentersPanel({ centers, loading, onAdd, onEdit, onNotice, onChan
 // Teams
 // ---------------------------------------------------------------------------
 
-export function TeamsPanel({ staff, locations, reports, onCreated, onNotice, onDeactivate }) {
+export function TeamsPanel({ staff, locations, reports, onCreated, onNotice, onDeactivate, onEndSessions }) {
   const [isFormOpen, setIsFormOpen] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
   const [error, setError] = useState('')
@@ -192,13 +192,18 @@ export function TeamsPanel({ staff, locations, reports, onCreated, onNotice, onD
             <span><b>{resolved}</b> resolved</span>
           </div>
           {active[0] && <p class="admin-team-current"><Icon name="navigate" size={13} /> {active[0].report_type} · {active[0].location} · {active[0].response_stage ?? 'Assigned'}</p>}
-          <ConfirmButton class="admin-team-deactivate" label={`Deactivate ${person.display_name || 'rescuer'}`} confirmLabel="Tap again to deactivate" onConfirm={() => onDeactivate(person)}>
-            <Icon name="x" size={13} /> Deactivate
-          </ConfirmButton>
+          <div class="admin-team-actions">
+            <ConfirmButton class="admin-team-signout" label={`Sign ${person.display_name || 'rescuer'} out everywhere`} confirmLabel="Tap again to sign out" onConfirm={() => onEndSessions(person)}>
+              <Icon name="logout" size={13} /> Sign out everywhere
+            </ConfirmButton>
+            <ConfirmButton class="admin-team-deactivate" label={`Deactivate ${person.display_name || 'rescuer'}`} confirmLabel="Tap again to deactivate" onConfirm={() => onDeactivate(person)}>
+              <Icon name="x" size={13} /> Deactivate
+            </ConfirmButton>
+          </div>
         </article>
       })}
       {rescuers.length === 0 && <p class="admin-empty-state">No rescuer accounts yet. Add one to start assigning calls.</p>}
-      {rescuers.length > 0 && <p class="admin-field-help admin-team-note">Deactivating moves a rescuer back to a citizen account and returns their open calls to the queue.</p>}
+      {rescuers.length > 0 && <p class="admin-field-help admin-team-note">Sign out everywhere ends a rescuer's sessions at once, for a lost phone or a suspected stolen login; they can sign in again. Deactivating also moves them back to a citizen account and returns their open calls to the queue.</p>}
     </div>
   </section>
 }

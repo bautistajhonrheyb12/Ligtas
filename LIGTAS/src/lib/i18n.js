@@ -193,6 +193,7 @@ const strings = {
     legendYou: 'You',
     showMe: 'Show my location',
     outsideArea: "You're outside Santa Maria, so the map can't show where you are.",
+    outsideAreaReport: "Your location is outside Santa Maria. Reports must be about places in Santa Maria: pin the place on the map instead.",
 
     statusCancelled: 'Withdrawn',
     withdraw: 'Withdraw report',
@@ -400,6 +401,7 @@ const strings = {
     legendYou: 'Ikaw',
     showMe: 'Ipakita ang lokasyon ko',
     outsideArea: 'Nasa labas ka ng Santa Maria, kaya hindi maipakita sa mapa kung nasaan ka.',
+    outsideAreaReport: 'Nasa labas ng Santa Maria ang lokasyon mo. Dapat tungkol sa lugar sa Santa Maria ang ulat: i-pin na lang ang lugar sa mapa.',
 
     statusCancelled: 'Binawi',
     withdraw: 'Bawiin ang ulat',

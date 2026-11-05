@@ -30,7 +30,10 @@ export function getQueuedReports(ownerId) {
 
 export function queueReport(report, ownerId) {
   const { photoFile, ...rest } = report
-  saveQueue([...readQueue(), { ...rest, ownerId: ownerId ?? null, queuedAt: new Date().toISOString() }])
+  // By the time it is sent the person may have moved, so a GPS position is
+  // marked as saved and the database does not treat it as their live location.
+  const locationSource = rest.locationSource === 'gps' ? 'saved' : rest.locationSource
+  saveQueue([...readQueue(), { ...rest, locationSource, ownerId: ownerId ?? null, queuedAt: new Date().toISOString() }])
 }
 
 // Sends this person's queued reports in order. Reports that fail because of the

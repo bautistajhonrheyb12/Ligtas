@@ -2,6 +2,7 @@ import { useEffect, useState } from 'preact/hooks'
 import { isNetworkError, submitIncidentReport } from '../../lib/supabase.js'
 import { PinPicker } from '../../components/PinPicker.jsx'
 import { queueReport } from '../../lib/offlineQueue.js'
+import { isInsideSantaMaria } from '../../lib/santaMaria.js'
 import { Icon, getCurrentPosition, reportTypeStyle } from '../../lib/ui.jsx'
 
 const REPORT_TYPES = ['Flooding', 'Blocked road', 'Fallen tree', 'Power outage', 'Landslide', 'Fire', 'Medical', 'Other']
@@ -39,7 +40,13 @@ export function ReportDialog({ t, ownerId, hasPhone, onAddPhone, onClose, onDone
     setIsLocating(true)
     setError('')
     try {
-      setPosition(await getCurrentPosition())
+      const here = await getCurrentPosition()
+      // The database refuses GPS positions outside Santa Maria, so say so now.
+      if (!isInsideSantaMaria(here.latitude, here.longitude)) {
+        setError(t('outsideAreaReport'))
+        return
+      }
+      setPosition({ ...here, source: 'gps' })
     } catch (locateError) {
       setError(locateError.message)
     } finally {
@@ -70,6 +77,7 @@ export function ReportDialog({ t, ownerId, hasPhone, onAddPhone, onClose, onDone
       notes: notes.trim(),
       latitude: position?.latitude ?? null,
       longitude: position?.longitude ?? null,
+      locationSource: position?.source ?? null,
       photoFile,
       priority: inDanger ? 'Urgent' : 'Normal',
       peopleAffected: peopleAffected === '' ? null : Number(peopleAffected),
@@ -132,7 +140,7 @@ export function ReportDialog({ t, ownerId, hasPhone, onAddPhone, onClose, onDone
           </div>
         </label>
         <div class="pin-picker-wrap">
-          <PinPicker position={position} onChange={setPosition} />
+          <PinPicker position={position} onChange={(next) => setPosition({ ...next, source: 'pin' })} />
           <div class="pin-picker-caption">
             {position
               ? <><span class="pin-attached"><Icon name="check" size={14} /> {t('locationAttached')}</span><button type="button" onClick={() => setPosition(null)}>{t('removePin')}</button></>

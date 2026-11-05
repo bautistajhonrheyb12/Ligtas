@@ -8,7 +8,7 @@ export const supabase = supabaseUrl && supabasePublishableKey
   ? createClient(supabaseUrl, supabasePublishableKey)
   : null
 
-const REPORT_COLUMNS = 'id, report_type, location, notes, status, created_at, latitude, longitude, photo_path, priority, people_affected, vulnerable_people, assigned_to, response_stage, assigned_at, resolution_note, resolved_at, contact_name, contact_phone'
+const REPORT_COLUMNS = 'id, report_type, location, notes, status, created_at, latitude, longitude, photo_path, priority, people_affected, vulnerable_people, assigned_to, response_stage, assigned_at, resolution_note, resolved_at, contact_name, contact_phone, location_source, location_flag'
 const PHOTO_BUCKET = 'report-photos'
 
 function requireClient() {
@@ -162,6 +162,26 @@ export async function createRescuerAccount({ email, password, displayName }) {
   return data
 }
 
+// Ends every sign-in session of an account. Its open screens lose access at
+// once and the person has to sign in again.
+export async function endUserSessions(userId) {
+  const { data, error } = await requireClient().rpc('end_user_sessions', { target_user: userId })
+
+  if (error) {
+    throw new Error(`Could not sign them out: ${error.message}`)
+  }
+
+  return data
+}
+
+// True when the server says this sign-in session was ended (signed out on
+// another device, or by an admin). Network problems count as still signed in.
+export async function isSessionEnded() {
+  const { error } = await requireClient().auth.getUser()
+  if (!error || isNetworkError(error)) return false
+  return error.status === 401 || error.status === 403 || /session/i.test(error.code ?? error.message ?? '')
+}
+
 export async function deactivateRescuer(rescuerId) {
   const { error } = await requireClient().rpc('deactivate_rescuer', { rescuer_id: rescuerId })
 
@@ -308,6 +328,7 @@ export async function submitIncidentReport({
   notes,
   latitude = null,
   longitude = null,
+  locationSource = null,
   photoFile = null,
   priority = 'Normal',
   peopleAffected = null,
@@ -318,23 +339,51 @@ export async function submitIncidentReport({
   const isSos = reportType === 'SOS'
   const photoPath = photoFile ? await uploadReportPhoto(userId, photoFile) : null
 
-  const { error } = await client.from('incident_reports').insert({
+  const { data, error } = await client.from('incident_reports').insert({
     reporter_id: userId,
     report_type: reportType,
     location,
     notes,
     latitude,
     longitude,
+    location_source: latitude == null ? null : locationSource,
     photo_path: photoPath,
     priority: isSos ? 'Critical' : priority,
     people_affected: peopleAffected,
     vulnerable_people: vulnerablePeople,
     status: isSos ? 'Verified' : 'Pending',
-  })
+  }).select('id')
 
   if (error) {
     throw new Error(`Could not submit incident report: ${error.message}`)
   }
+  // The location check drops reports with an impossible position without an
+  // error (so it can still record the problem), which leaves nothing returned.
+  if (!data?.length) {
+    throw new Error('This report was blocked by the location check: the position is outside Santa Maria or too far from your last report. Pin the place on the map instead. In an emergency, use SOS or call 911.')
+  }
+  // Signed in the background: the report is already delivered, and an unsigned
+  // report only shows as "Not signed" to staff.
+  signReport(data[0].id)
+}
+
+// Asks the report-integrity function to sign a report just sent, so staff can
+// later tell whether it was changed outside the app.
+function signReport(reportId) {
+  requireClient().functions.invoke('report-integrity', { body: { action: 'sign', reportId } }).catch(() => {})
+}
+
+// Checks report signatures; returns { [reportId]: 'valid' | 'unsigned' | 'tampered' }.
+export async function verifyReports(ids) {
+  const statuses = {}
+  for (let start = 0; start < ids.length; start += 300) {
+    const { data, error } = await requireClient().functions.invoke('report-integrity', {
+      body: { action: 'verify', ids: ids.slice(start, start + 300) },
+    })
+    if (error) throw new Error(`Could not check report signatures: ${error.message}`)
+    Object.assign(statuses, data.statuses)
+  }
+  return statuses
 }
 
 export async function getMyReports() {
@@ -440,6 +489,55 @@ export async function releaseIncidentReport(reportId) {
   if (error) {
     throw new Error(`Could not hand back the call: ${error.message}`)
   }
+}
+
+// ---------------------------------------------------------------------------
+// Security flags (admins only)
+// ---------------------------------------------------------------------------
+
+// Flags from the last 30 days, with the name and number of each flagged account.
+export async function getSecurityFlags() {
+  const client = requireClient()
+  const since = new Date(Date.now() - 30 * 86400000).toISOString()
+  const { data: flags, error } = await client
+    .from('security_flags')
+    .select('id, user_id, report_id, kind, detail, created_at, cleared_at')
+    .gte('created_at', since)
+    .order('created_at', { ascending: false })
+    .limit(500)
+
+  if (error) {
+    throw new Error(`Could not load security flags: ${error.message}`)
+  }
+
+  const userIds = [...new Set(flags.map((flag) => flag.user_id))]
+  if (!userIds.length) return { flags, people: [] }
+  const { data: people, error: peopleError } = await client
+    .from('profiles')
+    .select('id, role, display_name, barangay, phone')
+    .in('id', userIds)
+
+  if (peopleError) {
+    throw new Error(`Could not load flagged accounts: ${peopleError.message}`)
+  }
+
+  return { flags, people }
+}
+
+export async function clearSecurityFlags(userId) {
+  const { error } = await requireClient().rpc('clear_security_flags', { flagged_user: userId })
+
+  if (error) {
+    throw new Error(`Could not clear the flags: ${error.message}`)
+  }
+}
+
+// The country Supabase reports for this connection, or null when it does not
+// pass that on (then the network check is off).
+export async function getRequestCountry() {
+  const { data, error } = await requireClient().rpc('request_country')
+  if (error) throw new Error(`Could not check the network country: ${error.message}`)
+  return data
 }
 
 export async function getReportEvents(limit = 40) {

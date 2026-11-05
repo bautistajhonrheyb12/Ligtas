@@ -4,6 +4,7 @@ import {
   getProfileRole,
   getTwoStepStatus,
   isGoogleSession,
+  isSessionEnded,
   supabase,
   takeGoogleSignIn,
 } from './lib/supabase.js'
@@ -213,7 +214,11 @@ export function App() {
           }
           return
         }
-        if (isMounted) await completeSignIn(role)
+        if (isMounted) {
+          await completeSignIn(role)
+          // Someone already signed in who opens the staff link goes straight to their screen.
+          setShowAuth(false)
+        }
       } catch (profileError) {
         await supabase.auth.signOut()
         if (isMounted) setAuthMessage(profileError.message)
@@ -230,6 +235,19 @@ export function App() {
       window.removeEventListener('hashchange', openStaffSignIn)
     }
   }, [])
+
+  // Staff screens check every minute that their session still exists, so a
+  // session ended elsewhere (another device, or an admin) closes here too.
+  useEffect(() => {
+    if (!isAuthenticated || (userRole !== 'admin' && userRole !== 'rescuer')) return undefined
+    const timer = setInterval(async () => {
+      if (!(await isSessionEnded())) return
+      await supabase.auth.signOut({ scope: 'local' })
+      setAuthMessage('You were signed out because this session was ended on another device or by an admin.')
+      setShowAuth(true)
+    }, 60000)
+    return () => clearInterval(timer)
+  }, [isAuthenticated, userRole])
 
   // Restarts on every slide change so the progress bar fill stays in sync with the timer.
   useEffect(() => {

@@ -45,6 +45,7 @@ export function SosDialog({ t, onClose, onSent }) {
         notes: note.trim() || 'SOS: needs immediate help.',
         latitude: position?.latitude ?? null,
         longitude: position?.longitude ?? null,
+        locationSource: position ? 'gps' : null,
         priority: 'Critical',
       })
       saveCheckin({ status: 'Need help', note: note.trim() || null, latitude: position?.latitude ?? null, longitude: position?.longitude ?? null }).catch(() => {})

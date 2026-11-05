@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'preact/hooks'
 import {
+  clearSecurityFlags,
   deactivateRescuer,
+  endUserSessions,
   deleteAlert,
   deleteMapPoint,
   endAlert,
@@ -11,7 +13,9 @@ import {
   getMapPoints,
   getMyProfile,
   getReportEvents,
+  getRequestCountry,
   getRescuerLocations,
+  getSecurityFlags,
   getStaffProfiles,
   subscribeToTable,
   updateIncidentReport,
@@ -29,12 +33,14 @@ import {
   toAlertView,
   useToasts,
 } from '../lib/ui.jsx'
+import { markTampered, useReportIntegrity } from '../lib/integrity.js'
 import { isInsideSantaMaria } from '../lib/santaMaria.js'
 import { AdminOperationsMap } from './admin/AdminMap.jsx'
 import { CenterForm, PointForm } from './admin/AdminForms.jsx'
 import { ActivityFeed, AlertForm, AlertList, CentersPanel, TeamsPanel } from './admin/AdminPanels.jsx'
 import { AnalyticsPanel } from './admin/AnalyticsPanel.jsx'
 import { ReportsPanel } from './admin/ReportsPanel.jsx'
+import { SecurityPanel } from './admin/SecurityPanel.jsx'
 
 const POINT_TYPES = ['Evac. center', 'Danger zone', 'Closed road', 'Other info']
 // Team locations older than this are treated as not in the field.
@@ -49,6 +55,7 @@ const PAGE_TITLES = {
   centers: 'Evacuation centers',
   teams: 'Response teams',
   analytics: 'Analytics',
+  security: 'Security',
 }
 
 export function AdminDashboard({ onSignOut }) {
@@ -78,6 +85,11 @@ export function AdminDashboard({ onSignOut }) {
   const [eventsLoading, setEventsLoading] = useState(true)
   const [checkins, setCheckins] = useState([])
   const [myName, setMyName] = useState('')
+  const [security, setSecurity] = useState({ flags: [], people: [] })
+  const [securityLoading, setSecurityLoading] = useState(true)
+  const [securityError, setSecurityError] = useState('')
+  const [networkCountry, setNetworkCountry] = useState(null)
+  const integrity = useReportIntegrity(reports)
 
   const [addingPoint, setAddingPoint] = useState('')
   const [pendingPoint, setPendingPoint] = useState(null)
@@ -104,6 +116,10 @@ export function AdminDashboard({ onSignOut }) {
     .catch(() => {})
     .finally(() => setEventsLoading(false))
   const loadCheckins = () => getCheckins().then(setCheckins).catch(() => {})
+  const loadSecurity = () => getSecurityFlags()
+    .then((data) => { setSecurity(data); setSecurityError('') })
+    .catch((error) => setSecurityError(error.message))
+    .finally(() => setSecurityLoading(false))
 
   useEffect(() => {
     getMyProfile().then((profile) => setMyName(profile.display_name ?? '')).catch(() => {})
@@ -115,6 +131,8 @@ export function AdminDashboard({ onSignOut }) {
     loadLocations()
     loadEvents()
     loadCheckins()
+    loadSecurity()
+    getRequestCountry().then(setNetworkCountry).catch(() => {})
 
     const unsubscribers = [
       subscribeToTable('incident_reports', (change) => {
@@ -131,6 +149,7 @@ export function AdminDashboard({ onSignOut }) {
       subscribeToTable('map_points', loadPoints),
       subscribeToTable('evacuation_centers', loadCenters),
       subscribeToTable('rescuer_locations', loadLocations),
+      subscribeToTable('security_flags', loadSecurity),
     ]
     const closeOnEscape = (event) => { if (event.key === 'Escape') setIsAdminNavOpen(false) }
     window.addEventListener('keydown', closeOnEscape)
@@ -201,6 +220,27 @@ export function AdminDashboard({ onSignOut }) {
     }
   }
 
+  const handleClearFlags = async (userId) => {
+    try {
+      await clearSecurityFlags(userId)
+      showNotice('Flags cleared for this account.')
+      loadSecurity()
+    } catch (error) {
+      showNotice(error.message, true)
+    }
+  }
+
+  const handleEndSessions = async (person) => {
+    try {
+      const ended = await endUserSessions(person.id)
+      showNotice(ended
+        ? `${person.display_name || 'The rescuer'} was signed out on every device. They need to sign in again.`
+        : `${person.display_name || 'The rescuer'} had no active sessions.`)
+    } catch (error) {
+      showNotice(error.message, true)
+    }
+  }
+
   const handleDeactivate = async (person) => {
     try {
       await deactivateRescuer(person.id)
@@ -223,6 +263,7 @@ export function AdminDashboard({ onSignOut }) {
   const pendingReports = reports.filter((report) => report.status === 'Pending')
   const sosReports = reports.filter((report) => report.report_type === 'SOS' && report.status === 'Verified' && !report.assigned_to)
   const activeReports = reports.filter((report) => report.status === 'Verified' || report.status === 'Pending')
+  const mapReports = markTampered(activeReports, integrity)
   const teams = locations.filter((location) => Date.now() - new Date(location.updated_at).getTime() < TEAM_LIVE_MS).map((location) => ({
     ...location,
     id: location.rescuer_id,
@@ -232,6 +273,8 @@ export function AdminDashboard({ onSignOut }) {
   const recentCheckins = checkins.filter((checkin) => Date.now() - new Date(checkin.updated_at).getTime() < CHECKIN_WINDOW_MS)
   const needHelp = recentCheckins.filter((checkin) => checkin.status === 'Need help').length
 
+  const flaggedAccounts = new Set(security.flags.filter((flag) => !flag.cleared_at).map((flag) => flag.user_id)).size
+
   const adminNavItems = [
     { id: 'dashboard', label: 'Dashboard', icon: '▦' },
     { id: 'reports', label: 'Reports', icon: '▤', count: pendingReports.length },
@@ -240,6 +283,7 @@ export function AdminDashboard({ onSignOut }) {
     { id: 'centers', label: 'Centers', icon: '⌂' },
     { id: 'teams', label: 'Teams', icon: '◎' },
     { id: 'analytics', label: 'Analytics', icon: '▥' },
+    { id: 'security', label: 'Security', icon: '⛨', count: flaggedAccounts },
   ]
 
   const noticeBanner = notice && <p class={`admin-notice${noticeIsError ? ' is-error' : ''}`} role={noticeIsError ? 'alert' : 'status'}>{notice}</p>
@@ -310,7 +354,7 @@ export function AdminDashboard({ onSignOut }) {
       </section>
       <div class="ops-content admin-overview-content">
         <div class="admin-overview-map">
-          <AdminOperationsMap points={points} centers={centers} reports={activeReports} teams={teams} isFullscreen={isMapFullscreen} onToggleFullscreen={() => setIsMapFullscreen((value) => !value)} />
+          <AdminOperationsMap points={points} centers={centers} reports={mapReports} teams={teams} isFullscreen={isMapFullscreen} onToggleFullscreen={() => setIsMapFullscreen((value) => !value)} />
         </div>
         <div class="admin-dashboard-side">
           <section class="admin-recent-alerts admin-review-panel">
@@ -365,7 +409,7 @@ export function AdminDashboard({ onSignOut }) {
         <AdminOperationsMap
           points={points}
           centers={centers}
-          reports={activeReports}
+          reports={mapReports}
           teams={teams}
           addingPoint={addingPoint}
           onMapClick={handleMapClick}
@@ -398,7 +442,7 @@ export function AdminDashboard({ onSignOut }) {
 
       {activeTab === 'reports' && <>
         {noticeBanner}
-        <ReportsPanel key={reportFilter} reports={reports} loading={reportsLoading} staff={staff} updatingReportId={updatingReportId} onUpdate={updateReport} initialFilter={reportFilter} />
+        <ReportsPanel key={reportFilter} reports={reports} integrity={integrity} loading={reportsLoading} staff={staff} updatingReportId={updatingReportId} onUpdate={updateReport} initialFilter={reportFilter} />
       </>}
 
       {activeTab === 'centers' && <>
@@ -409,7 +453,7 @@ export function AdminDashboard({ onSignOut }) {
       {activeTab === 'teams' && <div class="admin-teams-layout">
         <div>
           {noticeBanner}
-          <TeamsPanel staff={staff} locations={locations} reports={reports} onCreated={loadStaff} onNotice={showNotice} onDeactivate={handleDeactivate} />
+          <TeamsPanel staff={staff} locations={locations} reports={reports} onCreated={loadStaff} onNotice={showNotice} onDeactivate={handleDeactivate} onEndSessions={handleEndSessions} />
         </div>
         <section class="admin-recent-alerts admin-activity-panel">
           <div class="admin-section-heading"><h2>Activity log</h2><Icon name="history" size={16} /></div>
@@ -418,6 +462,11 @@ export function AdminDashboard({ onSignOut }) {
       </div>}
 
       {activeTab === 'analytics' && <AnalyticsPanel reports={reports} events={events} checkins={checkins} />}
+
+      {activeTab === 'security' && <>
+        {noticeBanner}
+        <SecurityPanel flags={security.flags} people={security.people} loading={securityLoading} error={securityError} country={networkCountry} onClear={handleClearFlags} />
+      </>}
     </div>}
 
     {pendingPoint && <PointForm
