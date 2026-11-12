@@ -10,6 +10,7 @@ import {
 } from './lib/supabase.js'
 import { Logo } from './lib/ui.jsx'
 import { slides, IconPlaceholder, Illustration } from './screens/landing.jsx'
+import { AboutPage } from './screens/AboutPage.jsx'
 import { AuthScreen } from './screens/AuthScreen.jsx'
 import { ResetPasswordScreen } from './screens/ResetPasswordScreen.jsx'
 import { TwoStepScreen } from './screens/TwoStepScreen.jsx'
@@ -21,6 +22,7 @@ import './polish.css'
 import './rescuer.css'
 import './citizen.css'
 import './admin.css'
+import './about.css'
 
 // Each dashboard (and the map library) downloads only when that role signs in,
 // which keeps the first page light on slow mobile connections.
@@ -55,6 +57,7 @@ function useDashboard(role) {
 // app at this address instead. The database, not this link, is what actually
 // restricts admin access.
 const isStaffAddress = () => window.location.hash === '#staff'
+const isAboutAddress = () => window.location.hash === '#about-us'
 
 const wasGoogleSignIn = takeGoogleSignIn()
 
@@ -77,6 +80,7 @@ export function App() {
   const [authRole, setAuthRole] = useState(returnError && wasGoogleSignIn ? 'citizen' : null)
   const [authMode, setAuthMode] = useState('login')
   const [menuOpen, setMenuOpen] = useState(false)
+  const [showAbout, setShowAbout] = useState(isAboutAddress)
   const [isAuthenticated, setIsAuthenticated] = useState(false)
   const [userRole, setUserRole] = useState(null)
   const [authMessage, setAuthMessage] = useState(returnError)
@@ -255,12 +259,27 @@ export function App() {
     return () => clearTimeout(timer)
   }, [active])
 
+  // The About page lives at #about-us, so links and the browser's Back button work.
   useEffect(() => {
-    window.scrollTo(0, 0)
-  }, [showAuth, isAuthenticated])
+    const followAddress = () => {
+      setShowAbout(isAboutAddress())
+      setMenuOpen(false)
+    }
+    window.addEventListener('hashchange', followAddress)
+    return () => window.removeEventListener('hashchange', followAddress)
+  }, [])
 
   useEffect(() => {
-    if (showAuth || isAuthenticated || !('IntersectionObserver' in window)) return undefined
+    // Coming back from the About page to a section link (like #how-it-works)
+    // scrolls to that section once the landing page is showing again.
+    const target = !showAbout && window.location.hash.length > 1 && document.getElementById(window.location.hash.slice(1))
+    if (target) target.scrollIntoView()
+    else window.scrollTo(0, 0)
+  }, [showAuth, isAuthenticated, showAbout])
+
+  useEffect(() => {
+    // Waits for the loading screen to finish, so the sections exist to be watched.
+    if (isRestoring || showAuth || isAuthenticated || !('IntersectionObserver' in window)) return undefined
     document.documentElement.classList.add('reveal-ready')
     const observer = new IntersectionObserver((entries) => {
       entries.forEach((entry) => {
@@ -271,7 +290,7 @@ export function App() {
     }, { threshold: 0.15, rootMargin: '0px 0px -40px 0px' })
     document.querySelectorAll('[data-reveal]').forEach((item) => observer.observe(item))
     return () => observer.disconnect()
-  }, [showAuth, isAuthenticated])
+  }, [isRestoring, showAuth, isAuthenticated, showAbout])
 
   const openAuth = () => { setMenuOpen(false); setAuthRole(null); setAuthMode('login'); setShowAuth(true) }
   if (isRecoveringPassword) return <main class="site auth-site"><ResetPasswordScreen onDone={() => setIsRecoveringPassword(false)} onCancel={() => { setIsRecoveringPassword(false); handleSignOut() }} /></main>
@@ -288,13 +307,32 @@ export function App() {
     </main>
   }
 
-  return <main class={`site stage-${slide.type}`}>
+  const topbar = <>
     <nav class="topbar">
       <a class="brand" href="#top" aria-label="LIGTAS home"><Logo small /><span>LIGTAS</span></a>
-      <div class="nav-links"><a href="#how-it-works">How it works</a><a href="#features">Features</a><button class="nav-cta" onClick={openAuth}>Log in</button></div>
+      <div class="nav-links">
+        <a href="#how-it-works">How it works</a>
+        <a href="#features">Features</a>
+        <a href="#about-us" aria-current={showAbout ? 'page' : undefined}>About us</a>
+        <button class="nav-cta" onClick={openAuth}>Log in</button>
+      </div>
       <button class="menu" onClick={() => setMenuOpen(!menuOpen)} aria-label="Open menu" aria-expanded={menuOpen}><span/><span/></button>
     </nav>
-    {menuOpen && <div class="mobile-nav"><a href="#how-it-works" onClick={() => setMenuOpen(false)}>How it works</a><a href="#features" onClick={() => setMenuOpen(false)}>Features</a><button onClick={openAuth}>Log in <b>→</b></button></div>}
+    {menuOpen && <div class="mobile-nav"><a href="#how-it-works" onClick={() => setMenuOpen(false)}>How it works</a><a href="#features" onClick={() => setMenuOpen(false)}>Features</a><a href="#about-us" onClick={() => setMenuOpen(false)}>About us</a><button onClick={openAuth}>Log in <b>→</b></button></div>}
+  </>
+  const footer = <footer class="site-footer">
+    <span>© {new Date().getFullYear()} LIGTAS · Santa Maria, Bulacan</span>
+    <nav aria-label="Footer"><a href="#top">Home</a><a href="#about-us">About us</a></nav>
+  </footer>
+
+  if (showAbout) return <main class="site about-site">
+    {topbar}
+    <AboutPage onGetStarted={openAuth} />
+    {footer}
+  </main>
+
+  return <main class={`site stage-${slide.type}`}>
+    {topbar}
 
     <section class="hero" id="top">
       <div class="hero-copy">
@@ -323,5 +361,6 @@ export function App() {
       </div>
     </section>
     <section class="feature-strip" id="about" data-reveal><div><b>01</b><h2>Live mapping</h2><p>See locations and hazards with clarity.</p></div><div><b>02</b><h2>Verified alerts</h2><p>Stay informed with timely updates.</p></div><div><b>03</b><h2>Better coordination</h2><p>Help communities respond together.</p></div></section>
+    {footer}
   </main>
 }
