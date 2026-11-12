@@ -420,7 +420,7 @@ export function CitizenDashboard({ onSignOut }) {
       pushToast(result === 'queued' ? t('reportQueued') : t('reportSent'), result === 'queued' ? 'info' : 'success')
       if (result === 'sent') loadMyReports()
     }} />}
-    {dialog === 'sos' && <SosDialog t={t} onClose={() => setDialog(null)} onSent={() => {
+    {dialog === 'sos' && <SosDialog t={t} livePosition={userPosition} onClose={() => setDialog(null)} onSent={() => {
       setCheckin({ status: 'Need help', updated_at: new Date().toISOString() })
       loadMyReports()
     }} />}

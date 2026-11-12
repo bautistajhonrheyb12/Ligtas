@@ -423,6 +423,8 @@
 }
 .sos-location--ready { color: #1f5c43; background: #e7f5ec; }
 .sos-location--failed { color: #8e2f2c; background: #fff4f2; }
+.sos-location-reason { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; margin: -4px 0 10px; color: #8e2f2c; font-size: 12px; line-height: 1.45; }
+.sos-location-reason button { padding: 5px 12px; border: 1px solid #f1c4c0; border-radius: 999px; color: #8e2f2c; background: #fff; font: 700 12px 'DM Sans', sans-serif; cursor: pointer; }
 .sos-input,
 .sos-note textarea {
   width: 100%;

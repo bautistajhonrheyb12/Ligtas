@@ -219,22 +219,35 @@ export function PasswordChecklist({ password }) {
   </ul>
 }
 
-export function getCurrentPosition() {
+function readPosition(options) {
   return new Promise((resolve, reject) => {
-    if (!navigator.geolocation) {
-      reject(new Error('This device cannot share its location.'))
-      return
-    }
     navigator.geolocation.getCurrentPosition(
       (position) => resolve({
         latitude: position.coords.latitude,
         longitude: position.coords.longitude,
         accuracy: position.coords.accuracy,
+        at: Date.now(),
       }),
-      (error) => reject(new Error(locationErrorMessage(error))),
-      { enableHighAccuracy: true, timeout: 15000, maximumAge: 30000 },
+      reject,
+      options,
     )
   })
+}
+
+// One location fix. GPS is tried first; if it is slow (often indoors) or
+// unavailable, Wi-Fi and mobile-network positioning answer instead.
+export async function getCurrentPosition() {
+  if (!navigator.geolocation) throw new Error('This device cannot share its location.')
+  try {
+    return await readPosition({ enableHighAccuracy: true, timeout: 12000, maximumAge: 30000 })
+  } catch (error) {
+    if (error.code === error.PERMISSION_DENIED) throw new Error(locationErrorMessage(error))
+    try {
+      return await readPosition({ enableHighAccuracy: false, timeout: 10000, maximumAge: 120000 })
+    } catch (fallbackError) {
+      throw new Error(locationErrorMessage(fallbackError))
+    }
+  }
 }
 
 function locationErrorMessage(error) {
@@ -267,7 +280,7 @@ export function useLivePosition() {
       watchId = navigator.geolocation.watchPosition(
         (next) => {
           setError('')
-          setPosition({ latitude: next.coords.latitude, longitude: next.coords.longitude, accuracy: next.coords.accuracy })
+          setPosition({ latitude: next.coords.latitude, longitude: next.coords.longitude, accuracy: next.coords.accuracy, at: Date.now() })
         },
         (watchError) => {
           setError(locationErrorMessage(watchError))

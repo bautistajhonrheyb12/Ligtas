@@ -3,27 +3,34 @@ import { isNetworkError, saveCheckin, submitIncidentReport } from '../../lib/sup
 import { rescueHotline } from '../../lib/hotlines.js'
 import { Icon, getCurrentPosition } from '../../lib/ui.jsx'
 
+// The map's live location counts if it is this recent.
+const LIVE_POSITION_MAX_AGE_MS = 2 * 60 * 1000
+
 // SOS skips admin review and reaches rescuers immediately, so it asks for
 // one deliberate confirmation and always offers a phone fallback.
-export function SosDialog({ t, onClose, onSent }) {
-  const [position, setPosition] = useState(null)
-  const [locationState, setLocationState] = useState('locating')
+export function SosDialog({ t, livePosition, onClose, onSent }) {
+  const [requested, setRequested] = useState(null)
+  const [requestFailure, setRequestFailure] = useState('')
+  const [attempt, setAttempt] = useState(0)
   const [locationText, setLocationText] = useState('')
   const [note, setNote] = useState('')
   const [phase, setPhase] = useState('confirm')
   const [error, setError] = useState('')
 
+  // The map already follows the person, so a recent fix from it is ready at
+  // once. A fresh fix is still requested, and the more accurate one is used.
+  const live = livePosition && Date.now() - livePosition.at < LIVE_POSITION_MAX_AGE_MS ? livePosition : null
+  const position = [requested, live].filter(Boolean).sort((a, b) => a.accuracy - b.accuracy)[0] ?? null
+  const locationState = position ? 'ready' : requestFailure ? 'failed' : 'locating'
+
   useEffect(() => {
     let isMounted = true
+    setRequestFailure('')
     getCurrentPosition()
-      .then((coords) => {
-        if (!isMounted) return
-        setPosition(coords)
-        setLocationState('ready')
-      })
-      .catch(() => { if (isMounted) setLocationState('failed') })
+      .then((coords) => { if (isMounted) setRequested(coords) })
+      .catch((locationError) => { if (isMounted) setRequestFailure(locationError.message) })
     return () => { isMounted = false }
-  }, [])
+  }, [attempt])
 
   useEffect(() => {
     const closeOnEscape = (event) => { if (event.key === 'Escape' && phase !== 'sending') onClose() }
@@ -78,6 +85,10 @@ export function SosDialog({ t, onClose, onSent }) {
           {locationState === 'ready' && t('sosLocationReady', { accuracy: Math.round(position.accuracy) })}
           {needsLocationText && t('sosLocationFailed')}
         </div>
+        {needsLocationText && <p class="sos-location-reason">
+          {requestFailure}
+          <button type="button" onClick={() => setAttempt((count) => count + 1)}>{t('sosLocationRetry')}</button>
+        </p>}
         {needsLocationText && <input class="sos-input" required minLength="2" maxLength="160" value={locationText} onInput={(event) => setLocationText(event.currentTarget.value)} placeholder={t('sosLocationPlaceholder')} aria-label={t('locationLabel')} />}
         <label class="sos-note">
           {t('sosNoteLabel')}
