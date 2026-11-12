@@ -2,7 +2,7 @@ import { useState } from 'preact/hooks'
 import { PhoneInput } from '../components/PhoneInput.jsx'
 import { isValidMobile } from '../lib/phone.js'
 import { sendPasswordReset, signInWithGoogle } from '../lib/supabase.js'
-import { Icon, Logo, passwordProblem } from '../lib/ui.jsx'
+import { Icon, Logo, PasswordChecklist, passwordProblem } from '../lib/ui.jsx'
 
 const roles = [
   { id: 'citizen', name: 'Citizen', description: 'Stay informed, report incidents, and receive important alerts.', icon: 'citizen' },
@@ -206,7 +206,7 @@ export function AuthScreen({
 
 <p class="login-subtitle">
 
-Localized Intelligent Geographic
+Localized Informative Geographic
 Tagging & Safety Mapping System
 
 </p>
@@ -354,6 +354,8 @@ onClick={(e) => {
 </div>
 
 </label>
+
+{mode === 'signup' && <PasswordChecklist password={password} />}
 
 {mode === 'signup' && (
 <label class="field-reveal">

@@ -187,11 +187,36 @@ export function formatDistance(km) {
   return km < 1 ? `${Math.round(km * 1000)} m` : `${km.toFixed(1)} km`
 }
 
-// Same rule as Supabase's password settings (see SETUP.md); returns '' when fine.
+// Password rules, matching Supabase's strongest password setting (see SETUP.md).
+// The symbols are exactly the ones Supabase counts as symbols.
+export const PASSWORD_RULES = [
+  { id: 'length', label: 'At least 8 characters', test: (password) => password.length >= 8 },
+  { id: 'upper', label: 'An uppercase letter (A–Z)', test: (password) => /[A-Z]/.test(password) },
+  { id: 'lower', label: 'A lowercase letter (a–z)', test: (password) => /[a-z]/.test(password) },
+  { id: 'number', label: 'A number (0–9)', test: (password) => /\d/.test(password) },
+  { id: 'symbol', label: 'A symbol, like ! @ # $ ?', test: (password) => /[!@#$%^&*()_+\-=[\]{};'\\:"|<>?,./`~]/.test(password) },
+]
+
+// Returns '' when the password meets every rule, otherwise what is missing.
 export function passwordProblem(password) {
-  if (password.length < 8) return 'Password must be at least 8 characters'
-  if (!/[A-Za-z]/.test(password) || !/\d/.test(password)) return 'Use both letters and numbers in your password'
-  return ''
+  // Supabase only uses the first 72 characters of a password.
+  if (password.length > 72) return 'Password must be 72 characters or fewer'
+  const missing = PASSWORD_RULES.find((rule) => !rule.test(password))
+  return missing ? `Password needs ${missing.label.charAt(0).toLowerCase()}${missing.label.slice(1)}` : ''
+}
+
+// Ticks off each rule as the person types a new password.
+export function PasswordChecklist({ password }) {
+  return <ul class="password-rules" aria-label="Password requirements">
+    {PASSWORD_RULES.map((rule) => {
+      const isMet = rule.test(password)
+      return <li class={isMet ? 'is-met' : ''} key={rule.id}>
+        <span class="password-rule-mark" aria-hidden="true">{isMet ? <Icon name="check" size={12} /> : null}</span>
+        {rule.label}
+        <span class="sr-only">{isMet ? ' (done)' : ' (missing)'}</span>
+      </li>
+    })}
+  </ul>
 }
 
 export function getCurrentPosition() {

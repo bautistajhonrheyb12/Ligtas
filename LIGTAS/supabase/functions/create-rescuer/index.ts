@@ -20,6 +20,31 @@ function signInLevel(authorization: string) {
   }
 }
 
+// The project's API keys. The new keys (sb_publishable_…, sb_secret_…) come first;
+// the legacy JWT-based keys are only a fallback until they are turned off.
+function apiKey(newKeysName: string, legacyName: string) {
+  try {
+    const keys = JSON.parse(Deno.env.get(newKeysName) ?? '{}')
+    const value = keys.default ?? Object.values(keys)[0]
+    if (typeof value === 'string' && value) return value
+  } catch {
+    // Not set or not JSON: use the legacy key.
+  }
+  return Deno.env.get(legacyName)
+}
+
+// The same password rules as the app (src/lib/ui.jsx), checked again here
+// because the form's own check can be skipped.
+function passwordProblem(password: string) {
+  if (password.length < 8) return 'Password must be at least 8 characters.'
+  if (password.length > 72) return 'Password must be 72 characters or fewer.'
+  if (!/[A-Z]/.test(password)) return 'Password needs an uppercase letter.'
+  if (!/[a-z]/.test(password)) return 'Password needs a lowercase letter.'
+  if (!/\d/.test(password)) return 'Password needs a number.'
+  if (!/[!@#$%^&*()_+\-=[\]{};'\\:"|<>?,./`~]/.test(password)) return 'Password needs a symbol, like ! @ # $ ?'
+  return ''
+}
+
 function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
     status,
@@ -32,8 +57,8 @@ Deno.serve(async (req) => {
   if (req.method !== 'POST') return json({ error: 'Method not allowed.' }, 405)
 
   const url = Deno.env.get('SUPABASE_URL')
-  const anonKey = Deno.env.get('SUPABASE_ANON_KEY')
-  const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
+  const anonKey = apiKey('SUPABASE_PUBLISHABLE_KEYS', 'SUPABASE_ANON_KEY')
+  const serviceKey = apiKey('SUPABASE_SECRET_KEYS', 'SUPABASE_SERVICE_ROLE_KEY')
   if (!url || !anonKey || !serviceKey) return json({ error: 'Server is not configured.' }, 500)
 
   const authorization = req.headers.get('Authorization') ?? ''
@@ -59,8 +84,8 @@ Deno.serve(async (req) => {
   const password = payload.password ?? ''
   const displayName = payload.displayName?.trim() ?? ''
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return json({ error: 'Enter a valid email address.' }, 400)
-  if (password.length < 8) return json({ error: 'Password must be at least 8 characters.' }, 400)
-  if (!/[A-Za-z]/.test(password) || !/\d/.test(password)) return json({ error: 'Use both letters and numbers in the password.' }, 400)
+  const problem = passwordProblem(password)
+  if (problem) return json({ error: problem }, 400)
   if (displayName.length < 2 || displayName.length > 80) return json({ error: 'Enter a team or rescuer name (2–80 characters).' }, 400)
 
   const { data: created, error: createError } = await admin.auth.admin.createUser({

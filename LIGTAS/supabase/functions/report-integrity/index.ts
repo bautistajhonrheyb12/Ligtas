@@ -22,6 +22,19 @@ const SIGN_WINDOW_MS = 10 * 60 * 1000
 const MAX_VERIFY = 300
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
+// The project's API keys. The new keys (sb_publishable_…, sb_secret_…) come first;
+// the legacy JWT-based keys are only a fallback until they are turned off.
+function apiKey(newKeysName: string, legacyName: string) {
+  try {
+    const keys = JSON.parse(Deno.env.get(newKeysName) ?? '{}')
+    const value = keys.default ?? Object.values(keys)[0]
+    if (typeof value === 'string' && value) return value
+  } catch {
+    // Not set or not JSON: use the legacy key.
+  }
+  return Deno.env.get(legacyName)
+}
+
 function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
     status,
@@ -68,8 +81,8 @@ Deno.serve(async (req) => {
   if (req.method !== 'POST') return json({ error: 'Method not allowed.' }, 405)
 
   const url = Deno.env.get('SUPABASE_URL')
-  const anonKey = Deno.env.get('SUPABASE_ANON_KEY')
-  const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
+  const anonKey = apiKey('SUPABASE_PUBLISHABLE_KEYS', 'SUPABASE_ANON_KEY')
+  const serviceKey = apiKey('SUPABASE_SECRET_KEYS', 'SUPABASE_SERVICE_ROLE_KEY')
   const secret = Deno.env.get('REPORT_SIGNING_KEY')
   if (!url || !anonKey || !serviceKey) return json({ error: 'Server is not configured.' }, 500)
   if (!secret || secret.length < 32) return json({ error: 'Report signing is not configured.' }, 500)

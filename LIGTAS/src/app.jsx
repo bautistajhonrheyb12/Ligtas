@@ -313,7 +313,7 @@ export function App() {
       </div>
     </section>
 
-    <section class="trust" id="features" data-reveal><span>Designed for local communities</span><div/><span>Localized intelligence for every response</span></section>
+    <section class="trust" id="features" data-reveal><span>Designed for local communities</span><div/><span>Localized information for every response</span></section>
     <section class="how-it-works" id="how-it-works">
       <div class="section-heading" data-reveal><span>How it works</span><h2>Preparedness starts<br />with one clear view.</h2><p>LIGTAS brings important local information together, so every community member can act with confidence.</p></div>
       <div class="steps">

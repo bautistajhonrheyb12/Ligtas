@@ -1,6 +1,6 @@
 import { useState } from 'preact/hooks'
 import { updatePassword } from '../lib/supabase.js'
-import { passwordProblem } from '../lib/ui.jsx'
+import { PasswordChecklist, passwordProblem } from '../lib/ui.jsx'
 
 // Shown after someone opens the password reset link from their email.
 export function ResetPasswordScreen({ onDone, onCancel }) {
@@ -49,12 +49,13 @@ export function ResetPasswordScreen({ onDone, onCancel }) {
               NEW PASSWORD
               <div class="input-group">
                 <div class="input-icon"><img src="/icons/lock.png" alt="" /></div>
-                <input type={showPassword ? 'text' : 'password'} name="new-password" autoComplete="new-password" required minLength="8" placeholder="8+ characters, letters and numbers" value={password} onInput={(event) => setPassword(event.currentTarget.value)} />
+                <input type={showPassword ? 'text' : 'password'} name="new-password" autoComplete="new-password" required minLength="8" maxLength="72" placeholder="Create a strong password" value={password} onInput={(event) => setPassword(event.currentTarget.value)} />
                 <button type="button" class={`eye-button ${showPassword ? 'is-visible' : ''}`} aria-label={showPassword ? 'Hide password' : 'Show password'} aria-pressed={showPassword} onClick={() => setShowPassword(!showPassword)}>
                   <img src={showPassword ? '/icons/eye.png' : '/icons/eye-off.png'} alt="" />
                 </button>
               </div>
             </label>
+            <PasswordChecklist password={password} />
             <label>
               CONFIRM PASSWORD
               <div class="input-group">

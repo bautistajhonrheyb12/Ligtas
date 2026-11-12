@@ -185,8 +185,10 @@ settings live in the dashboards and only the owner can change them:
 - *Sign In / Providers → Email:* keep **Confirm email** on, and turn on **Secure email
   change**.
 - *Sign In / Providers → Email:* set **Minimum password length** to 8 and **Password
-  requirements** to letters and digits, matching the app. The app's own check can be
-  skipped by someone calling Supabase directly; this one cannot.
+  requirements** to **Lowercase, uppercase letters, digits and symbols**, matching the
+  app (8+ characters with an uppercase and lowercase letter, a number and a symbol).
+  The app's own check can be skipped by someone calling Supabase directly; this one
+  cannot. Existing accounts keep their passwords; the rules apply to new ones.
 - *Attack Protection:* turn on **Leaked password protection** if your plan has it.
 - *Emails → SMTP:* set up custom SMTP before real use. The built-in sender is limited
   to a few emails an hour.

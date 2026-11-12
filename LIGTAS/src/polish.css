@@ -332,6 +332,44 @@ button.forgot-password:disabled { opacity: .6; cursor: progress; }
   .signup-row { grid-template-columns: 1fr; }
 }
 
+/* Password requirements, ticked off while typing (sign-up, reset, new rescuer) */
+.password-rules {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 5px 12px;
+  margin: -6px 0 16px;
+  padding: 0;
+  list-style: none;
+  text-align: left;
+}
+.password-rules li {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: #6b7a73;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.3;
+  transition: color .2s ease;
+}
+.password-rule-mark {
+  display: grid;
+  flex: 0 0 auto;
+  width: 16px;
+  height: 16px;
+  place-items: center;
+  border: 1.5px solid #c3cfc8;
+  border-radius: 50%;
+  color: #fff;
+  transition: background-color .2s ease, border-color .2s ease;
+}
+.password-rules li.is-met { color: #27745b; }
+.password-rules li.is-met .password-rule-mark { border-color: #27745b; background: #27745b; }
+@media (max-width: 420px) {
+  .password-rules { grid-template-columns: 1fr; }
+}
+.alert-form .password-rules { margin: 0; }
+
 /* A report whose position failed the location check (admin and rescuer cards) */
 p.location-warning {
   display: flex;
