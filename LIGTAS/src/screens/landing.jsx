@@ -9,7 +9,7 @@ export const slides = [
   {
     eyebrow: 'Know what is happening',
     title: 'Real-time hazard\nmapping.',
-    copy: 'View live hazard zones, weather updates, and risk levels in your area.',
+    copy: 'View hazard zones, closed roads, and evacuation centers across Santa Maria.',
     type: 'map',
   },
   {

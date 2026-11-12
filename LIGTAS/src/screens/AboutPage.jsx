@@ -1,8 +1,10 @@
+import { hotlines, rescueHotline } from '../lib/hotlines.js'
 import { Icon, Logo } from '../lib/ui.jsx'
 
+// The Founder first, then the Co-founders.
 const TEAM = [
-  { name: 'Gabriel Santos', role: 'Project Manager', title: 'Co-founder', photo: '/team/gabriel-santos.jpg' },
   { name: 'Jhon Rhey Bautista', role: 'Backend & Frontend Developer', title: 'Founder', photo: '/team/jhon-rhey-bautista.jpg' },
+  { name: 'Gabriel Santos', role: 'Project Manager', title: 'Co-founder', photo: '/team/gabriel-santos.jpg' },
   { name: 'Cedric James Resurreccion', role: 'Quality Assurance', title: 'Co-founder', photo: '/team/cedric-james-resurreccion.jpg' },
   { name: 'John Carlo Resurreccion', role: 'Data Analyst', title: 'Co-founder', photo: '/team/john-carlo-resurreccion.jpg' },
 ]
@@ -89,6 +91,21 @@ export function AboutPage({ onGetStarted }) {
       </div>
     </section>
 
+    <section class="about-section" aria-labelledby="about-hotlines">
+      <div class="about-section-heading" data-reveal>
+        <span class="about-eyebrow">Emergency hotlines</span>
+        <h2 id="about-hotlines">Save these numbers</h2>
+        <p>The official hotlines of the Municipality of Santa Maria. Tap a number to call.</p>
+      </div>
+      <div class="hotline-list about-hotlines">
+        {hotlines.map((line) => <a class={`hotline rx-tone--${line.tone}`} href={`tel:${line.number}`} key={line.number} data-reveal>
+          <span class="hotline-icon"><Icon name={line.icon} size={18} /></span>
+          <span class="hotline-copy"><strong>{line.name}</strong><small>{line.description}</small></span>
+          <span class="hotline-number">{line.display}<Icon name="phone" size={14} /></span>
+        </a>)}
+      </div>
+    </section>
+
     <section class="about-section" aria-labelledby="about-team">
       <div class="about-section-heading" data-reveal>
         <span class="about-eyebrow">The team</span>
@@ -97,7 +114,7 @@ export function AboutPage({ onGetStarted }) {
       <div class="about-team">
         {TEAM.map((person) => <article class="about-person" key={person.name} data-reveal>
           <div class="about-photo"><img src={person.photo} alt={`Photo of ${person.name}`} loading="lazy" width="240" height="240" /></div>
-          <span class={`about-title${person.title === 'Founder' ? ' is-founder' : ''}`}>{person.title}</span>
+          <span class="about-title">{person.title}</span>
           <h3>{person.name}</h3>
           <p>{person.role}</p>
         </article>)}
@@ -108,7 +125,7 @@ export function AboutPage({ onGetStarted }) {
       <Logo />
       <div>
         <h2>Stay ready with LIGTAS</h2>
-        <p>Create a free account to see your barangay's hazards and alerts. In an emergency, call <a href="tel:911">911</a>.</p>
+        <p>Create a free account to see the hazards and alerts for your barangay. In an emergency, call {rescueHotline.name} at <a href={`tel:${rescueHotline.number}`}>{rescueHotline.display}</a>.</p>
       </div>
       <button type="button" class="primary" onClick={onGetStarted}>Get started <b>→</b></button>
     </section>

@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'preact/hooks'
 import L from 'leaflet'
-import { createLigtasMap, mapCenter, removeLigtasMap, watchMapSize } from '../lib/map.js'
+import { createLigtasMap, removeLigtasMap, watchMapSize } from '../lib/map.js'
 import { isInsideSantaMaria } from '../lib/santaMaria.js'
 
 // Small map for choosing a location: tap to place the pin, drag to fine-tune.
@@ -13,7 +13,7 @@ export function PinPicker({ position, onChange }) {
   onChangeRef.current = onChange
 
   useEffect(() => {
-    const map = createLigtasMap(mapRef.current, position ? [position.latitude, position.longitude] : mapCenter, position ? 16 : 13)
+    const map = createLigtasMap(mapRef.current, position ? [position.latitude, position.longitude] : null, 16)
     map.on('click', (event) => {
       if (isInsideSantaMaria(event.latlng.lat, event.latlng.lng)) onChangeRef.current({ latitude: event.latlng.lat, longitude: event.latlng.lng })
     })

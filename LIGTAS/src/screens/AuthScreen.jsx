@@ -195,13 +195,6 @@ export function AuthScreen({
 
 <div class="login-card">
 
-<div class="login-logo">
-
-<img
-    src="/LigtasLogo.png"
-    alt="LIGTAS Logo"
-/>
-</div>
 <h1>LIGTAS</h1>
 
 <p class="login-subtitle">
@@ -244,7 +237,7 @@ Tagging & Safety Mapping System
 
 {selectedRole.id === "rescuer"
 ? "Rescuer accounts are created by the Super Administrator."
-: "Only authorized personnel may access this portal. You'll also need the code from your authenticator app."}
+: "Only authorized personnel may access this portal. A code from your authenticator app is also required."}
 
 </p>
 

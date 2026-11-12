@@ -587,6 +587,11 @@ p.sos-offline { color: #8e2f2c; font-weight: 700; }
   color: var(--tone);
   font: 800 18px Manrope, sans-serif;
 }
+/* Local mobile numbers are long; keep the name readable on phones. */
+@media (max-width: 480px) {
+  .hotline { gap: 8px; padding: 10px; }
+  .hotline-number { gap: 4px; font-size: 15px; white-space: nowrap; }
+}
 .prepare-card-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
 .prepare-progress { color: var(--ui-green-dark); font-size: 12px; font-weight: 800; }
 .prepare-meter { height: 6px; overflow: hidden; border-radius: 999px; background: #e3ebe5; }

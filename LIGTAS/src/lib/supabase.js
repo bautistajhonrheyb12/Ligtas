@@ -360,7 +360,7 @@ export async function submitIncidentReport({
   // The location check drops reports with an impossible position without an
   // error (so it can still record the problem), which leaves nothing returned.
   if (!data?.length) {
-    throw new Error('This report was blocked by the location check: the position is outside Santa Maria or too far from your last report. Pin the place on the map instead. In an emergency, use SOS or call 911.')
+    throw new Error('This report was blocked by the location check: the position is outside Santa Maria or too far from your last report. Pin the location on the map instead. In an emergency, use SOS or call MDRRMO Rescue at 0923 022 6973.')
   }
   // Signed in the background: the report is already delivered, and an unsigned
   // report only shows as "Not signed" to staff.

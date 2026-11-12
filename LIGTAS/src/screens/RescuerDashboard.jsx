@@ -24,7 +24,6 @@ import {
   drawReports,
   drawUserPosition,
   fitToContent,
-  mapCenter,
   removeLigtasMap,
   watchMapSize,
 } from '../lib/map.js'
@@ -69,7 +68,7 @@ function RescuerSituationMap({ reports, points, centers, myPosition, isFullscree
 
   useEffect(() => {
     if (!mapRef.current) return undefined
-    const map = createLigtasMap(mapRef.current, mapCenter, 13)
+    const map = createLigtasMap(mapRef.current)
     mapInstanceRef.current = map
     layerRef.current = L.layerGroup().addTo(map)
     // Kept apart so frequent location updates don't redraw every marker.
@@ -413,7 +412,7 @@ export function RescuerDashboard({ onSignOut }) {
       <div class="rx-call-secondary">
         {stage !== 'On scene' && <button type="button" class="rx-link-button" onClick={() => { setResolvingReport(report); setResolutionNote('') }}>Resolve now</button>}
         <button type="button" class={`rx-link-button rx-link-button--muted${confirmReleaseId === report.id ? ' is-confirming' : ''}`} disabled={isBusy} onClick={() => release(report)}>
-          {confirmReleaseId === report.id ? 'Tap again to hand back' : "Can't respond? Hand back"}
+          {confirmReleaseId === report.id ? 'Tap again to return the call' : 'Unable to respond? Return the call'}
         </button>
       </div>
     </div>
@@ -483,7 +482,7 @@ export function RescuerDashboard({ onSignOut }) {
               </div>
               <p class="rx-call-location"><Icon name="pin" size={18} /><span>{report.location}</span></p>
               {integrity[report.id] === 'tampered' && !isResolved && <p class="integrity-warning" role="alert">
-                <Icon name="alert" size={15} /><span><b>Changed outside the app.</b> This call's details don't match what the reporter sent. Confirm with operations before going.</span>
+                <Icon name="alert" size={15} /><span><b>Changed outside the app.</b> The details of this call do not match what the reporter sent. Confirm with operations before responding.</span>
               </p>}
               {report.location_flag && !isResolved && <p class="location-warning" role="note">
                 <Icon name="alert" size={15} /><span><b>Check before going:</b> {report.location_flag}. Call the reporter to confirm where they are.</span>

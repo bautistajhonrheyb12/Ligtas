@@ -503,4 +503,28 @@ button.google-button .btn-spinner { margin: 0; color: #27745b; }
 .two-step-help { margin: 14px 0 0; color: var(--ui-muted); font-size: 12px; line-height: 1.45; }
 
 /* Matches the faded area outside Santa Maria, where no map tiles load. */
-.leaflet-container { background: #eef2ef; }
+/* Maps: while tiles load, show the same beige as the map instead of white. */
+.leaflet-container, .real-map .leaflet-container { background: #f2efe9; }
+/* At in-between zoom levels, tiles leave hairline white seams; blending the
+   overlapping edges closes them (the fix used by newer Leaflet versions). */
+.leaflet-tile-container img.leaflet-tile { mix-blend-mode: plus-lighter; }
+
+/* Citizen map: the legend floats over the map instead of a white strip under it. */
+.citizen-map-shell .map-legend {
+  position: absolute;
+  /* Above Leaflet's map panes (400) and below its controls (800). */
+  z-index: 640;
+  bottom: 18px;
+  left: 20px;
+  flex-wrap: wrap;
+  gap: 8px 14px;
+  padding: 8px 12px;
+  border: 1px solid rgba(222, 233, 225, .9);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, .95);
+  box-shadow: 0 4px 14px rgba(26, 53, 39, .12);
+}
+@media (max-width: 600px) {
+  /* Above the bottom sheet's collapsed bar on phones. */
+  .citizen-map-shell .map-legend { bottom: calc(140px + env(safe-area-inset-bottom)); left: 12px; }
+}

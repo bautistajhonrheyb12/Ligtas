@@ -575,6 +575,12 @@ span.capacity-chip.capacity-chip--closed { color: #5d6964; background: #e6ebe8; 
 .ops-alert-item--yellow { border-left-color: #d9a63b; }
 .ops-alert-item--blue { border-left-color: #4796b4; }
 
+/* Operations map page: the map fills the screen height instead of leaving an
+   empty area below it. */
+@media (min-width: 851px) {
+  .admin-map-layout .ops-map-frame { height: calc(100vh - 230px); min-height: 460px; max-height: none; }
+}
+
 /* Rescuer card actions: sign out everywhere, deactivate */
 .admin-team-actions { display: flex; flex-wrap: wrap; grid-column: 1 / -1; justify-content: flex-end; gap: 6px; }
 .admin-team-actions .admin-team-deactivate { grid-column: auto; }

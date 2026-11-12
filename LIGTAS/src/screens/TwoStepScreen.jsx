@@ -78,7 +78,6 @@ export function TwoStepScreen({ mode, onVerified, onCancel }) {
   return <section class="login-page">
     <div class="login-overlay">
       <div class="login-card two-step-card">
-        <div class="login-logo"><img src="/LigtasLogo.png" alt="LIGTAS Logo" /></div>
         <h1>LIGTAS</h1>
         <h2>{isEnroll ? 'Set up two-step sign-in' : 'Two-step sign-in'}</h2>
         <p class="role-description">
@@ -99,7 +98,7 @@ export function TwoStepScreen({ mode, onVerified, onCancel }) {
             {setup && <div class="two-step-key">
               {showKey
                 ? <code>{setup.secret}</code>
-                : <button type="button" class="signup-link" onClick={() => setShowKey(true)}>Can't scan? Show the setup key</button>}
+                : <button type="button" class="signup-link" onClick={() => setShowKey(true)}>Unable to scan? Show the setup key</button>}
               {showKey && <button type="button" class="signup-link" onClick={copyKey}>{copied ? 'Copied' : 'Copy key'}</button>}
             </div>}
           </li>

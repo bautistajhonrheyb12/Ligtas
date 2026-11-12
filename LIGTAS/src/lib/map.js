@@ -5,21 +5,28 @@ export const mapCenter = [14.842, 120.985]
 export const mapTileUrl = 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png'
 export const mapAttribution = '&copy; OpenStreetMap contributors'
 
-// Every map shows only Santa Maria, Bulacan: panning stops a little past the
-// municipal border, tiles outside it are never downloaded, and the area beyond
-// the border is faded out.
+// Every map centres on Santa Maria, Bulacan: panning stops a short way past the
+// municipal border and the area beyond it is dimmed, so the town stands out.
 const areaBounds = L.latLngBounds(santaMariaBoundary)
-const viewBounds = areaBounds.pad(0.08)
+// Room around the border so the town can be framed beside panels and headers.
+const viewBounds = areaBounds.pad(0.3)
 const worldRing = [[-89, -179], [-89, 179], [89, 179], [89, -179]]
 
-// The furthest people can zoom out is the zoom that shows the whole municipality.
+// People can zoom out a little past the whole municipality, no further.
 function limitZoomToArea(map) {
   const size = map.getSize()
   if (!size.x || !size.y) return
-  map.setMinZoom(Math.max(10, map.getBoundsZoom(viewBounds, false)))
+  map.setMinZoom(Math.max(10, map.getBoundsZoom(areaBounds, false) - 0.75))
 }
 
-export function createLigtasMap(container, center, zoom) {
+// Fits the whole municipality in view. Padding keeps it clear of anything
+// drawn over the map, such as a header or a side panel.
+export function frameArea(map, padding = {}) {
+  map.fitBounds(areaBounds, { paddingTopLeft: [24, 24], paddingBottomRight: [24, 24], ...padding, animate: false })
+}
+
+// Without a centre, the map opens on the whole municipality.
+export function createLigtasMap(container, center = null, zoom = 13) {
   const map = L.map(container, {
     zoomControl: false,
     zoomAnimation: false,
@@ -32,15 +39,17 @@ export function createLigtasMap(container, center, zoom) {
     maxBoundsViscosity: 1,
     // Quarter steps let the zoomed-out view fit the municipality snugly on any screen.
     zoomSnap: 0.25,
-  }).setView(center, zoom)
+  })
+  if (center) map.setView(center, zoom)
+  else frameArea(map)
 
-  L.tileLayer(mapTileUrl, { attribution: mapAttribution, bounds: viewBounds }).addTo(map)
+  L.tileLayer(mapTileUrl, { attribution: mapAttribution }).addTo(map)
   L.control.zoom({ position: 'bottomright' }).addTo(map)
   // Between the tiles and the markers, and never catches clicks.
   const maskPane = map.createPane('areaMask')
   maskPane.style.zIndex = '250'
   maskPane.style.pointerEvents = 'none'
-  L.polygon([worldRing, santaMariaBoundary], { pane: 'areaMask', interactive: false, stroke: false, fillColor: '#eef2ef', fillOpacity: 0.86 }).addTo(map)
+  L.polygon([worldRing, santaMariaBoundary], { pane: 'areaMask', interactive: false, stroke: false, fillColor: '#1f3a33', fillOpacity: 0.32 }).addTo(map)
   L.polygon(santaMariaBoundary, { pane: 'areaMask', interactive: false, fill: false, color: '#27745b', weight: 2.5, opacity: 0.85, dashArray: '7 6' }).addTo(map)
   // Sits below the vector overlay pane so pulse rings render behind hazard markers.
   map.createPane('hazardPulse').style.zIndex = '350'

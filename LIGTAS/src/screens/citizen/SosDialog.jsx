@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'preact/hooks'
 import { isNetworkError, saveCheckin, submitIncidentReport } from '../../lib/supabase.js'
+import { rescueHotline } from '../../lib/hotlines.js'
 import { Icon, getCurrentPosition } from '../../lib/ui.jsx'
 
 // SOS skips admin review and reaches rescuers immediately, so it asks for
@@ -95,7 +96,7 @@ export function SosDialog({ t, onClose, onSent }) {
         <h2 id="sos-title">{t('sosButton')} ✓</h2>
         <p id="sos-text">{t('sosSent')}</p>
         <div class="sos-actions">
-          <a class="sos-call" href="tel:911"><Icon name="phone" size={18} /> {t('sosCall')}</a>
+          <a class="sos-call" href={`tel:${rescueHotline.number}`}><Icon name="phone" size={18} /> {t('sosCall')}</a>
           <button type="button" class="sos-cancel" onClick={onClose}>{t('close')}</button>
         </div>
       </div>}
@@ -103,7 +104,7 @@ export function SosDialog({ t, onClose, onSent }) {
         <h2 id="sos-title">{t('sosTitle')}</h2>
         <p id="sos-text" class="sos-offline">{t('sosOffline')}</p>
         <div class="sos-actions">
-          <a class="sos-call" href="tel:911"><Icon name="phone" size={18} /> {t('sosCall')}</a>
+          <a class="sos-call" href={`tel:${rescueHotline.number}`}><Icon name="phone" size={18} /> {t('sosCall')}</a>
           <button type="button" class="sos-cancel" onClick={onClose}>{t('close')}</button>
         </div>
       </div>}

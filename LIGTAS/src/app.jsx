@@ -146,7 +146,7 @@ export function App() {
     if (actualRole !== roleId) {
       await supabase.auth.signOut()
       throw new Error(actualRole === 'admin'
-        ? "This account can't sign in here. Use your staff sign-in link."
+        ? 'This account cannot sign in here. Use the staff sign-in link.'
         : `This account is registered as ${actualRole}. Choose that role to sign in.`)
     }
 

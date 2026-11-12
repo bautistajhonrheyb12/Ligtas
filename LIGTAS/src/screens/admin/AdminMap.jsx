@@ -7,7 +7,6 @@ import {
   drawReports,
   escapeHtml,
   fitToContent,
-  mapCenter,
   removeLigtasMap,
   watchMapSize,
 } from '../../lib/map.js'
@@ -50,7 +49,7 @@ export function AdminOperationsMap({
 
   useEffect(() => {
     if (!mapRef.current) return undefined
-    const map = createLigtasMap(mapRef.current, mapCenter, 13)
+    const map = createLigtasMap(mapRef.current)
     map.on('click', (event) => {
       if (addingPointRef.current) onMapClickRef.current?.(event.latlng.lat, event.latlng.lng)
     })

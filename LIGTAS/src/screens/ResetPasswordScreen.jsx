@@ -36,7 +36,6 @@ export function ResetPasswordScreen({ onDone, onCancel }) {
   return <section class="login-page">
     <div class="login-overlay">
       <div class="login-card">
-        <div class="login-logo"><img src="/LigtasLogo.png" alt="LIGTAS Logo" /></div>
         <h1>LIGTAS</h1>
         <h2>{isSaved ? 'Password changed' : 'Set a new password'}</h2>
         <p class="role-description">{isSaved ? 'Your new password is saved. Use it the next time you sign in.' : 'Choose a new password for your account.'}</p>

@@ -6,11 +6,28 @@ import {
   drawEvacuationCenters,
   drawMapPoints,
   drawUserPosition,
-  fitToContent,
-  mapCenter,
+  frameArea,
   removeLigtasMap,
   watchMapSize,
 } from '../../lib/map.js'
+
+// Room for the header and the information panel drawn over the map, so the
+// municipality is framed in the part of the map people can actually see.
+function overlayPadding(container) {
+  const box = container.getBoundingClientRect()
+  const header = document.querySelector('.citizen-ui > .citizen-header')?.getBoundingClientRect()
+  const sheet = document.querySelector('.citizen-ui .citizen-sheet')?.getBoundingClientRect()
+  let top = 24
+  let right = 24
+  let bottom = 24
+  if (header?.height) top = Math.max(top, header.bottom - box.top + 16)
+  if (sheet?.width && sheet.height) {
+    // A side panel on wide screens, a bottom sheet on phones.
+    if (sheet.left > box.left + box.width / 2) right = Math.max(right, box.right - sheet.left + 16)
+    else bottom = Math.max(bottom, box.bottom - sheet.top + 16)
+  }
+  return { paddingTopLeft: [24, top], paddingBottomRight: [right, bottom] }
+}
 
 export function CitizenMap({ points, centers, userPosition, focusTarget, locationError, isLocating, onLocate, t }) {
   const mapRef = useRef(null)
@@ -18,20 +35,25 @@ export function CitizenMap({ points, centers, userPosition, focusTarget, locatio
   const layerRef = useRef(null)
   const userLayerRef = useRef(null)
   const hasShownUserRef = useRef(false)
-  const fittedCountRef = useRef(0)
   const userMovedRef = useRef(false)
 
   useEffect(() => {
     if (!mapRef.current) return undefined
-    const map = createLigtasMap(mapRef.current, mapCenter, 13)
+    const container = mapRef.current
+    const map = createLigtasMap(container)
+    frameArea(map, overlayPadding(container))
     mapInstanceRef.current = map
     layerRef.current = L.layerGroup().addTo(map)
     // Kept apart so frequent location updates don't redraw every marker.
     userLayerRef.current = L.layerGroup().addTo(map)
-    // Keep auto-framing new data until the person pans the map themselves.
+    // Keep the town framed when the window changes size, until the person
+    // moves the map themselves.
     map.on('dragstart', () => { userMovedRef.current = true })
-    const stopWatching = watchMapSize(map, mapRef.current)
+    const reframe = () => { if (!userMovedRef.current) frameArea(map, overlayPadding(container)) }
+    window.addEventListener('resize', reframe)
+    const stopWatching = watchMapSize(map, container)
     return () => {
+      window.removeEventListener('resize', reframe)
       stopWatching()
       layerRef.current = null
       userLayerRef.current = null
@@ -47,13 +69,6 @@ export function CitizenMap({ points, centers, userPosition, focusTarget, locatio
     layer.clearLayers()
     drawMapPoints(layer, points)
     drawEvacuationCenters(layer, centers)
-
-    const coordinates = [...points, ...centers.filter((center) => center.latitude != null)]
-      .map((item) => [item.latitude, item.longitude])
-    if (!userMovedRef.current && coordinates.length > fittedCountRef.current) {
-      fitToContent(map, coordinates)
-      fittedCountRef.current = coordinates.length
-    }
   }, [points, centers])
 
   useEffect(() => {

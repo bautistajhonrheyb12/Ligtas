@@ -160,8 +160,12 @@ where id = (select id from auth.users where email = 'you@example.com');
 
 ## 7. Emergency hotlines
 
-`src/lib/hotlines.js` only lists nationwide numbers (911 and the Red Cross, 143).
-Add your verified local MDRRMO, BFP station and barangay numbers there.
+`src/lib/hotlines.js` lists only the Municipality of Santa Maria's verified hotlines, from
+its official *Emergency Hotlines* poster: MDRRMO Rescue, the police station, the fire
+station, the LGU Command Center and RMMMH General Hospital. They show in the citizen
+*Prepare* tab and on the About page, and the SOS screen's call button dials MDRRMO Rescue.
+Never add a number that has not been verified. Update the file whenever the LGU
+publishes new numbers (the SOS and database messages also quote the MDRRMO number).
 
 ## 8. Offline support
 
