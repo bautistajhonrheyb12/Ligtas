@@ -4,7 +4,7 @@ const TEAM = [
   { name: 'Gabriel Santos', role: 'Project Manager', title: 'Co-founder', photo: '/team/gabriel-santos.jpg' },
   { name: 'Jhon Rhey Bautista', role: 'Backend & Frontend Developer', title: 'Founder', photo: '/team/jhon-rhey-bautista.jpg' },
   { name: 'Cedric James Resurreccion', role: 'Quality Assurance', title: 'Co-founder', photo: '/team/cedric-james-resurreccion.jpg' },
-  { name: 'Carlo Resurreccion', role: 'Data Analyst', title: 'Co-founder', photo: '/team/carlo-resurreccion.jpg' },
+  { name: 'John Carlo Resurreccion', role: 'Data Analyst', title: 'Co-founder', photo: '/team/john-carlo-resurreccion.jpg' },
 ]
 
 const AUDIENCES = [
