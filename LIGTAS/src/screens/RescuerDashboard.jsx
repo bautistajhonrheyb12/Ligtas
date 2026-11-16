@@ -50,6 +50,7 @@ import {
 import { markTampered, useReportIntegrity } from '../lib/integrity.js'
 import { NavigationView } from '../components/NavigationView.jsx'
 import { PriorityTags, hasPriority } from '../components/PriorityTags.jsx'
+import { privacyUrl, termsUrl } from '../lib/legal.js'
 
 const priorityRank = { Critical: 0, Urgent: 1, Normal: 2 }
 const nextStage = { Assigned: 'En route', 'En route': 'On scene' }
@@ -556,6 +557,10 @@ export function RescuerDashboard({ onSignOut }) {
           </div>}
         </div>
       </section>}
+      <p class="legal-links staff-legal-links">
+        <a href={termsUrl} target="_blank" rel="noopener">Terms of Use</a>
+        <a href={privacyUrl} target="_blank" rel="noopener">Privacy Policy</a>
+      </p>
     </div>
 
     {resolvingReport && <div class="alert-modal-backdrop" onClick={(event) => { if (event.target === event.currentTarget && !updatingReportId) setResolvingReport(null) }}>

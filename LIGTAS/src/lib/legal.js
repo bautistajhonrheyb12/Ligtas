@@ -1,11 +1,11 @@
-// The Terms of Use and Privacy Policy (screens/LegalPage.jsx). Change
-// LEGAL_VERSION to the new date whenever either document changes in a way
-// people should agree to again: everyone is then asked to accept once more.
+// The Terms of Use and Privacy Policy (text in content/terms.js and
+// content/privacy.js, shown by screens/LegalPage.jsx). LEGAL_VERSION is the
+// date they were last changed in a way people should agree to again: change it
+// and everyone is asked to accept once more. Typo fixes keep the same version.
 export const LEGAL_VERSION = '2026-11-17'
-export const LEGAL_UPDATED = 'November 17, 2026'
 
 // Where people send privacy requests and questions. Shown on both pages.
-export const CONTACT_EMAIL = ''
+export const CONTACT_EMAIL = 'ligtas1130@gmail.com'
 
 export const termsUrl = '/#terms'
 export const privacyUrl = '/#privacy'

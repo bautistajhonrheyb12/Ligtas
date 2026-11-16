@@ -1,6 +1,7 @@
-import { useEffect, useState } from 'preact/hooks'
+import { useEffect, useRef, useState } from 'preact/hooks'
 import { isNetworkError, submitIncidentReport } from '../../lib/supabase.js'
 import { PinPicker } from '../../components/PinPicker.jsx'
+import { coordinatesLabel, describeLocation } from '../../lib/geocode.js'
 import { queueReport } from '../../lib/offlineQueue.js'
 import { isInsideSantaMaria } from '../../lib/santaMaria.js'
 import { Icon, getCurrentPosition, reportTypeStyle } from '../../lib/ui.jsx'
@@ -22,6 +23,52 @@ export function ReportDialog({ t, ownerId, hasPhone, onAddPhone, onClose, onDone
   const [notes, setNotes] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState('')
+
+  // The address of the pin, looked up whenever the pin is placed or moved.
+  // It fills the location field unless the person has typed their own text,
+  // in which case it is offered instead.
+  const [lookup, setLookup] = useState({ status: 'idle', label: '', filled: false })
+  const autoFilledRef = useRef('')
+  const locationRef = useRef(location)
+  locationRef.current = location
+
+  const fillLocation = (label) => {
+    const current = locationRef.current.trim()
+    if (current && current !== autoFilledRef.current) return false
+    autoFilledRef.current = label
+    setLocation(label)
+    return true
+  }
+
+  useEffect(() => {
+    if (!position) {
+      if (autoFilledRef.current && locationRef.current === autoFilledRef.current) setLocation('')
+      autoFilledRef.current = ''
+      setLookup({ status: 'idle', label: '', filled: false })
+      return undefined
+    }
+    const fallback = () => {
+      const label = coordinatesLabel(position.latitude, position.longitude)
+      setLookup({ status: 'failed', label, filled: fillLocation(label) })
+    }
+    if (!navigator.onLine) {
+      fallback()
+      return undefined
+    }
+    const controller = new AbortController()
+    setLookup({ status: 'looking', label: '', filled: false })
+    const show = (result, isFinal) => setLookup({ status: isFinal ? 'done' : 'looking', label: result.label, filled: fillLocation(result.label) })
+    describeLocation(position.latitude, position.longitude, { signal: controller.signal, onPartial: (result) => show(result, false) })
+      .then((result) => show(result, true))
+      .catch((lookupError) => { if (lookupError.name !== 'AbortError') fallback() })
+    return () => controller.abort()
+  }, [position])
+
+  const useSuggestedAddress = () => {
+    autoFilledRef.current = lookup.label
+    setLocation(lookup.label)
+    setLookup((current) => ({ ...current, filled: true }))
+  }
 
   useEffect(() => () => { if (photoPreview) URL.revokeObjectURL(photoPreview) }, [photoPreview])
 
@@ -133,19 +180,30 @@ export function ReportDialog({ t, ownerId, hasPhone, onAddPhone, onClose, onDone
         <label>
           {t('locationLabel')}
           <div class="location-input">
-            <input name="location" type="text" required minLength="2" maxLength="160" placeholder={t('locationPlaceholder')} value={location} onInput={(event) => setLocation(event.currentTarget.value)} />
+            {/* Two lines, so a full address stays readable on a phone. */}
+            <textarea name="location" rows="2" required minLength="2" maxLength="160" placeholder={t('locationPlaceholder')} value={location} onInput={(event) => setLocation(event.currentTarget.value.replace(/\s*\n\s*/g, ' '))} />
             <button type="button" class="location-button" onClick={locate} disabled={isLocating} aria-label={t('useMyLocation')} title={t('useMyLocation')}>
               {isLocating ? <span class="btn-spinner" aria-hidden="true" /> : <Icon name="locate" size={18} />}
             </button>
           </div>
         </label>
+        {lookup.status !== 'idle' && <p class={`address-status address-status--${lookup.status}`} role="status">
+          {lookup.status === 'looking' && !lookup.label && <><span class="btn-spinner" aria-hidden="true" /> <span>{t('addressLooking')}</span></>}
+          {(lookup.status === 'done' || (lookup.status === 'looking' && lookup.label)) && (lookup.filled
+            ? <><Icon name="check" size={14} /> <span>{t('addressFilled')}</span></>
+            : <><Icon name="pin" size={14} /> <span>{t('addressSuggest', { address: lookup.label })}</span> <button type="button" onClick={useSuggestedAddress}>{t('addressUse')}</button></>)}
+          {lookup.status === 'failed' && (lookup.filled
+            ? <><Icon name="alert" size={14} /> <span>{t('addressFailed')}</span></>
+            : <><Icon name="pin" size={14} /> <span>{t('addressSuggest', { address: lookup.label })}</span> <button type="button" onClick={useSuggestedAddress}>{t('addressUse')}</button></>)}
+        </p>}
         <div class="pin-picker-wrap">
           <PinPicker position={position} onChange={(next) => setPosition({ ...next, source: 'pin' })} />
           <div class="pin-picker-caption">
             {position
-              ? <><span class="pin-attached"><Icon name="check" size={14} /> {t('locationAttached')}</span><button type="button" onClick={() => setPosition(null)}>{t('removePin')}</button></>
+              ? <><span class="pin-attached"><Icon name="check" size={14} /> {position.source === 'gps' ? t('locationAttached') : t('pinAttached')}</span><button type="button" onClick={() => setPosition(null)}>{t('removePin')}</button></>
               : <span>{t('pinOnMap')}</span>}
           </div>
+          {position?.source === 'gps' && position.accuracy > 30 && <p class="gps-accuracy-hint">{t('gpsAccuracyHint', { meters: Math.round(position.accuracy) })}</p>}
         </div>
 
         <div class="photo-field">

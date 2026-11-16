@@ -343,8 +343,10 @@
   background: var(--tone-soft);
 }
 .report-type.active .report-type-icon { color: #fff; background: var(--tone); }
-.location-input { display: flex; gap: 6px; }
-.location-input input { flex: 1; min-width: 0; }
+.location-input { display: flex; align-items: stretch; gap: 6px; }
+.location-input input,
+.location-input textarea { flex: 1; min-width: 0; }
+.citizen-report-form .location-input textarea { min-height: 52px; line-height: 1.4; resize: none; }
 .location-button {
   display: grid;
   width: 44px;
@@ -371,6 +373,30 @@
 }
 .pin-picker-caption button { border: 0; color: #a2453f; background: transparent; font-size: 11px; font-weight: 800; }
 .pin-attached { display: inline-flex; align-items: center; gap: 4px; color: var(--ui-green-dark); font-weight: 800; }
+
+/* The address of the pin, filled in or offered */
+.address-status {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 6px;
+  margin: -4px 0 0;
+  color: #2f6148;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.45;
+}
+.address-status .ui-icon { flex: 0 0 auto; }
+.address-status .btn-spinner { width: 12px; height: 12px; margin: 0; color: var(--ui-green); }
+.address-status--looking { color: var(--ui-muted); }
+.address-status--failed { color: #8a5a0b; }
+.address-status { flex-wrap: nowrap; align-items: flex-start; }
+.address-status > .ui-icon,
+.address-status > .btn-spinner { margin-top: 2px; }
+.address-status span { flex: 1 1 auto; min-width: 0; }
+.address-status button { flex: 0 0 auto; align-self: center; }
+.address-status button { padding: 4px 10px; border: 1px solid #bbd3c2; border-radius: 999px; color: var(--ui-green-dark); background: #f3f8f4; font: 800 11.5px 'DM Sans', sans-serif; cursor: pointer; }
+.gps-accuracy-hint { margin: 0; padding: 6px 10px; border-top: 1px solid var(--ui-border); color: #8a5a0b; background: #fff8e6; font-size: 11.5px; font-weight: 600; }
 .photo-field { display: grid; gap: 8px; }
 .photo-field-label { color: #425a4e; font-size: 13px; font-weight: 800; }
 .photo-preview { width: 100%; max-height: 180px; border-radius: 12px; object-fit: cover; }

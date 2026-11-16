@@ -15,7 +15,6 @@ import { TermsGate } from './components/TermsGate.jsx'
 import { slides, IconPlaceholder, Illustration } from './screens/landing.jsx'
 import { AboutPage } from './screens/AboutPage.jsx'
 import { AuthScreen } from './screens/AuthScreen.jsx'
-import { LegalPage } from './screens/LegalPage.jsx'
 import { ResetPasswordScreen } from './screens/ResetPasswordScreen.jsx'
 import { TwoStepScreen } from './screens/TwoStepScreen.jsx'
 // Loaded here, before the app styles, so the app's map overrides keep winning.
@@ -105,6 +104,14 @@ export function App() {
   const [twoStep, setTwoStep] = useState(null)
   const slide = slides[active]
   const dashboard = useDashboard(isAuthenticated ? userRole : null)
+  // The Terms and Privacy pages (long, in two languages) download only when opened.
+  const [legalPage, setLegalPage] = useState({ Page: null, error: '' })
+  useEffect(() => {
+    if (!legalDoc || legalPage.Page) return
+    import('./screens/LegalPage.jsx')
+      .then((module) => setLegalPage({ Page: module.LegalPage, error: '' }))
+      .catch(() => setLegalPage({ Page: null, error: 'Could not load this page. Check your connection and try again.' }))
+  }, [legalDoc])
 
   // Admins only reach their dashboard after the authenticator code step.
   const completeSignIn = async (role) => {
@@ -332,7 +339,15 @@ export function App() {
   }
   if (isRecoveringPassword) return <main class="site auth-site"><ResetPasswordScreen onDone={() => setIsRecoveringPassword(false)} onCancel={() => { setIsRecoveringPassword(false); handleSignOut() }} /></main>
   if (twoStep) return <main class="site auth-site"><TwoStepScreen mode={twoStep} onVerified={() => completeSignIn('admin')} onCancel={() => { setTwoStep(null); handleSignOut() }} /></main>
-  if (legalDoc) return <main class="site legal-site"><LegalPage doc={legalDoc} onBack={leaveLegal} /></main>
+  if (legalDoc) {
+    if (legalPage.Page) return <main class="site legal-site"><legalPage.Page doc={legalDoc} onBack={leaveLegal} /></main>
+    return <main class="app-splash" aria-busy={!legalPage.error} aria-label="Loading LIGTAS">
+      <Logo />
+      {legalPage.error
+        ? <><p class="app-splash-error" role="alert">{legalPage.error}</p><button type="button" class="primary" onClick={leaveLegal}>Back</button></>
+        : <span class="btn-spinner" aria-hidden="true" />}
+    </main>
+  }
   if (isRestoring) return <main class="app-splash" aria-busy="true" aria-label="Loading LIGTAS"><Logo /><span class="btn-spinner" aria-hidden="true" /></main>
   if (showAuth) return <main class="site auth-site"><AuthScreen showAdmin={isStaffAccess} role={authRole} mode={authMode} onChooseRole={(role) => { setAuthMessage(''); setAuthRole(role) }} onModeChange={setAuthMode} onBack={() => setAuthRole(null)} onClose={() => setShowAuth(false)} onLogin={handleLogin} authMessage={authMessage} /></main>
   if (isAuthenticated && userRole) {
@@ -355,11 +370,12 @@ export function App() {
         <a href="#how-it-works">How it works</a>
         <a href="#features">Features</a>
         <a href="#about-us" aria-current={showAbout ? 'page' : undefined}>About us</a>
+        <a href={termsUrl}>Terms &amp; Privacy</a>
         <button class="nav-cta" onClick={openAuth}>Log in</button>
       </div>
       <button class="menu" onClick={() => setMenuOpen(!menuOpen)} aria-label="Open menu" aria-expanded={menuOpen}><span/><span/></button>
     </nav>
-    {menuOpen && <div class="mobile-nav"><a href="#how-it-works" onClick={() => setMenuOpen(false)}>How it works</a><a href="#features" onClick={() => setMenuOpen(false)}>Features</a><a href="#about-us" onClick={() => setMenuOpen(false)}>About us</a><button onClick={openAuth}>Log in <b>→</b></button></div>}
+    {menuOpen && <div class="mobile-nav"><a href="#how-it-works" onClick={() => setMenuOpen(false)}>How it works</a><a href="#features" onClick={() => setMenuOpen(false)}>Features</a><a href="#about-us" onClick={() => setMenuOpen(false)}>About us</a><a href={termsUrl} onClick={() => setMenuOpen(false)}>Terms of Use</a><a href={privacyUrl} onClick={() => setMenuOpen(false)}>Privacy Policy</a><button onClick={openAuth}>Log in <b>→</b></button></div>}
   </>
   const footer = <footer class="site-footer">
     <span>© {new Date().getFullYear()} LIGTAS · Santa Maria, Bulacan</span>

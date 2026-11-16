@@ -401,12 +401,21 @@ sharing.
 
 ## 13. Terms of Use and Privacy Policy
 
-The pages live at `/#terms` and `/#privacy` (linked in the site footer, the
-sign-up form and *Prepare → My details*). They open whether or not someone is
-signed in. Their text is in `src/screens/LegalPage.jsx`.
+The pages live at `/#terms` and `/#privacy`, in English and Filipino. They are
+linked in the top menu, the site footer, the log-in and sign-up screens,
+*Prepare → My details*, the admin sidebar and the rescuer screen, and open
+whether or not someone is signed in. Each page has key points, a contents list,
+an English/Filipino switch and a print or save-as-PDF button.
 
-**Before publishing,** set the privacy contact email in `src/lib/legal.js`
-(`CONTACT_EMAIL`). Until then the pages show "[privacy contact email to be added]".
+The text is in `src/content/terms.js` and `src/content/privacy.js` (both
+languages side by side; the English version applies if they differ). The
+privacy contact (`CONTACT_EMAIL`, now ligtas1130@gmail.com) is in
+`src/lib/legal.js`. The policy names this address as the Data Protection
+Officer's, so whoever reads it should handle privacy requests.
+
+Keep the Privacy Policy matching what the app does. When a feature starts
+collecting or sending information differently (a new service provider, for
+example), update both languages.
 
 **Acceptance.** Sign-up requires ticking "I agree to the Terms of Use and Privacy
 Policy". Everyone else, including Google sign-ins, rescuers and admins, accepts
@@ -414,9 +423,9 @@ once on their next sign-in. Citizens keep SOS and the rescue hotline on that
 screen. Each acceptance is saved on the profile (`terms_version`,
 `terms_accepted_at`).
 
-**Changing the documents.** Edit the text, then set `LEGAL_VERSION` and
-`LEGAL_UPDATED` in `src/lib/legal.js` to the new date. Everyone is asked to
-accept again. For typo fixes, leave the version as it is.
+**Changing the documents.** Edit the text, then set `LEGAL_VERSION` in
+`src/lib/legal.js` to the new date (the pages show it as "Last updated").
+Everyone is asked to accept again. For typo fixes, leave the version as it is.
 
 **Requests the policy promises to handle** (by email):
 
@@ -444,5 +453,14 @@ reviewed by a lawyer before a wide public launch.
 - **Deactivating a rescuer** turns the account back into a citizen account. It does not
   delete the login; remove the user under *Authentication → Users* if needed.
 - **Report photos** are resized to 1600 px in the browser before upload.
+- **Report addresses** fill in by themselves when a pin is dropped or "Use my location"
+  is tapped: street, subdivision, barangay and a nearby landmark from OpenStreetMap's
+  Nominatim service (`src/lib/geocode.js`). When the street has no name on the map,
+  the routing server finds the nearest named road and its distance. Text the person
+  typed is never overwritten; the address is offered with a *Use this* button
+  instead. Offline, the pin's exact coordinates are filled in. Nominatim is free
+  for light use (about one request a second, which the app keeps to). Addresses
+  are only as complete as OpenStreetMap, so mapping missing street names in
+  Santa Maria on openstreetmap.org improves them for everyone.
 - **Free Supabase projects pause after about a week without activity.** Restore the
   project from the dashboard if sign-in fails with "Failed to fetch".

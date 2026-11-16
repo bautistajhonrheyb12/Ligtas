@@ -191,6 +191,11 @@ export function AuthScreen({
 
         </div>
 
+        <p class="auth-legal">
+          <a href={termsUrl} target="_blank" rel="noopener">Terms of Use</a>
+          <a href={privacyUrl} target="_blank" rel="noopener">Privacy Policy</a>
+        </p>
+
       </section>
     )
   }
@@ -495,6 +500,11 @@ Back Home
 </button>
 
 </div>
+
+<p class="auth-legal">
+  <a href={termsUrl} target="_blank" rel="noopener">Terms of Use</a>
+  <a href={privacyUrl} target="_blank" rel="noopener">Privacy Policy</a>
+</p>
 
 </div>
 

@@ -5,7 +5,7 @@
 // By default this uses the free public server run by FOSSGIS, which is meant
 // for light use (about one request per second, no guarantees). An LGU running
 // its own Valhalla server sets VITE_ROUTING_URL to use it instead.
-import { cumulativeDistances } from './navigation.js'
+import { cumulativeDistances, offsetPoint, projectOnRoute } from './navigation.js'
 
 const env = import.meta.env ?? {}
 export const ROUTING_URL = (env.VITE_ROUTING_URL || 'https://valhalla1.openstreetmap.de').replace(/\/$/, '')
@@ -82,6 +82,52 @@ async function takeTurn() {
   const wait = lastRequestAt + MIN_GAP_MS - Date.now()
   if (wait > 0) await new Promise((resolve) => setTimeout(resolve, wait))
   lastRequestAt = Date.now()
+}
+
+// Named roads near a spot, nearest first: [{ name, distanceM }]. Many small
+// streets have no name on the map, so this checks the spot and rings of points
+// around it (up to about 260 m) in one request, then measures the spot's real
+// distance to each named road found.
+const NEARBY_RINGS_M = [80, 160, 260]
+
+export async function requestNearbyRoads({ latitude, longitude, signal }) {
+  await takeTurn()
+  const spot = [latitude, longitude]
+  const samples = [spot]
+  NEARBY_RINGS_M.forEach((radius) => {
+    for (let heading = 0; heading < 360; heading += 45) samples.push(offsetPoint(spot, heading, radius))
+  })
+  const timeout = new AbortController()
+  const timer = setTimeout(() => timeout.abort(), TIMEOUT_MS)
+  signal?.addEventListener('abort', () => timeout.abort())
+  let response
+  try {
+    response = await fetch(`${ROUTING_URL}/locate`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ locations: samples.map(([lat, lon]) => ({ lat, lon })), costing: 'auto', verbose: true }),
+      signal: timeout.signal,
+    })
+  } catch {
+    throw new RoutingError(signal?.aborted ? 'cancelled' : 'offline', 'Cannot reach the routing service.')
+  } finally {
+    clearTimeout(timer)
+  }
+  const json = await response.json().catch(() => null)
+  if (!response.ok || !Array.isArray(json)) throw errorFor(response.status, json)
+
+  const nearest = new Map()
+  json.forEach((found) => (found?.edges ?? []).forEach((edge) => {
+    const name = edge.edge_info?.names?.[0]
+    const encoded = edge.edge_info?.shape
+    if (!name || !encoded) return
+    const shape = decodePolyline(encoded)
+    const distanceM = shape.length > 1 ? projectOnRoute(spot, shape, cumulativeDistances(shape)).offsetM : Infinity
+    if (distanceM < (nearest.get(name) ?? Infinity)) nearest.set(name, distanceM)
+  }))
+  return [...nearest.entries()]
+    .map(([name, distanceM]) => ({ name, distanceM }))
+    .sort((a, b) => a.distanceM - b.distanceM)
 }
 
 // Travel time and distance by road from origin to each target, in one

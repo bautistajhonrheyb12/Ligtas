@@ -42,6 +42,7 @@ import { CenterForm, PointForm } from './admin/AdminForms.jsx'
 import { ActivityFeed, AlertForm, AlertList, CentersPanel, TeamsPanel } from './admin/AdminPanels.jsx'
 import { AnalyticsPanel } from './admin/AnalyticsPanel.jsx'
 import { PriorityPanel } from './admin/PriorityPanel.jsx'
+import { privacyUrl, termsUrl } from '../lib/legal.js'
 import { ReportsPanel } from './admin/ReportsPanel.jsx'
 import { SecurityPanel } from './admin/SecurityPanel.jsx'
 
@@ -356,6 +357,10 @@ export function AdminDashboard({ onSignOut }) {
           {item.count > 0 && <span class="admin-sidebar-count">{item.count}</span>}
         </button>)}
       </nav>
+      <p class="admin-sidebar-legal">
+        <a href={termsUrl} target="_blank" rel="noopener" tabIndex={isAdminNavOpen ? 0 : -1}>Terms of Use</a>
+        <a href={privacyUrl} target="_blank" rel="noopener" tabIndex={isAdminNavOpen ? 0 : -1}>Privacy Policy</a>
+      </p>
       <div class="admin-sidebar-location" aria-label="Service area">
         <span class="admin-sidebar-location-icon" aria-hidden="true">⌖</span>
         <div><small>Service area</small><strong>Santa Maria, Bulacan</strong></div>
