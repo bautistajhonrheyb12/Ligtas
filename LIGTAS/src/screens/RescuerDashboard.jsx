@@ -45,15 +45,21 @@ import {
   useOnlineStatus,
   useTabIndicator,
   useToasts,
+  useWakeLock,
 } from '../lib/ui.jsx'
 import { markTampered, useReportIntegrity } from '../lib/integrity.js'
+import { NavigationView } from '../components/NavigationView.jsx'
+import { PriorityTags, hasPriority } from '../components/PriorityTags.jsx'
 
 const priorityRank = { Critical: 0, Urgent: 1, Normal: 2 }
 const nextStage = { Assigned: 'En route', 'En route': 'On scene' }
 
-// Most urgent first; within the same priority, the call waiting longest comes first.
+// Most urgent first. Within the same priority: households with verified
+// priority people (PWD, pregnant, senior citizen, child), then any other
+// vulnerable people, then the call waiting longest.
 function byUrgency(a, b) {
   return (priorityRank[a.priority] ?? 2) - (priorityRank[b.priority] ?? 2)
+    || (b.priority_needs?.length ?? 0) - (a.priority_needs?.length ?? 0)
     || Number(b.vulnerable_people) - Number(a.vulnerable_people)
     || new Date(a.created_at) - new Date(b.created_at)
 }
@@ -136,30 +142,6 @@ function CallPhoto({ path }) {
   </button>
 }
 
-// Keeps the screen on while location is shared, so the phone does not lock
-// mid-response and stop sending updates. Browsers drop the lock when the tab
-// is hidden, so it is requested again when the app comes back.
-function useWakeLock(active) {
-  useEffect(() => {
-    if (!active || !('wakeLock' in navigator)) return undefined
-    let lock = null
-    let cancelled = false
-    const request = () => {
-      if (document.visibilityState !== 'visible') return
-      navigator.wakeLock.request('screen')
-        .then((sentinel) => { if (cancelled) sentinel.release(); else lock = sentinel })
-        .catch(() => {})
-    }
-    request()
-    document.addEventListener('visibilitychange', request)
-    return () => {
-      cancelled = true
-      document.removeEventListener('visibilitychange', request)
-      lock?.release().catch(() => {})
-    }
-  }, [active])
-}
-
 export function RescuerDashboard({ onSignOut }) {
   const isOnline = useOnlineStatus()
   const [toasts, pushToast, dismissToast] = useToasts()
@@ -176,6 +158,8 @@ export function RescuerDashboard({ onSignOut }) {
   const [resolvingReport, setResolvingReport] = useState(null)
   const [resolutionNote, setResolutionNote] = useState('')
   const [confirmReleaseId, setConfirmReleaseId] = useState(null)
+  // The call being navigated to, if any.
+  const [navTarget, setNavTarget] = useState(null)
   const [alerts, setAlerts] = useState([])
   const [alertsLoading, setAlertsLoading] = useState(true)
   const [alertsError, setAlertsError] = useState('')
@@ -326,6 +310,22 @@ export function RescuerDashboard({ onSignOut }) {
       pushToast(`The ${report.report_type} call is back in the open queue.`, 'info')
     }
   }
+  // Navigating to your own call keeps its stage up to date for operations:
+  // starting marks it "En route", and arrival offers "On scene".
+  const isMyCall = (report) => report && myId && report.assigned_to === myId && report.status === 'Verified'
+  const startedNavigation = (report) => {
+    if (isMyCall(report) && report.response_stage === 'Assigned') {
+      applyUpdate(report.id, () => updateIncidentReport(report.id, { response_stage: 'En route' }))
+        .then((ok) => ok && pushToast('Marked en route.', 'success'))
+    }
+  }
+  const markOnScene = async (report) => {
+    const ok = await applyUpdate(report.id, () => updateIncidentReport(report.id, { response_stage: 'On scene' }))
+    if (!ok) throw new Error('Could not mark the call on scene. Try again from the call list.')
+    pushToast('Marked on scene.', 'success')
+  }
+  // The call being navigated to, with its latest stage.
+  const navReport = navTarget && (reports.find((report) => report.id === navTarget.id) ?? navTarget)
   const advance = (report) => applyUpdate(report.id, () => updateIncidentReport(report.id, { response_stage: nextStage[report.response_stage] }))
   const submitResolution = async (event) => {
     event.preventDefault()
@@ -385,7 +385,10 @@ export function RescuerDashboard({ onSignOut }) {
   const renderActions = (report) => {
     const isMine = myId && report.assigned_to === myId
     const isBusy = updatingReportId === report.id
-    const navigate = <a class="rx-btn rx-btn--ghost" href={directionsUrl(report)} target="_blank" rel="noreferrer"><Icon name="navigate" size={18} /> Navigate</a>
+    // In-app road navigation when the call has GPS; Google Maps by address otherwise.
+    const navigate = report.latitude != null
+      ? <button type="button" class="rx-btn rx-btn--ghost" onClick={() => setNavTarget(report)}><Icon name="navigate" size={18} /> Navigate</button>
+      : <a class="rx-btn rx-btn--ghost" href={directionsUrl(report)} target="_blank" rel="noreferrer"><Icon name="navigate" size={18} /> Navigate</a>
     if (report.status === 'Resolved') return null
     if (report.assigned_to && !isMine) {
       return <div class="rx-call-actions rx-call-actions--single">{navigate}</div>
@@ -487,9 +490,10 @@ export function RescuerDashboard({ onSignOut }) {
               {report.location_flag && !isResolved && <p class="location-warning" role="note">
                 <Icon name="alert" size={15} /><span><b>Check before going:</b> {report.location_flag}. Call the reporter to confirm where they are.</span>
               </p>}
-              {(report.people_affected > 0 || report.vulnerable_people) && <div class="rx-call-tags">
+              {(report.people_affected > 0 || report.vulnerable_people || hasPriority(report)) && <div class="rx-call-tags">
+                <PriorityTags needs={report.priority_needs} pending={report.priority_pending} />
                 {report.people_affected > 0 && <span><Icon name="users" size={14} /> {report.people_affected} {report.people_affected === 1 ? 'person' : 'people'}</span>}
-                {report.vulnerable_people && <span class="is-vulnerable"><Icon name="heart" size={14} /> Children, elderly or PWD</span>}
+                {report.vulnerable_people && !report.priority_needs?.length && <span class="is-vulnerable"><Icon name="heart" size={14} /> Children, elderly or PWD</span>}
               </div>}
               {report.notes && <p class="rx-call-notes">{report.notes}</p>}
               {(report.contact_name || report.contact_phone) && !isResolved && <div class="rx-call-contact">
@@ -591,6 +595,15 @@ export function RescuerDashboard({ onSignOut }) {
         {tab.count > 0 && <b class="rx-tab-badge">{tab.count}</b>}
       </button>)}
     </nav>
+    {navTarget && <NavigationView
+      destination={{ latitude: navTarget.latitude, longitude: navTarget.longitude, name: navTarget.report_type, location: navTarget.location }}
+      points={points}
+      reports={reports}
+      initialPosition={myPosition}
+      onStart={() => startedNavigation(navReport)}
+      arrivalAction={isMyCall(navReport) && navReport.response_stage !== 'On scene' ? { label: 'Mark on scene', run: () => markOnScene(navReport) } : null}
+      onClose={() => setNavTarget(null)}
+    />}
     <ToastStack toasts={toasts} onDismiss={dismissToast} />
   </main>
 }

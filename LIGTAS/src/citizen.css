@@ -235,6 +235,26 @@
 .safe-trigger.is-marked { border-color: #9fd0b2; }
 
 /* Nearest centers */
+/* Evacuate now: navigation to the nearest safe center by road */
+.evacuate-now {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  gap: 12px;
+  margin: 4px 0 14px;
+  padding: 12px 14px;
+  border: 0;
+  border-radius: 14px;
+  color: #fff;
+  background: linear-gradient(135deg, #1d5f49, #27745b);
+  box-shadow: 0 6px 16px rgba(29, 95, 73, .25);
+  text-align: left;
+  cursor: pointer;
+}
+.evacuate-now > .ui-icon, .evacuate-now > .btn-spinner { flex: 0 0 auto; margin: 0; }
+.evacuate-now strong { display: block; font-size: 14.5px; }
+.evacuate-now small { display: block; margin-top: 2px; color: #cfe7da; font-size: 12px; }
+.evacuate-now:disabled { opacity: .8; cursor: progress; }
 .locate-chip {
   display: inline-flex;
   min-height: 30px;

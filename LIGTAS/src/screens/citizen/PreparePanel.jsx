@@ -3,6 +3,7 @@ import { PhoneInput } from '../../components/PhoneInput.jsx'
 import { hotlines } from '../../lib/hotlines.js'
 import { toStoredMobile } from '../../lib/phone.js'
 import { Icon } from '../../lib/ui.jsx'
+import { PrioritySection } from './Priority.jsx'
 
 const CHECKLIST_KEY = 'ligtas-gobag'
 
@@ -21,7 +22,7 @@ const profileDraft = (profile) => ({
   barangay: profile?.barangay ?? '',
 })
 
-export function PreparePanel({ t, lang, setLang, profile, onSaveProfile }) {
+export function PreparePanel({ t, lang, setLang, profile, onSaveProfile, priority }) {
   const [packed, setPacked] = useState(readChecklist)
   const [hazard, setHazard] = useState('flood')
   const [phase, setPhase] = useState('before')
@@ -77,6 +78,8 @@ export function PreparePanel({ t, lang, setLang, profile, onSaveProfile }) {
         </a>)}
       </div>
     </section>
+
+    <PrioritySection t={t} profile={profile} {...priority} />
 
     <section class="prepare-card">
       <div class="prepare-card-head">

@@ -71,6 +71,10 @@ the server should:
 moment its session ends. `20261107093000_abuse_limits.sql` pauses accounts with
 repeated flags, caps photo uploads and strips hidden characters from text.
 
+`20261116090000_priority_assistance.sql` adds priority rescue (section 12): the
+`priority_members` table, the private `priority-proofs` bucket, the question every
+citizen answers, and the verified categories on each report and SOS.
+
 The screens expect the newest migration. Until it is applied, report lists fail to load
 with a "column does not exist" error.
 
@@ -287,6 +291,110 @@ Floods of traffic (DDoS) are absorbed by Vercel's and Supabase's networks before
 reach the app. If you want more, Vercel's *Firewall* can add rate-limit rules for the
 website (check your plan), and Supabase can add CAPTCHA to sign-up under
 *Authentication → Attack Protection*.
+
+## 11. In-app navigation
+
+Citizens navigate to evacuation centers and rescuers to calls without leaving
+LIGTAS. Routes come from **Valhalla**, an open-source router that uses
+OpenStreetMap road data: they follow real roads, respect one-way streets and
+turn restrictions, offer alternatives, and give turn-by-turn instructions with
+street names. Driving and walking are both supported.
+
+**Safety first.** Routes are planned around LIGTAS hazard information, and only
+verified information changes a route:
+
+| Information | Effect on routes |
+|---|---|
+| Closed road map point; verified *Blocked road* or *Fallen tree* report | Never routed through |
+| High-risk danger zone; verified flood, fire or landslide report | Avoided; a route through it is never called safe |
+| Medium/low-risk danger zone; unverified (pending) reports | Allowed, with a warning |
+
+Citizens' routes use the official map points; rescuers' routes also use verified
+incident reports. Alerts have no map position, so they cannot change routes. When
+no route avoids the hazards, the app says so plainly, shows the only route as
+*not safe* and gives the MDRRMO Rescue number.
+
+**While navigating:** voice prompts (English), distance to the next turn, current
+road, ETA, remaining distance, speed and GPS quality. The position snaps to the
+road being travelled, the map turns with the direction of travel (or north up),
+and the route is recalculated when the person leaves it (several off-route GPS
+fixes in a row, not a single jump) or when a new hazard is reported on it. Every
+screen keeps an *Open in Google Maps* fallback.
+
+**Also built on navigation:**
+
+- *Go to the nearest safe evacuation center* (citizen home screen) times every open
+  center by road in one request, skips centers that can only be reached through a
+  hazard, prefers centers with free space, and starts navigation. The nearest-centers
+  list shows these road times ("6 min by road") instead of straight-line distance.
+- *Hazard ahead*: medium-risk zones and unverified reports the route passes are
+  announced on screen and by voice shortly before reaching them.
+- *Report while navigating* (citizens): one tap reports a blocked road, flooding,
+  fallen tree or landslide at the current GPS position. It is an ordinary report:
+  admins review it, and the usual location checks and limits apply.
+- Rescuers navigating to their own call are marked *En route* when they start, and
+  can mark *On scene* when they arrive.
+
+**Routing server.** By default the app uses the free public Valhalla server run
+by FOSSGIS (valhalla1.openstreetmap.de). It is meant for light use, about one
+request per second, with no guarantee of availability; LIGTAS spaces its requests
+and recalculates at most every 20 seconds. Read its current terms before a public
+launch. For heavy use, run your own Valhalla server and set
+`VITE_ROUTING_URL` (in `.env.local` and in Vercel), then add that address to
+`connect-src` in `vercel.json`.
+
+**Privacy.** Planning a route sends the start position and destination to the
+routing server. Mention this in the app's privacy notice; a self-hosted server
+keeps these positions within the LGU.
+
+## 12. Priority rescue
+
+Persons with disability (PWD), pregnant women, senior citizens (60 or older) and
+children (under 18) are rescued first. Each household lists them with a proof,
+an admin checks it, and rescuers see the verified categories on that household's
+calls.
+
+**The question.** After signing in, every citizen account (including existing and
+Google accounts) must answer *Does anyone in your household need priority
+rescue?* before using the app. SOS and the MDRRMO Rescue number stay on that
+screen, so the question never blocks an emergency, and it is skipped when the
+profile cannot load (for example, offline).
+
+- **No:** answered. People can be added later under *Prepare → Priority rescue*.
+- **Yes:** the person agrees to the privacy terms, then adds each person with a
+  full name, a birth year (required for seniors and children), an expected due
+  date for a pregnancy, optional details, and a photo or PDF of a proof:
+
+  | Category | Proof |
+  |---|---|
+  | PWD | PWD ID or medical certificate |
+  | Pregnant | Prenatal record or medical certificate with the due date |
+  | Senior citizen | Senior citizen ID, or any ID with the birth date |
+  | Child | Birth certificate, school ID or any record with the birth date |
+
+**Review.** Admins open *Priority* in the sidebar, view each proof (through a
+link that expires after 5 minutes) and choose *Verify* or *Reject*. A rejection
+needs a reason, which the household sees with a prompt to send a new proof.
+Any change by the household sends the entry back for review, nobody can verify
+their own entries, and admins can only approve or reject, never edit.
+
+**On calls.** Every report and SOS records the household's categories when it is
+sent, and open ones update as entries are reviewed. Rescuers and admins see
+verified ones as solid purple tags (for example, *Senior citizen ×2*) and
+unchecked ones as dashed *unverified* tags. In the rescuer queue, calls with
+verified priority come first within the same urgency. A child who turns 18, or
+a pregnancy more than 60 days past its due date, no longer counts.
+
+**Privacy (RA 10173).** Disability and health details are sensitive personal
+information. The person consents before adding anyone. Proofs sit in a private
+bucket that only the household and admins can open; rescuers never see names,
+details or proofs. *Remove everything and withdraw consent* deletes every
+entry and proof file. Mention this in the app's privacy notice, and give
+admins a short briefing: proofs are for checking only, not for downloading or
+sharing.
+
+**Limits.** Up to 15 people per household and 20 proof uploads per person every
+10 minutes; files are images or PDF, up to 5 MB (photos are resized first).
 
 ## Notes
 

@@ -8,8 +8,10 @@ export const supabase = supabaseUrl && supabasePublishableKey
   ? createClient(supabaseUrl, supabasePublishableKey)
   : null
 
-const REPORT_COLUMNS = 'id, report_type, location, notes, status, created_at, latitude, longitude, photo_path, priority, people_affected, vulnerable_people, assigned_to, response_stage, assigned_at, resolution_note, resolved_at, contact_name, contact_phone, location_source, location_flag'
+const REPORT_COLUMNS = 'id, report_type, location, notes, status, created_at, latitude, longitude, photo_path, priority, people_affected, vulnerable_people, assigned_to, response_stage, assigned_at, resolution_note, resolved_at, contact_name, contact_phone, location_source, location_flag, priority_needs, priority_pending'
 const PHOTO_BUCKET = 'report-photos'
+const PROOF_BUCKET = 'priority-proofs'
+const PRIORITY_COLUMNS = 'id, user_id, category, full_name, birth_year, due_date, details, proof_path, status, review_note, reviewed_at, created_at, updated_at'
 
 function requireClient() {
   if (!supabase) {
@@ -76,11 +78,11 @@ async function withOfflineCache(key, load) {
 // ---------------------------------------------------------------------------
 
 export async function getProfile(userId) {
-  const { data, error } = await requireClient()
-    .from('profiles')
-    .select('role, display_name, barangay, phone')
-    .eq('id', userId)
-    .single()
+  const query = (columns) => requireClient().from('profiles').select(columns).eq('id', userId).single()
+  let { data, error } = await query('role, display_name, barangay, phone, priority_answered_at, priority_consent_at')
+  // Before the priority rescue migration the columns do not exist yet; the
+  // question is then simply not asked.
+  if (error?.code === '42703') ({ data, error } = await query('role, display_name, barangay, phone'))
 
   if (error) {
     throw new Error(`Could not load your account role: ${error.message}`)
@@ -760,6 +762,127 @@ export async function getRescuerLocations() {
   }
 
   return data
+}
+
+// ---------------------------------------------------------------------------
+// Priority rescue (persons with disability, pregnant, children, seniors)
+// ---------------------------------------------------------------------------
+// Proofs are sensitive personal information: kept in a private bucket that
+// only the household and admins can open, never rescuers.
+
+const PDF_TYPE = 'application/pdf'
+const MAX_PROOF_BYTES = 5 * 1024 * 1024
+
+async function uploadPriorityProof(userId, original) {
+  let file = original
+  if (original.type !== PDF_TYPE) {
+    try {
+      file = await compressPhoto(original)
+    } catch {
+      throw new Error('Choose a photo (JPEG or PNG) or a PDF of the proof.')
+    }
+  }
+  if (file.size > MAX_PROOF_BYTES) {
+    throw new Error('The proof is larger than 5 MB. Take a photo of it instead, or use a smaller PDF.')
+  }
+  const extension = { [PDF_TYPE]: 'pdf', 'image/png': 'png', 'image/webp': 'webp' }[file.type] ?? 'jpg'
+  const path = `${userId}/${crypto.randomUUID()}.${extension}`
+  const { error } = await requireClient().storage.from(PROOF_BUCKET).upload(path, file, { contentType: file.type || 'image/jpeg' })
+  if (error) throw new Error(`Could not upload the proof: ${error.message}`)
+  return path
+}
+
+function removeProofs(paths) {
+  const list = paths.filter(Boolean)
+  if (list.length) requireClient().storage.from(PROOF_BUCKET).remove(list).catch(() => {})
+}
+
+export async function getMyPriorityMembers() {
+  const { data, error } = await requireClient()
+    .from('priority_members')
+    .select(PRIORITY_COLUMNS)
+    .eq('user_id', await currentUserId())
+    .order('created_at')
+  if (error) throw new Error(`Could not load your household list: ${error.message}`)
+  return data
+}
+
+export async function givePriorityConsent() {
+  const { error } = await requireClient().rpc('give_priority_consent')
+  if (error) throw new Error(error.message)
+}
+
+export async function answerPriorityQuestion(hasPriority) {
+  const { error } = await requireClient().rpc('answer_priority_question', { has_priority: hasPriority })
+  if (error) throw new Error(error.message)
+}
+
+// Adds a person, or edits one (which sends it back for review). A new proof
+// replaces the old file once the entry is saved.
+export async function savePriorityMember({ id = null, category, fullName, birthYear, dueDate, details, proofFile, oldProofPath = null }) {
+  const client = requireClient()
+  const userId = await currentUserId()
+  const proofPath = proofFile ? await uploadPriorityProof(userId, proofFile) : oldProofPath
+  if (!proofPath) throw new Error('Add a photo or PDF of the proof.')
+  const row = {
+    category,
+    full_name: fullName.trim(),
+    birth_year: birthYear ? Number(birthYear) : null,
+    due_date: category === 'pregnant' ? dueDate || null : null,
+    details: details?.trim() || null,
+    proof_path: proofPath,
+  }
+  const request = id
+    ? client.from('priority_members').update(row).eq('id', id)
+    : client.from('priority_members').insert(row)
+  const { data, error } = await request.select(PRIORITY_COLUMNS).single()
+  if (error) {
+    if (proofFile) removeProofs([proofPath])
+    throw new Error(error.message)
+  }
+  if (proofFile && oldProofPath && oldProofPath !== proofPath) removeProofs([oldProofPath])
+  return data
+}
+
+export async function removePriorityMember(member) {
+  const { error } = await requireClient().from('priority_members').delete().eq('id', member.id)
+  if (error) throw new Error(`Could not remove this person: ${error.message}`)
+  removeProofs([member.proof_path])
+}
+
+// Withdraws consent: every entry and proof is deleted.
+export async function clearPriorityInformation() {
+  const { data, error } = await requireClient().rpc('clear_priority_information')
+  if (error) throw new Error(`Could not remove the information: ${error.message}`)
+  removeProofs(data ?? [])
+}
+
+// Short-lived link, for the household or an admin checking the proof.
+export async function getPriorityProofUrl(path) {
+  const { data, error } = await requireClient().storage.from(PROOF_BUCKET).createSignedUrl(path, 300)
+  if (error) throw new Error(`Could not open the proof: ${error.message}`)
+  return data.signedUrl
+}
+
+// Admins: every entry with the household's contact details.
+export async function getPriorityReviewQueue() {
+  const { data, error } = await requireClient()
+    .from('priority_members')
+    .select(`${PRIORITY_COLUMNS}, household:profiles!priority_members_user_id_fkey(display_name, phone, barangay)`)
+    .order('created_at')
+  if (error) throw new Error(`Could not load priority entries: ${error.message}`)
+  return data
+}
+
+export async function reviewPriorityMember(id, status, note = null) {
+  const { data, error } = await requireClient()
+    .from('priority_members')
+    .update({ status, review_note: note?.trim() || null })
+    .eq('id', id)
+    .select(PRIORITY_COLUMNS)
+  if (error) throw new Error(error.message)
+  if (!data.length) throw new Error('Could not review this entry. Sign in again with your authenticator code.')
+  return data[0]
 }
 
 // ---------------------------------------------------------------------------

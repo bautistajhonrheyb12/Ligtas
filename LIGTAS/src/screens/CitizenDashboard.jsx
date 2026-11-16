@@ -5,6 +5,7 @@ import {
   getEvacuationCenters,
   getMapPoints,
   getMyCheckin,
+  getMyPriorityMembers,
   getMyProfile,
   getMyReports,
   saveCheckin,
@@ -36,9 +37,14 @@ import {
   useTabIndicator,
   useToasts,
 } from '../lib/ui.jsx'
+import { NavigationView } from '../components/NavigationView.jsx'
+import { pickNearestSafeCenter, travelTimesToCenters } from '../lib/evacuation.js'
+import { hazardZones } from '../lib/hazards.js'
+import { formatMeters, formatMinutes } from '../lib/navigation.js'
 import { CitizenMap } from './citizen/CitizenMap.jsx'
 import { MyReports } from './citizen/MyReports.jsx'
 import { PreparePanel } from './citizen/PreparePanel.jsx'
+import { PriorityQuestion } from './citizen/Priority.jsx'
 import { ReportDialog } from './citizen/ReportDialog.jsx'
 import { SosDialog } from './citizen/SosDialog.jsx'
 
@@ -82,6 +88,9 @@ export function CitizenDashboard({ onSignOut }) {
   const [queuedReports, setQueuedReports] = useState([])
   const [checkin, setCheckin] = useState(null)
   const [isSavingCheckin, setIsSavingCheckin] = useState(false)
+  // People in the household who need priority rescue, with their review status.
+  const [priorityMembers, setPriorityMembers] = useState([])
+  const priorityMembersRef = useRef([])
 
   // Followed continuously so the person always sees themselves on the map.
   const livePosition = useLivePosition()
@@ -91,6 +100,13 @@ export function CitizenDashboard({ onSignOut }) {
   const isOutsideArea = Boolean(userPosition) && !isInsideSantaMaria(userPosition.latitude, userPosition.longitude)
   const [focusTarget, setFocusTarget] = useState(null)
   const [dialog, setDialog] = useState(null)
+  // The evacuation center being navigated to, if any.
+  const [navTarget, setNavTarget] = useState(null)
+  // Travel time by road to each open center (null: no safe road route),
+  // worked out from where the person is, avoiding reported hazards.
+  const [travelTimes, setTravelTimes] = useState(null)
+  const [isFindingSafeCenter, setIsFindingSafeCenter] = useState(false)
+  const travelOriginRef = useRef(null)
 
   const loadAlerts = () => getAlerts()
     .then((data) => { setAlerts(data.map(toAlertView)); setAlertsError('') })
@@ -105,6 +121,10 @@ export function CitizenDashboard({ onSignOut }) {
     .then((data) => { setMyReports(data); setReportsError('') })
     .catch((error) => setReportsError(error.message))
     .finally(() => setReportsLoading(false))
+  const loadPriority = () => getMyPriorityMembers()
+    .then((data) => { priorityMembersRef.current = data; setPriorityMembers(data) })
+    .catch(() => {})
+  const updateProfile = (changes) => setProfile((current) => current && { ...current, ...changes })
 
   const flushQueue = async () => {
     const owner = myIdRef.current
@@ -128,6 +148,7 @@ export function CitizenDashboard({ onSignOut }) {
       })
       .catch(() => setQueuedReports(getQueuedReports(null)))
     getMyProfile().then(setProfile).catch(() => {})
+    loadPriority()
     getMyCheckin().then(setCheckin).catch(() => {})
     loadAlerts()
     loadCenters()
@@ -150,6 +171,15 @@ export function CitizenDashboard({ onSignOut }) {
           pushToast(tr('reportUpdatedToast', { type: tr('types')[change.new.report_type] ?? change.new.report_type, status: tr(statusKeys[change.new.status]) }), 'info')
         }
         loadMyReports()
+      }),
+      // An admin verified or rejected a proof.
+      subscribeToTable('priority_members', (change) => {
+        const before = priorityMembersRef.current.find((member) => member.id === change.new?.id)
+        if (change.eventType === 'UPDATE' && before && before.status !== change.new.status) {
+          if (change.new.status === 'verified') pushToast(tr('priorityVerifiedToast', { name: change.new.full_name }), 'success')
+          if (change.new.status === 'rejected') pushToast(tr('priorityRejectedToast', { name: change.new.full_name, reason: change.new.review_note ?? '' }), 'urgent')
+        }
+        loadPriority()
       }),
     ]
     window.addEventListener('online', flushQueue)
@@ -175,10 +205,72 @@ export function CitizenDashboard({ onSignOut }) {
     .map((center) => ({
       ...center,
       distance: userPosition && center.latitude != null ? distanceKm(userPosition, center) : null,
+      road: travelTimes?.has(center.id) ? travelTimes.get(center.id) : undefined,
       available: Math.max(center.capacity - center.occupants, 0),
     }))
-    .sort((a, b) => (userPosition ? (a.distance ?? Infinity) - (b.distance ?? Infinity) : b.available - a.available))
+    // By travel time on the road when known, then by straight-line distance.
+    .sort((a, b) => (a.road !== undefined || b.road !== undefined
+      ? (a.road?.timeS ?? Infinity) - (b.road?.timeS ?? Infinity)
+      : userPosition ? (a.distance ?? Infinity) - (b.distance ?? Infinity) : b.available - a.available))
     .slice(0, 3)
+
+  // Road travel times, recalculated when the person moves 300 m or more, or
+  // when centers or hazards change.
+  const loadTravelTimes = async () => {
+    const origin = [userPosition.latitude, userPosition.longitude]
+    travelOriginRef.current = origin
+    const times = await travelTimesToCenters({ origin, centers, zones: hazardZones({ points }) })
+    setTravelTimes(times)
+    return times
+  }
+  useEffect(() => {
+    if (!userPosition || isOutsideArea || !isOnline) return
+    const last = travelOriginRef.current
+    if (last && distanceKm({ latitude: last[0], longitude: last[1] }, userPosition) < 0.3) return
+    loadTravelTimes().catch(() => {})
+  }, [userPosition, isOutsideArea, isOnline])
+  useEffect(() => {
+    if (travelOriginRef.current && userPosition && isOnline) loadTravelTimes().catch(() => {})
+  }, [centers, points])
+
+  // "Evacuate now": the open center with space that is soonest to reach by a
+  // safe road route.
+  const goToNearestSafeCenter = async () => {
+    if (!userPosition) {
+      pushToast(t('evacuateNeedsLocation'), 'info')
+      locateMe()
+      return
+    }
+    setIsFindingSafeCenter(true)
+    try {
+      const times = await loadTravelTimes()
+      const center = pickNearestSafeCenter(centers, times)
+      if (!center) {
+        pushToast(t('evacuateNone'), 'urgent')
+        return
+      }
+      const travel = times.get(center.id)
+      setNavTarget({ ...center, notice: t('evacuateChosen', { name: center.name, time: formatMinutes(travel.timeS) }) })
+    } catch (error) {
+      pushToast(error.message, 'urgent')
+    } finally {
+      setIsFindingSafeCenter(false)
+    }
+  }
+
+  // One-tap hazard report from the navigation screen, at the person's position.
+  const quickReport = async (type, position) => {
+    const where = `GPS ${position.latitude.toFixed(5)}, ${position.longitude.toFixed(5)}${position.roadName ? ` (${position.roadName})` : ''}`
+    await submitIncidentReport({
+      reportType: type,
+      location: where,
+      notes: `${type} reported while navigating${position.roadName ? ` on ${position.roadName}` : ''}.`,
+      latitude: position.latitude,
+      longitude: position.longitude,
+      locationSource: 'gps',
+    })
+    loadMyReports()
+  }
 
   // Centers the map on the person, waiting for the first location fix if needed.
   const locateMe = () => {
@@ -332,12 +424,22 @@ export function CitizenDashboard({ onSignOut }) {
             <div><strong>{urgentAlert.title}</strong><span>{urgentAlert.location} · {timeAgo(urgentAlert.createdAt)}</span></div>
           </button>}
 
+          {priorityMembers.some((member) => member.status === 'rejected') && <button class="priority-attention" type="button" onClick={() => selectTab('prepare')}>
+            <Icon name="alert" size={18} />
+            <span><strong>{t('priorityAttention')}</strong><small>{t('priorityAttentionHint')}</small></span>
+          </button>}
+
           <div class="citizen-stats-row" aria-label="Community safety overview">
             <div class="citizen-sheet-stat stat-blue"><strong><CountUp value={stats.openCenters} /></strong><span>{t('statOpenCenters')}</span></div>
             <div class="citizen-sheet-stat stat-green"><strong><CountUp value={stats.slots} /></strong><span>{t('statSlots')}</span></div>
             <div class="citizen-sheet-stat stat-orange"><strong><CountUp value={stats.sheltered} /></strong><span>{t('statSheltered')}</span></div>
             <div class="citizen-sheet-stat stat-red"><strong><CountUp value={stats.danger} /></strong><span>{t('statDanger')}</span></div>
           </div>
+
+          <button type="button" class="evacuate-now" onClick={goToNearestSafeCenter} disabled={isFindingSafeCenter}>
+            {isFindingSafeCenter ? <span class="btn-spinner" aria-hidden="true" /> : <Icon name="navigate" size={20} />}
+            <span><strong>{isFindingSafeCenter ? t('evacuateFinding') : t('evacuateNow')}</strong><small>{t('evacuateHint')}</small></span>
+          </button>
 
           <div class="citizen-sheet-section">
             <div class="citizen-sheet-section-heading">
@@ -355,12 +457,14 @@ export function CitizenDashboard({ onSignOut }) {
                 const level = capacityLevel(center.occupants, center.capacity)
                 return <article class="citizen-evac-card" key={center.id}>
                   <div class="citizen-evac-heading">
-                    <div><strong>{center.name}</strong><span>{center.location}{center.distance != null ? ` · ${t('away', { distance: formatDistance(center.distance) })}` : ''}</span></div>
+                    <div><strong>{center.name}</strong><span>{center.location}{center.road ? ` · ${t('byRoad', { time: formatMinutes(center.road.timeS), distance: formatMeters(center.road.distanceM) })}` : center.road === null ? ` · ${t('noSafeRoad')}` : center.distance != null ? ` · ${t('away', { distance: formatDistance(center.distance) })}` : ''}</span></div>
                     <span class={`capacity-chip capacity-chip--${level.level}`}>{t(capacityKeys[level.level])}</span>
                   </div>
                   <div class="evac-progress"><div class="bar" data-level={level.level} style={{ width: `${center.occupants / center.capacity * 100}%` }}></div><div class="counts">{t('capacity', { occupants: center.occupants, capacity: center.capacity })}</div></div>
                   <div class="evac-actions">
-                    <a class="evac-navigate" href={directionsUrl(center)} target="_blank" rel="noreferrer"><Icon name="navigate" size={16} /> {t('navigate')}</a>
+                    {center.latitude != null
+                      ? <button type="button" class="evac-navigate" onClick={() => setNavTarget(center)}><Icon name="navigate" size={16} /> {t('navigate')}</button>
+                      : <a class="evac-navigate" href={directionsUrl(center)} target="_blank" rel="noreferrer"><Icon name="navigate" size={16} /> {t('navigate')}</a>}
                     {center.latitude != null && <button type="button" class="evac-show" onClick={() => { setFocusTarget({ latitude: center.latitude, longitude: center.longitude }); setIsSheetExpanded(false) }}><Icon name="pin" size={16} /> {t('showOnMap')}</button>}
                   </div>
                 </article>
@@ -402,7 +506,20 @@ export function CitizenDashboard({ onSignOut }) {
 
         {activeTab === 'reports' && <MyReports t={t} reports={myReports} queued={queuedReports} loading={reportsLoading} error={reportsError} onWithdraw={withdrawReport} />}
 
-        {activeTab === 'prepare' && <PreparePanel t={t} lang={lang} setLang={setLang} profile={profile} onSaveProfile={saveProfile} />}
+        {activeTab === 'prepare' && <PreparePanel
+          t={t}
+          lang={lang}
+          setLang={setLang}
+          profile={profile}
+          onSaveProfile={saveProfile}
+          priority={{
+            members: priorityMembers,
+            onReload: loadPriority,
+            onConsented: () => updateProfile({ priority_consent_at: new Date().toISOString() }),
+            onWithdrawn: () => { updateProfile({ priority_consent_at: null }); loadPriority() },
+            onToast: pushToast,
+          }}
+        />}
       </div>
       <nav class="footer-controls citizen-tabs" aria-label="Citizen sections" ref={citizenNavRef}>
         <span class="tab-pill" aria-hidden="true" />
@@ -414,12 +531,34 @@ export function CitizenDashboard({ onSignOut }) {
       </nav>
     </section>
 
+    {profile?.priority_answered_at === null && <PriorityQuestion
+      t={t}
+      lang={lang}
+      setLang={setLang}
+      profile={profile}
+      members={priorityMembers}
+      onReload={loadPriority}
+      onConsented={() => updateProfile({ priority_consent_at: new Date().toISOString() })}
+      onAnswered={() => { updateProfile({ priority_answered_at: new Date().toISOString() }); loadPriority() }}
+      onSos={() => setDialog('sos')}
+      onSignOut={onSignOut}
+      onToast={pushToast}
+    />}
     {dialog === 'report' && <ReportDialog t={t} ownerId={myId} hasPhone={Boolean(profile?.phone)} onAddPhone={() => { setDialog(null); selectTab('prepare') }} onClose={() => setDialog(null)} onDone={(result) => {
       setDialog(null)
       setQueuedReports(getQueuedReports(myId))
       pushToast(result === 'queued' ? t('reportQueued') : t('reportSent'), result === 'queued' ? 'info' : 'success')
       if (result === 'sent') loadMyReports()
     }} />}
+    {navTarget && <NavigationView
+      destination={{ latitude: navTarget.latitude, longitude: navTarget.longitude, name: navTarget.name, location: navTarget.location }}
+      points={points}
+      initialPosition={userPosition}
+      lang={lang}
+      notice={navTarget.notice ?? ''}
+      onQuickReport={quickReport}
+      onClose={() => setNavTarget(null)}
+    />}
     {dialog === 'sos' && <SosDialog t={t} livePosition={userPosition} onClose={() => setDialog(null)} onSent={() => {
       setCheckin({ status: 'Need help', updated_at: new Date().toISOString() })
       loadMyReports()

@@ -1,0 +1,274 @@
+/* ==========================================================
+   Turn-by-turn navigation (components/NavigationView.jsx)
+   ========================================================== */
+
+.nav-view {
+  position: fixed;
+  z-index: 2000;
+  inset: 0;
+  overflow: hidden;
+  color: var(--ui-ink);
+  background: #f2efe9;
+  font-family: 'DM Sans', Arial, sans-serif;
+}
+.nav-stage { position: absolute; inset: 0; overflow: hidden; }
+/* Larger than the screen so it can turn without empty corners. */
+.nav-rotator { position: absolute; transition: transform .6s ease-out; will-change: transform; }
+.nav-map { width: 100%; height: 100%; }
+.nav-map.leaflet-container { background: #f2efe9; }
+
+/* Markers */
+.nav-user { display: grid; place-items: center; }
+.nav-user-arrow {
+  position: relative;
+  display: block;
+  width: 30px;
+  height: 30px;
+  border: 3px solid #fff;
+  border-radius: 50%;
+  background: #2f78b7;
+  box-shadow: 0 3px 10px rgba(20, 60, 100, .45);
+  transition: transform .5s ease-out;
+}
+.nav-user-arrow::after {
+  position: absolute;
+  top: 3px;
+  left: 50%;
+  border-right: 6px solid transparent;
+  border-bottom: 13px solid #fff;
+  border-left: 6px solid transparent;
+  content: '';
+  transform: translateX(-50%);
+}
+.nav-destination span {
+  display: block;
+  width: 30px;
+  height: 30px;
+  border: 3px solid #fff;
+  border-radius: 50% 50% 50% 0;
+  background: #c94f4e;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, .3);
+  transform: rotate(-45deg);
+}
+
+/* Top: destination card (planning) or next instruction (navigating), with
+   messages stacked underneath so they never overlap. */
+.nav-top-stack {
+  position: absolute;
+  z-index: 5;
+  top: calc(12px + env(safe-area-inset-top));
+  left: 12px;
+  right: 12px;
+  display: grid;
+  justify-items: start;
+  gap: 8px;
+  max-width: 460px;
+  pointer-events: none;
+}
+.nav-top-stack > * { pointer-events: auto; }
+.nav-top, .nav-instruction {
+  box-sizing: border-box;
+  width: 100%;
+  border-radius: 16px;
+  box-shadow: 0 8px 24px rgba(20, 40, 30, .22);
+}
+.nav-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 12px 12px 16px;
+  background: rgba(255, 255, 255, .97);
+}
+.nav-top small { display: block; color: var(--ui-muted); font-size: 12px; }
+.nav-top strong { display: block; font: 800 17px/1.25 Manrope, sans-serif; }
+.nav-instruction {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 16px;
+  color: #fff;
+  background: #1d5f49;
+}
+.nav-instruction-icon { display: grid; flex: 0 0 auto; width: 52px; height: 52px; place-items: center; border-radius: 14px; background: rgba(255, 255, 255, .14); }
+.nav-instruction strong { display: block; font: 800 26px/1.1 Manrope, sans-serif; }
+.nav-instruction p { margin: 2px 0 0; font-size: 15px; font-weight: 600; line-height: 1.35; }
+.nav-instruction small { display: inline-block; margin-top: 6px; padding: 2px 8px; border-radius: 999px; color: #d8eee3; background: rgba(0, 0, 0, .18); font-size: 12px; }
+
+.nav-banner {
+  max-width: 100%;
+  margin: 0;
+  padding: 8px 14px;
+  border-radius: 12px;
+  color: #fff;
+  background: rgba(32, 58, 53, .92);
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.4;
+  box-shadow: 0 4px 14px rgba(20, 40, 30, .2);
+}
+.nav-banner.is-warning { color: #6b4a0c; background: #fff3d6; }
+
+/* Phones: just above the bottom panel, clear of the instruction card. */
+.nav-side-buttons {
+  position: absolute;
+  z-index: 5;
+  bottom: calc(176px + env(safe-area-inset-bottom));
+  right: 12px;
+  display: grid;
+  justify-items: end;
+  gap: 8px;
+}
+.nav-icon-button {
+  display: grid;
+  width: 44px;
+  height: 44px;
+  place-items: center;
+  border: 1px solid var(--ui-border);
+  border-radius: 50%;
+  color: #53675e;
+  background: #fff;
+  box-shadow: 0 4px 12px rgba(20, 40, 30, .16);
+  cursor: pointer;
+}
+.nav-icon-button.is-on { color: #2f78b7; }
+.nav-compass { color: #c94f4e; font: 800 14px Manrope, sans-serif; transition: transform .6s ease-out; }
+.nav-recenter {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 14px;
+  border: 0;
+  border-radius: 999px;
+  color: #fff;
+  background: #2f78b7;
+  box-shadow: 0 4px 12px rgba(20, 60, 100, .3);
+  font: 700 13px 'DM Sans', sans-serif;
+  cursor: pointer;
+}
+
+/* Bottom panel */
+.nav-panel {
+  position: absolute;
+  z-index: 5;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  max-height: 62vh;
+  overflow-y: auto;
+  padding: 16px 16px calc(12px + env(safe-area-inset-bottom));
+  border-radius: 20px 20px 0 0;
+  background: #fff;
+  box-shadow: 0 -8px 28px rgba(20, 40, 30, .18);
+}
+.nav-wait { display: flex; align-items: center; gap: 10px; margin: 6px 0 10px; font-weight: 700; }
+.nav-wait .btn-spinner { margin: 0; color: var(--ui-green); }
+.nav-error p { margin: 0 0 12px; color: #8e2f2c; font-weight: 600; line-height: 1.5; }
+.nav-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+.nav-primary {
+  flex: 1 1 auto;
+  min-height: 48px;
+  padding: 0 18px;
+  border: 0;
+  border-radius: 12px;
+  color: #fff;
+  background: var(--ui-green);
+  font: 800 15px 'DM Sans', sans-serif;
+  cursor: pointer;
+}
+.nav-primary.is-danger { background: #c94f4e; }
+.nav-link-button { display: inline-flex; align-items: center; gap: 6px; padding: 10px 4px; color: #2f78b7; font-size: 13px; font-weight: 700; text-decoration: none; }
+
+.nav-mode { display: inline-flex; margin-bottom: 12px; padding: 3px; border-radius: 10px; background: #eef3f0; }
+.nav-mode button { min-width: 84px; min-height: 34px; border: 0; border-radius: 8px; color: #53675e; background: transparent; font: 700 13px 'DM Sans', sans-serif; cursor: pointer; }
+.nav-mode button.is-active { color: var(--ui-ink); background: #fff; box-shadow: 0 1px 4px rgba(0, 0, 0, .1); }
+.nav-warning { margin: 0 0 10px; padding: 9px 12px; border: 1px solid #ecd7a8; border-radius: 10px; color: #7a5714; background: #fff8e6; font-size: 13px; line-height: 1.45; }
+.nav-warning.is-danger { border-color: #f1c4c0; color: #8e2f2c; background: #fff1ef; font-weight: 600; }
+
+.nav-route-list { display: grid; gap: 8px; margin-bottom: 12px; }
+.nav-route {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: baseline;
+  gap: 2px 10px;
+  padding: 12px 14px;
+  border: 1.5px solid var(--ui-border);
+  border-radius: 14px;
+  color: var(--ui-ink);
+  background: #fff;
+  text-align: left;
+  cursor: pointer;
+}
+.nav-route.is-selected { border-color: #2f78b7; background: #f3f8fc; }
+.nav-route.is-unsafe.is-selected { border-color: #c94f4e; background: #fff4f2; }
+.nav-route-time { font: 800 20px Manrope, sans-serif; }
+.nav-route-meta { color: var(--ui-muted); font-size: 13px; }
+.nav-route-label { color: #2f78b7; font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: .05em; }
+.nav-route.is-unsafe .nav-route-label { color: #a2453f; }
+.nav-route-safety { grid-column: 1 / -1; font-size: 12.5px; font-weight: 700; }
+.nav-route-safety.is-safe { color: #2f6148; }
+.nav-route-safety.is-caution { color: #8a5a0b; }
+.nav-route-safety.is-unsafe { color: #a2453f; }
+
+.nav-progress { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 4px 12px; }
+.nav-eta strong { display: block; color: var(--ui-green-dark); font: 800 24px Manrope, sans-serif; }
+.nav-eta span { color: var(--ui-muted); font-size: 13.5px; font-weight: 600; }
+.nav-status { display: grid; justify-items: end; gap: 4px; font-size: 12px; font-weight: 700; }
+.nav-speed b { font: 800 18px Manrope, sans-serif; }
+.nav-gps { display: inline-flex; align-items: center; gap: 5px; color: var(--ui-muted); }
+.nav-gps i { width: 9px; height: 9px; border-radius: 50%; background: #9aa8a2; }
+.nav-gps--good i { background: #3f8a4f; }
+.nav-gps--fair i { background: #d9a63b; }
+.nav-gps--poor i, .nav-gps--lost i { background: #c94f4e; }
+.nav-end { grid-column: 1 / -1; min-height: 46px; margin-top: 8px; border: 0; border-radius: 12px; color: #fff; background: #c94f4e; font: 800 15px 'DM Sans', sans-serif; cursor: pointer; }
+
+.nav-arrived { display: flex; align-items: center; gap: 12px; }
+.nav-arrived > .ui-icon { flex: 0 0 auto; padding: 8px; border-radius: 50%; color: #fff; background: var(--ui-green); }
+.nav-arrived div { flex: 1; }
+.nav-arrived strong { display: block; font: 800 18px Manrope, sans-serif; }
+.nav-arrived span { color: var(--ui-muted); font-size: 13px; }
+.nav-arrived .nav-primary { flex: 0 0 auto; }
+
+.nav-attribution { margin: 10px 0 0; color: #8a9993; font-size: 10.5px; }
+.nav-secondary { flex: 0 0 auto; min-height: 48px; padding: 0 16px; border: 1px solid var(--ui-border); border-radius: 12px; color: #49665a; background: #f8faf8; font: 700 14px 'DM Sans', sans-serif; cursor: pointer; }
+.nav-arrived { flex-wrap: wrap; }
+
+/* Quick report while navigating */
+.nav-report-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 14px;
+  border: 0;
+  border-radius: 999px;
+  color: #fff;
+  background: #c27a1a;
+  box-shadow: 0 4px 12px rgba(120, 70, 10, .3);
+  font: 700 13px 'DM Sans', sans-serif;
+  cursor: pointer;
+}
+.nav-report-button:disabled { opacity: .6; }
+.nav-report-sheet {
+  position: absolute;
+  z-index: 7;
+  left: 12px;
+  bottom: calc(176px + env(safe-area-inset-bottom));
+  width: min(300px, calc(100% - 84px));
+  padding: 14px;
+  border-radius: 16px;
+  background: #fff;
+  box-shadow: 0 10px 30px rgba(20, 40, 30, .25);
+}
+.nav-report-sheet strong { display: block; margin-bottom: 10px; font-size: 14px; }
+.nav-report-sheet div { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.nav-report-sheet button { min-height: 44px; border: 1px solid #ecd7a8; border-radius: 10px; color: #7a5714; background: #fff8e6; font: 700 13px 'DM Sans', sans-serif; cursor: pointer; }
+@media (min-width: 760px) {
+  .nav-report-sheet { top: 200px; bottom: auto; left: auto; right: 16px; width: 300px; }
+}
+
+/* Wider screens: the panel becomes a floating card on the left. */
+@media (min-width: 760px) {
+  .nav-panel { right: auto; bottom: 16px; left: 16px; width: 420px; max-height: calc(100vh - 140px); border-radius: 18px; }
+  .nav-top-stack { left: 16px; right: auto; width: 420px; }
+  .nav-side-buttons { top: calc(16px + env(safe-area-inset-top)); bottom: auto; right: 16px; }
+}

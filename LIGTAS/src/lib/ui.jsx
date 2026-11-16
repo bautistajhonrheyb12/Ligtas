@@ -105,6 +105,12 @@ export const iconPaths = {
   fire: <path d='M12 22c4 0 7-2.7 7-7 0-4-3-6.5-4-9-1 2-2 3-3.5 3.5C11 7 11 4 9 2 9 6 5 9 5 15c0 4.3 3 7 7 7z' />,
   medical: <><rect x='3' y='3' width='18' height='18' rx='4' /><path d='M12 8v8M8 12h8' /></>,
   mountain: <path d='M8 3l4 8 5-5 5 15H2z' />,
+  // Priority rescue categories
+  accessible: <><circle cx='10' cy='4' r='2' /><path d='M10 7.5V13h6l3 6.5' /><path d='M15.5 18A5.5 5.5 0 1 1 7 11.4' /></>,
+  pregnant: <><circle cx='11' cy='4' r='2' /><path d='M11 7.5c-1.8 1.4-2.2 4-1.6 6.5L10.5 21M11 7.5c2.6.8 5 3 5 5.8 0 2.4-2 3.7-4.6 3.7' /></>,
+  child: <><circle cx='12' cy='6' r='2.5' /><path d='M12 9.5v6M8.5 12h7M12 15.5l-2.5 5M12 15.5l2.5 5' /></>,
+  senior: <><circle cx='10' cy='4' r='2' /><path d='M10 7.5L9 13l-2 8M9 13l3 3v5M10 9.5l5 2v9.5' /></>,
+  file: <><path d='M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z' /><path d='M14 2v6h6M9 13h6M9 17h4' /></>,
 }
 
 export function Icon({ name, size = 20 }) {
@@ -313,6 +319,30 @@ export function useLivePosition() {
 export function directionsUrl({ latitude, longitude, location }) {
   const destination = latitude != null ? `${latitude},${longitude}` : `${location}, Santa Maria, Bulacan`
   return `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(destination)}`
+}
+
+// Keeps the screen on while `active` (sharing location, navigating), so the
+// phone does not lock mid-response. Browsers drop the lock when the tab
+// is hidden, so it is requested again when the app comes back.
+export function useWakeLock(active) {
+  useEffect(() => {
+    if (!active || !('wakeLock' in navigator)) return undefined
+    let lock = null
+    let cancelled = false
+    const request = () => {
+      if (document.visibilityState !== 'visible') return
+      navigator.wakeLock.request('screen')
+        .then((sentinel) => { if (cancelled) sentinel.release(); else lock = sentinel })
+        .catch(() => {})
+    }
+    request()
+    document.addEventListener('visibilitychange', request)
+    return () => {
+      cancelled = true
+      document.removeEventListener('visibilitychange', request)
+      lock?.release().catch(() => {})
+    }
+  }, [active])
 }
 
 export function useOnlineStatus() {

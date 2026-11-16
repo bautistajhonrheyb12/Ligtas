@@ -1,6 +1,8 @@
 import { useState } from 'preact/hooks'
 import { getReportPhotoUrl } from '../../lib/supabase.js'
 import { Icon, LoadingCards, downloadCsv, reportTypeStyle, timeAgo } from '../../lib/ui.jsx'
+import { STAFF_LABELS, countCategories } from '../../lib/priority.js'
+import { PriorityTags } from '../../components/PriorityTags.jsx'
 
 const FILTERS = ['All', 'Pending', 'Verified', 'Resolved', 'Rejected', 'Cancelled', 'SOS']
 const FILTER_LABELS = { Cancelled: 'Withdrawn' }
@@ -58,8 +60,9 @@ export function ReportsPanel({ reports, integrity = {}, loading, staff, updating
   const exportCsv = () => {
     const rows = [[
       'Submitted', 'Type', 'Priority', 'Status', 'Location', 'Latitude', 'Longitude', 'People affected',
-      'Vulnerable people', 'Notes', 'Reporter', 'Reporter phone', 'Assigned team', 'Response stage', 'Resolved at', 'Resolution note',
+      'Vulnerable people', 'Verified priority', 'Unverified priority', 'Notes', 'Reporter', 'Reporter phone', 'Assigned team', 'Response stage', 'Resolved at', 'Resolution note',
     ]]
+    const categories = (list) => countCategories(list).map(([category, count]) => `${STAFF_LABELS[category]}${count > 1 ? ` x${count}` : ''}`).join('; ')
     filtered.forEach((report) => rows.push([
       new Date(report.created_at).toLocaleString(),
       report.report_type,
@@ -70,6 +73,8 @@ export function ReportsPanel({ reports, integrity = {}, loading, staff, updating
       report.longitude ?? '',
       report.people_affected ?? '',
       report.vulnerable_people ? 'Yes' : 'No',
+      categories(report.priority_needs),
+      categories(report.priority_pending),
       report.notes,
       report.contact_name ?? '',
       report.contact_phone ?? '',
@@ -123,7 +128,8 @@ export function ReportsPanel({ reports, integrity = {}, loading, staff, updating
             </p>}
             <div class="admin-report-tags">
               {report.people_affected > 0 && <span><Icon name="users" size={13} /> {report.people_affected} affected</span>}
-              {report.vulnerable_people && <span class="is-vulnerable"><Icon name="heart" size={13} /> Vulnerable people</span>}
+              <PriorityTags needs={report.priority_needs} pending={report.priority_pending} />
+              {report.vulnerable_people && !report.priority_needs?.length && <span class="is-vulnerable"><Icon name="heart" size={13} /> Vulnerable people</span>}
               {report.photo_path && <ReportPhotoLink path={report.photo_path} />}
               {integrity[report.id] === 'valid' && <span class="is-signed" title="The signature matches: not changed since it was sent"><Icon name="shield" size={13} /> Signed</span>}
               {integrity[report.id] === 'unsigned' && <span class="is-unsigned" title="Sent before signing was set up, or the signature could not be saved">Not signed</span>}

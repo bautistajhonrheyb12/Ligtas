@@ -12,11 +12,13 @@ import {
   getIncidentReports,
   getMapPoints,
   getMyProfile,
+  getPriorityReviewQueue,
   getReportEvents,
   getRequestCountry,
   getRescuerLocations,
   getSecurityFlags,
   getStaffProfiles,
+  reviewPriorityMember,
   subscribeToTable,
   updateIncidentReport,
 } from '../lib/supabase.js'
@@ -39,6 +41,7 @@ import { AdminOperationsMap } from './admin/AdminMap.jsx'
 import { CenterForm, PointForm } from './admin/AdminForms.jsx'
 import { ActivityFeed, AlertForm, AlertList, CentersPanel, TeamsPanel } from './admin/AdminPanels.jsx'
 import { AnalyticsPanel } from './admin/AnalyticsPanel.jsx'
+import { PriorityPanel } from './admin/PriorityPanel.jsx'
 import { ReportsPanel } from './admin/ReportsPanel.jsx'
 import { SecurityPanel } from './admin/SecurityPanel.jsx'
 
@@ -55,6 +58,7 @@ const PAGE_TITLES = {
   centers: 'Evacuation centers',
   teams: 'Response teams',
   analytics: 'Analytics',
+  priority: 'Priority rescue',
   security: 'Security',
 }
 
@@ -89,6 +93,8 @@ export function AdminDashboard({ onSignOut }) {
   const [securityLoading, setSecurityLoading] = useState(true)
   const [securityError, setSecurityError] = useState('')
   const [networkCountry, setNetworkCountry] = useState(null)
+  const [priority, setPriority] = useState({ members: [], loading: true, error: '' })
+  const [reviewingId, setReviewingId] = useState(null)
   const integrity = useReportIntegrity(reports)
 
   const [addingPoint, setAddingPoint] = useState('')
@@ -120,6 +126,9 @@ export function AdminDashboard({ onSignOut }) {
     .then((data) => { setSecurity(data); setSecurityError('') })
     .catch((error) => setSecurityError(error.message))
     .finally(() => setSecurityLoading(false))
+  const loadPriority = () => getPriorityReviewQueue()
+    .then((members) => setPriority({ members, loading: false, error: '' }))
+    .catch((error) => setPriority((current) => ({ ...current, loading: false, error: error.message })))
 
   useEffect(() => {
     getMyProfile().then((profile) => setMyName(profile.display_name ?? '')).catch(() => {})
@@ -132,6 +141,7 @@ export function AdminDashboard({ onSignOut }) {
     loadEvents()
     loadCheckins()
     loadSecurity()
+    loadPriority()
     getRequestCountry().then(setNetworkCountry).catch(() => {})
 
     const unsubscribers = [
@@ -150,6 +160,10 @@ export function AdminDashboard({ onSignOut }) {
       subscribeToTable('evacuation_centers', loadCenters),
       subscribeToTable('rescuer_locations', loadLocations),
       subscribeToTable('security_flags', loadSecurity),
+      subscribeToTable('priority_members', (change) => {
+        if (change.eventType === 'INSERT') pushToast('New priority rescue proof to check', 'info')
+        loadPriority()
+      }),
     ]
     const closeOnEscape = (event) => { if (event.key === 'Escape') setIsAdminNavOpen(false) }
     window.addEventListener('keydown', closeOnEscape)
@@ -253,6 +267,22 @@ export function AdminDashboard({ onSignOut }) {
     }
   }
 
+  const handlePriorityReview = async (member, status, note = null) => {
+    setReviewingId(member.id)
+    setNotice('')
+    try {
+      const updated = await reviewPriorityMember(member.id, status, note)
+      setPriority((current) => ({ ...current, members: current.members.map((item) => item.id === member.id ? { ...item, ...updated } : item) }))
+      showNotice(status === 'verified'
+        ? `${member.full_name} is verified. Their household's open calls now show it.`
+        : `${member.full_name} was ${member.status === 'verified' ? 'revoked' : 'rejected'}. The household sees the reason and can send a new proof.`)
+    } catch (error) {
+      showNotice(error.message, true)
+    } finally {
+      setReviewingId(null)
+    }
+  }
+
   const selectAdminTab = (tab) => {
     setActiveTab(tab)
     setNotice('')
@@ -282,6 +312,7 @@ export function AdminDashboard({ onSignOut }) {
     { id: 'map', label: 'Map', icon: '⌖' },
     { id: 'centers', label: 'Centers', icon: '⌂' },
     { id: 'teams', label: 'Teams', icon: '◎' },
+    { id: 'priority', label: 'Priority', icon: '♥', count: priority.members.filter((member) => member.status === 'pending').length },
     { id: 'analytics', label: 'Analytics', icon: '▥' },
     { id: 'security', label: 'Security', icon: '⛨', count: flaggedAccounts },
   ]
@@ -462,6 +493,11 @@ export function AdminDashboard({ onSignOut }) {
       </div>}
 
       {activeTab === 'analytics' && <AnalyticsPanel reports={reports} events={events} checkins={checkins} />}
+
+      {activeTab === 'priority' && <>
+        {noticeBanner}
+        <PriorityPanel members={priority.members} loading={priority.loading} error={priority.error} busyId={reviewingId} onReview={handlePriorityReview} />
+      </>}
 
       {activeTab === 'security' && <>
         {noticeBanner}
