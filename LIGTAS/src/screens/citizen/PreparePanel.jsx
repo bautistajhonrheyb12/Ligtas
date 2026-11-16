@@ -4,6 +4,7 @@ import { hotlines } from '../../lib/hotlines.js'
 import { toStoredMobile } from '../../lib/phone.js'
 import { Icon } from '../../lib/ui.jsx'
 import { PrioritySection } from './Priority.jsx'
+import { privacyUrl, termsUrl } from '../../lib/legal.js'
 
 const CHECKLIST_KEY = 'ligtas-gobag'
 
@@ -141,6 +142,10 @@ export function PreparePanel({ t, lang, setLang, profile, onSaveProfile, priorit
           <button type="button" class={lang === 'tl' ? 'is-active' : ''} aria-pressed={lang === 'tl'} onClick={() => setLang('tl')}>Filipino</button>
         </div>
       </div>
+      <p class="legal-links">
+        <a href={termsUrl} target="_blank" rel="noopener">Terms of Use</a>
+        <a href={privacyUrl} target="_blank" rel="noopener">Privacy Policy</a>
+      </p>
     </section>
   </div>
 }

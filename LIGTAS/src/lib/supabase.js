@@ -77,12 +77,22 @@ async function withOfflineCache(key, load) {
 // Profiles
 // ---------------------------------------------------------------------------
 
+// Newest first. Before a migration adds its columns, the next set is used and
+// what those columns drive (the priority question, accepting the terms) is
+// simply not asked.
+const PROFILE_COLUMNS = [
+  'role, display_name, barangay, phone, priority_answered_at, priority_consent_at, terms_version',
+  'role, display_name, barangay, phone, priority_answered_at, priority_consent_at',
+  'role, display_name, barangay, phone',
+]
+
 export async function getProfile(userId) {
-  const query = (columns) => requireClient().from('profiles').select(columns).eq('id', userId).single()
-  let { data, error } = await query('role, display_name, barangay, phone, priority_answered_at, priority_consent_at')
-  // Before the priority rescue migration the columns do not exist yet; the
-  // question is then simply not asked.
-  if (error?.code === '42703') ({ data, error } = await query('role, display_name, barangay, phone'))
+  let data
+  let error
+  for (const columns of PROFILE_COLUMNS) {
+    ;({ data, error } = await requireClient().from('profiles').select(columns).eq('id', userId).single())
+    if (error?.code !== '42703') break
+  }
 
   if (error) {
     throw new Error(`Could not load your account role: ${error.message}`)
@@ -93,6 +103,24 @@ export async function getProfile(userId) {
   }
 
   return data
+}
+
+// Staff screens only need the accepted version: undefined before the
+// acceptance migration, null when never accepted.
+export async function getMyTermsVersion() {
+  const { data, error } = await requireClient()
+    .from('profiles')
+    .select('terms_version')
+    .eq('id', await currentUserId())
+    .single()
+  if (error?.code === '42703') return undefined
+  if (error) throw new Error(error.message)
+  return data.terms_version
+}
+
+export async function acceptTerms(version) {
+  const { error } = await requireClient().rpc('accept_terms', { version })
+  if (error) throw new Error(`Could not save your acceptance: ${error.message}`)
 }
 
 // Sign-in only needs the role; keeping this query minimal lets login work even

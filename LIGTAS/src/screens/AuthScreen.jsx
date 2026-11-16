@@ -3,6 +3,7 @@ import { PhoneInput } from '../components/PhoneInput.jsx'
 import { isValidMobile } from '../lib/phone.js'
 import { sendPasswordReset, signInWithGoogle } from '../lib/supabase.js'
 import { Icon, Logo, PasswordChecklist, passwordProblem } from '../lib/ui.jsx'
+import { LEGAL_VERSION, privacyUrl, termsUrl } from '../lib/legal.js'
 
 const roles = [
   { id: 'citizen', name: 'Citizen', description: 'Stay informed, report incidents, and receive important alerts.', icon: 'citizen' },
@@ -31,6 +32,7 @@ export function AuthScreen({
   const [displayName, setDisplayName] = useState('')
   const [barangay, setBarangay] = useState('')
   const [phone, setPhone] = useState('')
+  const [agreedToTerms, setAgreedToTerms] = useState(false)
   const [isSendingReset, setIsSendingReset] = useState(false)
   const [isOpeningGoogle, setIsOpeningGoogle] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
@@ -72,12 +74,18 @@ export function AuthScreen({
       return
     }
 
+    if (mode === 'signup' && !agreedToTerms) {
+      setError('Please agree to the Terms of Use and Privacy Policy to create an account.')
+      return
+    }
+
     setIsSubmitting(true)
     try {
       const result = await onLogin(role, email.trim(), password, mode, {
         displayName: displayName.trim(),
         barangay: barangay.trim(),
         phone,
+        termsVersion: LEGAL_VERSION,
       })
       if (result?.confirmationRequired) {
         setNotice('Check your email to confirm your account before signing in.')
@@ -395,6 +403,11 @@ onInput={(e) => setConfirmPassword(e.currentTarget.value)}
 
 </label>
 )}
+
+{mode === 'signup' && <label class="terms-check field-reveal">
+  <input type="checkbox" name="terms" checked={agreedToTerms} onChange={(e) => setAgreedToTerms(e.currentTarget.checked)} />
+  <span>I agree to the <a href={termsUrl} target="_blank" rel="noopener">Terms of Use</a> and <a href={privacyUrl} target="_blank" rel="noopener">Privacy Policy</a>.</span>
+</label>}
 
 {mode === 'login' && <button type="button" class="forgot-password" onClick={resetPassword} disabled={isSendingReset}>
 

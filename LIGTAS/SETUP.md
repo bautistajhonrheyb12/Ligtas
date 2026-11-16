@@ -75,6 +75,9 @@ repeated flags, caps photo uploads and strips hidden characters from text.
 `priority_members` table, the private `priority-proofs` bucket, the question every
 citizen answers, and the verified categories on each report and SOS.
 
+`20261117090000_terms_acceptance.sql` records who accepted the Terms of Use and
+Privacy Policy, which version and when (section 13).
+
 The screens expect the newest migration. Until it is applied, report lists fail to load
 with a "column does not exist" error.
 
@@ -395,6 +398,44 @@ sharing.
 
 **Limits.** Up to 15 people per household and 20 proof uploads per person every
 10 minutes; files are images or PDF, up to 5 MB (photos are resized first).
+
+## 13. Terms of Use and Privacy Policy
+
+The pages live at `/#terms` and `/#privacy` (linked in the site footer, the
+sign-up form and *Prepare → My details*). They open whether or not someone is
+signed in. Their text is in `src/screens/LegalPage.jsx`.
+
+**Before publishing,** set the privacy contact email in `src/lib/legal.js`
+(`CONTACT_EMAIL`). Until then the pages show "[privacy contact email to be added]".
+
+**Acceptance.** Sign-up requires ticking "I agree to the Terms of Use and Privacy
+Policy". Everyone else, including Google sign-ins, rescuers and admins, accepts
+once on their next sign-in. Citizens keep SOS and the rescue hotline on that
+screen. Each acceptance is saved on the profile (`terms_version`,
+`terms_accepted_at`).
+
+**Changing the documents.** Edit the text, then set `LEGAL_VERSION` and
+`LEGAL_UPDATED` in `src/lib/legal.js` to the new date. Everyone is asked to
+accept again. For typo fixes, leave the version as it is.
+
+**Requests the policy promises to handle** (by email):
+
+- *A copy of someone's information:* export their rows from `profiles`,
+  `incident_reports`, `safety_checkins` and `priority_members` (Table Editor →
+  filter by their user ID → Export to CSV).
+- *Deleting an account:* *Authentication → Users → Delete user*. This deletes
+  the profile, reports, check-ins, priority entries and security records. Then,
+  in *Storage*, delete the folder named after their user ID in both
+  `report-photos` and `priority-proofs`, since files are not removed
+  automatically.
+- *Data breach:* the policy commits to notifying the National Privacy
+  Commission and the people affected within 72 hours.
+
+**Data Privacy Act housekeeping.** Designate a Data Protection Officer for the
+team, and check with the National Privacy Commission (privacy.gov.ph) whether
+LIGTAS must be registered. Registration is generally required when sensitive
+personal information of 1,000 or more people is processed. Have the documents
+reviewed by a lawyer before a wide public launch.
 
 ## Notes
 

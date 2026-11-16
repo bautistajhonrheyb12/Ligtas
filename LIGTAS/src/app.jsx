@@ -1,6 +1,7 @@
-import { useEffect, useState } from 'preact/hooks'
+import { useEffect, useRef, useState } from 'preact/hooks'
 import {
   clearCachedData,
+  getMyTermsVersion,
   getProfileRole,
   getTwoStepStatus,
   isGoogleSession,
@@ -9,9 +10,12 @@ import {
   takeGoogleSignIn,
 } from './lib/supabase.js'
 import { Logo } from './lib/ui.jsx'
+import { LEGAL_VERSION, privacyUrl, termsUrl } from './lib/legal.js'
+import { TermsGate } from './components/TermsGate.jsx'
 import { slides, IconPlaceholder, Illustration } from './screens/landing.jsx'
 import { AboutPage } from './screens/AboutPage.jsx'
 import { AuthScreen } from './screens/AuthScreen.jsx'
+import { LegalPage } from './screens/LegalPage.jsx'
 import { ResetPasswordScreen } from './screens/ResetPasswordScreen.jsx'
 import { TwoStepScreen } from './screens/TwoStepScreen.jsx'
 // Loaded here, before the app styles, so the app's map overrides keep winning.
@@ -25,6 +29,7 @@ import './admin.css'
 import './about.css'
 import './navigation.css'
 import './priority.css'
+import './legal.css'
 
 // Each dashboard (and the map library) downloads only when that role signs in,
 // which keeps the first page light on slow mobile connections.
@@ -60,6 +65,8 @@ function useDashboard(role) {
 // restricts admin access.
 const isStaffAddress = () => window.location.hash === '#staff'
 const isAboutAddress = () => window.location.hash === '#about-us'
+// The Terms of Use and Privacy Policy open from anywhere, signed in or not.
+const legalAt = () => ({ '#terms': 'terms', '#privacy': 'privacy' })[window.location.hash] ?? null
 
 const wasGoogleSignIn = takeGoogleSignIn()
 
@@ -83,6 +90,10 @@ export function App() {
   const [authMode, setAuthMode] = useState('login')
   const [menuOpen, setMenuOpen] = useState(false)
   const [showAbout, setShowAbout] = useState(isAboutAddress)
+  const [legalDoc, setLegalDoc] = useState(legalAt)
+  const openedLegalInAppRef = useRef(false)
+  // Staff accept the terms over their dashboard: 'accepted', 'needed' or 'update'.
+  const [staffTerms, setStaffTerms] = useState('accepted')
   const [isAuthenticated, setIsAuthenticated] = useState(false)
   const [userRole, setUserRole] = useState(null)
   const [authMessage, setAuthMessage] = useState(returnError)
@@ -125,7 +136,7 @@ export function App() {
         password,
         options: {
           emailRedirectTo: window.location.origin,
-          data: { display_name: details.displayName, barangay: details.barangay, phone: details.phone },
+          data: { display_name: details.displayName, barangay: details.barangay, phone: details.phone, terms_version: details.termsVersion },
         },
       })
       if (error) throw error
@@ -255,6 +266,18 @@ export function App() {
     return () => clearInterval(timer)
   }, [isAuthenticated, userRole])
 
+  // Rescuers and admins who have not accepted the current terms see the
+  // acceptance screen over their dashboard (citizens get it in theirs, with SOS).
+  useEffect(() => {
+    if (!isAuthenticated || (userRole !== 'admin' && userRole !== 'rescuer')) {
+      setStaffTerms('accepted')
+      return
+    }
+    getMyTermsVersion()
+      .then((version) => setStaffTerms(version === undefined || version === LEGAL_VERSION ? 'accepted' : version ? 'update' : 'needed'))
+      .catch(() => {})
+  }, [isAuthenticated, userRole])
+
   // Restarts on every slide change so the progress bar fill stays in sync with the timer.
   useEffect(() => {
     const timer = setTimeout(() => setActive(current => (current + 1) % slides.length), 4000)
@@ -265,6 +288,8 @@ export function App() {
   useEffect(() => {
     const followAddress = () => {
       setShowAbout(isAboutAddress())
+      setLegalDoc(legalAt())
+      if (legalAt()) openedLegalInAppRef.current = true
       setMenuOpen(false)
     }
     window.addEventListener('hashchange', followAddress)
@@ -277,7 +302,7 @@ export function App() {
     const target = !showAbout && window.location.hash.length > 1 && document.getElementById(window.location.hash.slice(1))
     if (target) target.scrollIntoView()
     else window.scrollTo(0, 0)
-  }, [showAuth, isAuthenticated, showAbout])
+  }, [showAuth, isAuthenticated, showAbout, legalDoc])
 
   useEffect(() => {
     // Waits for the loading screen to finish, so the sections exist to be watched.
@@ -295,12 +320,26 @@ export function App() {
   }, [isRestoring, showAuth, isAuthenticated, showAbout])
 
   const openAuth = () => { setMenuOpen(false); setAuthRole(null); setAuthMode('login'); setShowAuth(true) }
+  // Back to where the person was: the previous page if they came from within
+  // LIGTAS, otherwise (a link opened in a new tab) the app's start.
+  const leaveLegal = () => {
+    if (openedLegalInAppRef.current) {
+      window.history.back()
+      return
+    }
+    window.history.replaceState(null, '', window.location.pathname)
+    setLegalDoc(null)
+  }
   if (isRecoveringPassword) return <main class="site auth-site"><ResetPasswordScreen onDone={() => setIsRecoveringPassword(false)} onCancel={() => { setIsRecoveringPassword(false); handleSignOut() }} /></main>
   if (twoStep) return <main class="site auth-site"><TwoStepScreen mode={twoStep} onVerified={() => completeSignIn('admin')} onCancel={() => { setTwoStep(null); handleSignOut() }} /></main>
+  if (legalDoc) return <main class="site legal-site"><LegalPage doc={legalDoc} onBack={leaveLegal} /></main>
   if (isRestoring) return <main class="app-splash" aria-busy="true" aria-label="Loading LIGTAS"><Logo /><span class="btn-spinner" aria-hidden="true" /></main>
   if (showAuth) return <main class="site auth-site"><AuthScreen showAdmin={isStaffAccess} role={authRole} mode={authMode} onChooseRole={(role) => { setAuthMessage(''); setAuthRole(role) }} onModeChange={setAuthMode} onBack={() => setAuthRole(null)} onClose={() => setShowAuth(false)} onLogin={handleLogin} authMessage={authMessage} /></main>
   if (isAuthenticated && userRole) {
-    if (dashboard.Dashboard) return <dashboard.Dashboard onSignOut={handleSignOut} />
+    if (dashboard.Dashboard) return <>
+      <dashboard.Dashboard onSignOut={handleSignOut} />
+      {staffTerms !== 'accepted' && <TermsGate isStaff isUpdate={staffTerms === 'update'} onAccepted={() => setStaffTerms('accepted')} onSignOut={handleSignOut} />}
+    </>
     return <main class="app-splash" aria-busy={!dashboard.error} aria-label="Loading LIGTAS">
       <Logo />
       {dashboard.error
@@ -324,7 +363,7 @@ export function App() {
   </>
   const footer = <footer class="site-footer">
     <span>© {new Date().getFullYear()} LIGTAS · Santa Maria, Bulacan</span>
-    <nav aria-label="Footer"><a href="#top">Home</a><a href="#about-us">About us</a></nav>
+    <nav aria-label="Footer"><a href="#top">Home</a><a href="#about-us">About us</a><a href={termsUrl}>Terms of Use</a><a href={privacyUrl}>Privacy Policy</a></nav>
   </footer>
 
   if (showAbout) return <main class="site about-site">

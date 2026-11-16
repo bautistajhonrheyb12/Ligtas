@@ -45,6 +45,8 @@ import { CitizenMap } from './citizen/CitizenMap.jsx'
 import { MyReports } from './citizen/MyReports.jsx'
 import { PreparePanel } from './citizen/PreparePanel.jsx'
 import { PriorityQuestion } from './citizen/Priority.jsx'
+import { TermsGate } from '../components/TermsGate.jsx'
+import { LEGAL_VERSION, needsTermsAcceptance } from '../lib/legal.js'
 import { ReportDialog } from './citizen/ReportDialog.jsx'
 import { SosDialog } from './citizen/SosDialog.jsx'
 
@@ -531,7 +533,15 @@ export function CitizenDashboard({ onSignOut }) {
       </nav>
     </section>
 
-    {profile?.priority_answered_at === null && <PriorityQuestion
+    {needsTermsAcceptance(profile) && <TermsGate
+      lang={lang}
+      onToggleLang={() => setLang(lang === 'en' ? 'tl' : 'en')}
+      isUpdate={Boolean(profile.terms_version)}
+      onSos={() => setDialog('sos')}
+      onAccepted={() => updateProfile({ terms_version: LEGAL_VERSION })}
+      onSignOut={onSignOut}
+    />}
+    {!needsTermsAcceptance(profile) && profile?.priority_answered_at === null && <PriorityQuestion
       t={t}
       lang={lang}
       setLang={setLang}

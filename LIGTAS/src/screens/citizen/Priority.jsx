@@ -277,24 +277,24 @@ export function PriorityQuestion({ t, lang, setLang, profile, members, onReload,
     }
   }
 
-  return <div class="priority-gate" role="dialog" aria-modal="true" aria-label={t('priorityQTitle')}>
-    <header class="priority-gate-bar">
-      <span class="priority-gate-brand"><Logo small /> LIGTAS</span>
+  return <div class="app-gate" role="dialog" aria-modal="true" aria-label={t('priorityQTitle')}>
+    <header class="app-gate-bar">
+      <span class="app-gate-brand"><Logo small /> LIGTAS</span>
       <div>
-        <button type="button" class="priority-gate-tool" onClick={() => setLang(lang === 'en' ? 'tl' : 'en')}><Icon name="globe" size={15} /> {t('langToggle')}</button>
-        <button type="button" class="priority-gate-tool" onClick={onSignOut}>{t('signOut')}</button>
+        <button type="button" class="app-gate-tool" onClick={() => setLang(lang === 'en' ? 'tl' : 'en')}><Icon name="globe" size={15} /> {t('langToggle')}</button>
+        <button type="button" class="app-gate-tool" onClick={onSignOut}>{t('signOut')}</button>
       </div>
     </header>
-    <div class="priority-gate-scroll">
-      <div class="priority-gate-emergency">
+    <div class="app-gate-scroll">
+      <div class="app-gate-emergency">
         <span>{t('priorityEmergency')}</span>
         <div>
-          <button type="button" class="priority-gate-sos" onClick={onSos}><Icon name="sos" size={16} /> SOS</button>
-          <a class="priority-gate-call" href={`tel:${rescueHotline.number}`}><Icon name="phone" size={15} /> {rescueHotline.display}</a>
+          <button type="button" class="app-gate-sos" onClick={onSos}><Icon name="sos" size={16} /> SOS</button>
+          <a class="app-gate-call" href={`tel:${rescueHotline.number}`}><Icon name="phone" size={15} /> {rescueHotline.display}</a>
         </div>
       </div>
 
-      <section class="priority-gate-card">
+      <section class="app-gate-card">
         {step === 'ask' && <>
           <span class="priority-eyebrow">{t('priorityQEyebrow')}</span>
           <h2>{t('priorityQTitle')}</h2>
@@ -303,7 +303,7 @@ export function PriorityQuestion({ t, lang, setLang, profile, members, onReload,
             {PRIORITY_CATEGORIES.map((category) => <li key={category}><Icon name={PRIORITY_ICONS[category]} size={26} /><span>{t(categoryKeys[category])}</span></li>)}
           </ul>
           {error && <p class="form-error" role="alert">{error}</p>}
-          <div class="priority-gate-actions">
+          <div class="app-gate-actions">
             <button type="button" class="priority-primary" disabled={isSaving} onClick={() => setStep('yes')}>{t('priorityYes')}</button>
             <button type="button" class={`priority-secondary${confirmNo ? ' is-confirming' : ''}`} disabled={isSaving} onClick={() => confirmNo ? answer(false) : setConfirmNo(true)}>
               {isSaving && <span class="btn-spinner" aria-hidden="true" />}
