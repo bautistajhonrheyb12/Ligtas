@@ -1,5 +1,6 @@
 import { createClient } from '@supabase/supabase-js'
 import { compressPhoto } from './photo.js'
+import { rescueHotline } from './hotlines.js'
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
 const supabasePublishableKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY
@@ -212,6 +213,22 @@ export async function isSessionEnded() {
   return error.status === 401 || error.status === 403 || /session/i.test(error.code ?? error.message ?? '')
 }
 
+// The database refuses writes from a sign-in that was ended, while the phone
+// may still think it is signed in (its sign-in pass lasts up to an hour).
+// Such a refusal looks like a row-level security error; this turns it into a
+// clear message and tells the app to show the sign-in screen.
+export const SESSION_ENDED = 'session-ended'
+export const SESSION_ENDED_EVENT = 'ligtas:session-ended'
+
+async function failIfSessionEnded(error) {
+  const refused = error?.code === '42501' || /row-level security/i.test(error?.message ?? '')
+  if (!refused || !(await isSessionEnded())) return
+  window.dispatchEvent(new Event(SESSION_ENDED_EVENT))
+  const ended = new Error(`You were signed out on this phone (for example, by signing out on another device), so this was not sent. Sign in again to continue. In an emergency, call ${rescueHotline.name} at ${rescueHotline.display}.`)
+  ended.code = SESSION_ENDED
+  throw ended
+}
+
 export async function deactivateRescuer(rescuerId) {
   const { error } = await requireClient().rpc('deactivate_rescuer', { rescuer_id: rescuerId })
 
@@ -346,6 +363,7 @@ async function uploadReportPhoto(userId, original) {
   const { error } = await requireClient().storage.from(PHOTO_BUCKET).upload(path, file, { contentType: file.type })
 
   if (error) {
+    await failIfSessionEnded(error)
     throw new Error(`Could not upload the photo: ${error.message}`)
   }
 
@@ -385,6 +403,7 @@ export async function submitIncidentReport({
   }).select('id')
 
   if (error) {
+    await failIfSessionEnded(error)
     throw new Error(`Could not submit incident report: ${error.message}`)
   }
   // The location check drops reports with an impossible position without an

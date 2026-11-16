@@ -6,9 +6,11 @@ import {
   getTwoStepStatus,
   isGoogleSession,
   isSessionEnded,
+  SESSION_ENDED_EVENT,
   supabase,
   takeGoogleSignIn,
 } from './lib/supabase.js'
+import { rescueHotline } from './lib/hotlines.js'
 import { Logo } from './lib/ui.jsx'
 import { LEGAL_VERSION, privacyUrl, termsUrl } from './lib/legal.js'
 import { TermsGate } from './components/TermsGate.jsx'
@@ -159,12 +161,12 @@ export function App() {
     try {
       actualRole = await getProfileRole(user.id)
     } catch (profileError) {
-      await supabase.auth.signOut()
+      await supabase.auth.signOut({ scope: 'local' })
       throw profileError
     }
 
     if (actualRole !== roleId) {
-      await supabase.auth.signOut()
+      await supabase.auth.signOut({ scope: 'local' })
       throw new Error(actualRole === 'admin'
         ? 'This account cannot sign in here. Use the staff sign-in link.'
         : `This account is registered as ${actualRole}. Choose that role to sign in.`)
@@ -173,7 +175,7 @@ export function App() {
     try {
       await completeSignIn(actualRole)
     } catch (twoStepError) {
-      await supabase.auth.signOut()
+      await supabase.auth.signOut({ scope: 'local' })
       throw twoStepError
     }
 
@@ -183,7 +185,7 @@ export function App() {
   }
 
   const handleSignOut = async () => {
-    const { error } = await supabase.auth.signOut()
+    const { error } = await supabase.auth.signOut({ scope: 'local' })
     if (error) {
       setAuthMessage(`Could not sign out: ${error.message}`)
       return
@@ -231,7 +233,7 @@ export function App() {
         // Rescuer and admin accounts must use their email and password, even
         // when Google is linked to the same email address.
         if (role !== 'citizen' && isGoogleSession(data.session)) {
-          await supabase.auth.signOut()
+          await supabase.auth.signOut({ scope: 'local' })
           if (isMounted) {
             setAuthMessage('Google sign-in is for citizen accounts only. Sign in with your email and password instead.')
             setShowAuth(true)
@@ -244,7 +246,7 @@ export function App() {
           setShowAuth(false)
         }
       } catch (profileError) {
-        await supabase.auth.signOut()
+        await supabase.auth.signOut({ scope: 'local' })
         if (isMounted) setAuthMessage(profileError.message)
       }
     }).catch((sessionError) => {
@@ -260,17 +262,39 @@ export function App() {
     }
   }, [])
 
-  // Staff screens check every minute that their session still exists, so a
-  // session ended elsewhere (another device, or an admin) closes here too.
+  // Every screen checks that its sign-in session still exists: every minute,
+  // when the phone is opened again, and when the connection returns. A session
+  // ended elsewhere (an admin, or a security setting) then goes back to the
+  // sign-in screen at once, instead of the database quietly refusing reports.
   useEffect(() => {
-    if (!isAuthenticated || (userRole !== 'admin' && userRole !== 'rescuer')) return undefined
-    const timer = setInterval(async () => {
-      if (!(await isSessionEnded())) return
+    if (!isAuthenticated || !userRole) return undefined
+    let isEnding = false
+    const endHere = async () => {
+      if (isEnding) return
+      isEnding = true
       await supabase.auth.signOut({ scope: 'local' })
-      setAuthMessage('You were signed out because this session was ended on another device or by an admin.')
+      setAuthMessage(userRole === 'citizen'
+        ? `You were signed out on this phone, so please sign in again. Any report you were sending is saved and will be sent after you sign in. In an emergency, call ${rescueHotline.name} at ${rescueHotline.display}.`
+        : 'You were signed out because this session was ended on another device or by an admin.')
+      setAuthRole(userRole === 'admin' ? null : userRole)
+      setAuthMode('login')
       setShowAuth(true)
-    }, 60000)
-    return () => clearInterval(timer)
+    }
+    const check = async () => {
+      if (document.visibilityState === 'hidden' || !navigator.onLine) return
+      if (await isSessionEnded()) endHere()
+    }
+    const timer = setInterval(check, 60000)
+    const onVisible = () => { if (document.visibilityState === 'visible') check() }
+    document.addEventListener('visibilitychange', onVisible)
+    window.addEventListener('online', check)
+    window.addEventListener(SESSION_ENDED_EVENT, endHere)
+    return () => {
+      clearInterval(timer)
+      document.removeEventListener('visibilitychange', onVisible)
+      window.removeEventListener('online', check)
+      window.removeEventListener(SESSION_ENDED_EVENT, endHere)
+    }
   }, [isAuthenticated, userRole])
 
   // Rescuers and admins who have not accepted the current terms see the

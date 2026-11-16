@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'preact/hooks'
-import { isNetworkError, submitIncidentReport } from '../../lib/supabase.js'
+import { SESSION_ENDED, isNetworkError, submitIncidentReport } from '../../lib/supabase.js'
 import { PinPicker } from '../../components/PinPicker.jsx'
 import { coordinatesLabel, describeLocation } from '../../lib/geocode.js'
 import { queueReport } from '../../lib/offlineQueue.js'
@@ -144,6 +144,9 @@ export function ReportDialog({ t, ownerId, hasPhone, onAddPhone, onClose, onDone
         onDone('queued')
         return
       }
+      // Signed out elsewhere: keep the report, which is sent after signing in
+      // again (the app is already returning to the sign-in screen).
+      if (submitError?.code === SESSION_ENDED) queueReport(report, ownerId)
       setError(submitError instanceof Error ? submitError.message : 'Could not submit incident report.')
     } finally {
       setIsSubmitting(false)
