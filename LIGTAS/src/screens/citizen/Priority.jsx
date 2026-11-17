@@ -10,6 +10,7 @@ import {
   savePriorityMember,
 } from '../../lib/supabase.js'
 import { Icon, Logo } from '../../lib/ui.jsx'
+import { ConfirmAction } from '../../components/ConfirmDialog.jsx'
 
 export const categoryKeys = { pwd: 'priorityCatPwd', pregnant: 'priorityCatPregnant', senior: 'priorityCatSenior', child: 'priorityCatChild' }
 const statusKeys = { pending: 'priorityStatusPending', verified: 'priorityStatusVerified', rejected: 'priorityStatusRejected' }
@@ -17,26 +18,9 @@ const statusKeys = { pending: 'priorityStatusPending', verified: 'priorityStatus
 const isoDate = (offsetDays) => new Date(Date.now() + offsetDays * 86400000).toISOString().slice(0, 10)
 const formatDate = (value) => new Date(`${value}T00:00:00`).toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' })
 
-// A button that asks for a second tap before doing something that cannot be undone.
-function TapTwice({ class: className, label, confirmLabel, onConfirm, disabled }) {
-  const [state, setState] = useState('idle')
-  useEffect(() => {
-    if (state !== 'confirm') return undefined
-    const timer = setTimeout(() => setState('idle'), 4000)
-    return () => clearTimeout(timer)
-  }, [state])
-  const press = async () => {
-    if (state === 'idle') { setState('confirm'); return }
-    setState('busy')
-    try {
-      await onConfirm()
-    } finally {
-      setState('idle')
-    }
-  }
-  return <button type="button" class={`${className}${state === 'confirm' ? ' is-confirming' : ''}`} disabled={disabled || state === 'busy'} onClick={press}>
-    {state === 'busy' ? <span class="btn-spinner" aria-hidden="true" /> : state === 'confirm' ? confirmLabel : label}
-  </button>
+// A button that asks in a confirmation box before something that cannot be undone.
+function AskFirst({ class: className, label, ask, onConfirm, disabled }) {
+  return <ConfirmAction class={className} ask={ask} onConfirm={onConfirm} disabled={disabled}>{label}</ConfirmAction>
 }
 
 // Opens the person's own proof in a new tab through a short-lived link.
@@ -172,7 +156,13 @@ function PriorityList({ t, members, onEdit, onRemove }) {
           <div class="priority-member-actions">
             <ProofButton t={t} path={member.proof_path} />
             <button type="button" class="priority-link" onClick={() => onEdit(member)}><Icon name="edit" size={14} /> {member.status === 'rejected' ? t('priorityProofReplace') : t('priorityEdit')}</button>
-            <TapTwice class="priority-link is-danger" label={<><Icon name="trash" size={14} /> {t('priorityRemove')}</>} confirmLabel={t('priorityRemoveConfirm')} onConfirm={() => onRemove(member)} />
+            <AskFirst class="priority-link is-danger" label={<><Icon name="trash" size={14} /> {t('priorityRemove')}</>} onConfirm={() => onRemove(member)} ask={{
+              title: t('priorityRemoveAskTitle', { name: member.full_name }),
+              message: t('priorityRemoveAskText'),
+              confirmLabel: t('priorityRemoveAskButton'),
+              cancelLabel: t('cancel'),
+              icon: 'trash',
+            }} />
           </div>
         </div>
       </li>
@@ -359,6 +349,12 @@ export function PrioritySection({ t, profile, members, onReload, onConsented, on
         <p class="priority-none">{t('prioritySectionNone')}</p>
         <button type="button" class="priority-add" onClick={() => setIsAdding(true)}><Icon name="plus" size={16} /> {t('priorityAdd')}</button>
       </>}
-    {hasConsent && members.length > 0 && <TapTwice class="priority-withdraw" label={t('priorityWithdraw')} confirmLabel={t('priorityWithdrawConfirm')} onConfirm={withdraw} />}
+    {hasConsent && members.length > 0 && <AskFirst class="priority-withdraw" label={t('priorityWithdraw')} onConfirm={withdraw} ask={{
+      title: t('priorityWithdrawAskTitle'),
+      message: t('priorityWithdrawAskText'),
+      confirmLabel: t('priorityWithdrawAskButton'),
+      cancelLabel: t('cancel'),
+      icon: 'trash',
+    }} />}
   </section>
 }

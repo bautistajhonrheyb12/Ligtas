@@ -54,6 +54,7 @@ export function SosDialog({ t, livePosition, onClose, onSent }) {
         latitude: position?.latitude ?? null,
         longitude: position?.longitude ?? null,
         locationSource: position ? 'gps' : null,
+        locationAccuracy: position?.accuracy ?? null,
         priority: 'Critical',
       })
       saveCheckin({ status: 'Need help', note: note.trim() || null, latitude: position?.latitude ?? null, longitude: position?.longitude ?? null }).catch(() => {})
@@ -75,7 +76,7 @@ export function SosDialog({ t, livePosition, onClose, onSent }) {
     if (event.target === event.currentTarget && phase !== 'sending') onClose()
   }}>
     <section class="alert-modal sos-dialog" role="alertdialog" aria-modal="true" aria-labelledby="sos-title" aria-describedby="sos-text">
-      <div class="sos-badge" aria-hidden="true"><Icon name="sos" size={34} /></div>
+      <div class={`sos-badge${phase === 'sent' ? ' is-sent' : ''}`} aria-hidden="true"><Icon name={phase === 'sent' ? 'check' : 'sos'} size={34} /></div>
       {(phase === 'confirm' || phase === 'sending') && <form onSubmit={send}>
         <h2 id="sos-title">{t('sosTitle')}</h2>
         <p id="sos-text">{t('sosText')}</p>
@@ -85,10 +86,13 @@ export function SosDialog({ t, livePosition, onClose, onSent }) {
           {locationState === 'ready' && t('sosLocationReady', { accuracy: Math.round(position.accuracy) })}
           {needsLocationText && t('sosLocationFailed')}
         </div>
-        {needsLocationText && <p class="sos-location-reason">
-          {requestFailure}
-          <button type="button" onClick={() => setAttempt((count) => count + 1)}>{t('sosLocationRetry')}</button>
-        </p>}
+        {needsLocationText && <div class="sos-location-reason">
+          <p>{requestFailure}</p>
+          <div>
+            <button type="button" onClick={() => setAttempt((count) => count + 1)}><Icon name="refresh" size={13} /> {t('sosLocationRetry')}</button>
+            <a href={`tel:${rescueHotline.number}`}><Icon name="phone" size={13} /> {rescueHotline.display}</a>
+          </div>
+        </div>}
         {needsLocationText && <input class="sos-input" required minLength="2" maxLength="160" value={locationText} onInput={(event) => setLocationText(event.currentTarget.value)} placeholder={t('sosLocationPlaceholder')} aria-label={t('locationLabel')} />}
         <label class="sos-note">
           {t('sosNoteLabel')}
@@ -104,8 +108,9 @@ export function SosDialog({ t, livePosition, onClose, onSent }) {
         </div>
       </form>}
       {phase === 'sent' && <div class="sos-result">
-        <h2 id="sos-title">{t('sosButton')} ✓</h2>
+        <h2 id="sos-title">{t('sosButton')}</h2>
         <p id="sos-text">{t('sosSent')}</p>
+        <p class="sos-live-note"><Icon name="locate" size={15} /> {t('sosLiveNote')}</p>
         <div class="sos-actions">
           <a class="sos-call" href={`tel:${rescueHotline.number}`}><Icon name="phone" size={18} /> {t('sosCall')}</a>
           <button type="button" class="sos-cancel" onClick={onClose}>{t('close')}</button>

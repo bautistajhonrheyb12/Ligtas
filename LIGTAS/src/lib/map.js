@@ -1,5 +1,7 @@
 import L from 'leaflet'
 import { santaMariaBoundary } from './santaMaria.js'
+import { iconHtml } from './icons.jsx'
+import { reportTypeStyle } from './ui.jsx'
 
 export const mapCenter = [14.842, 120.985]
 export const mapTileUrl = 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png'
@@ -121,7 +123,7 @@ export function drawEvacuationCenters(layer, centers, { onSelect } = {}) {
     const marker = L.marker([center.latitude, center.longitude], {
       icon: L.divIcon({
         className: `center-marker${center.is_open ? '' : ' is-closed'}`,
-        html: '<span>⌂</span>',
+        html: `<span>${iconHtml('home', 15)}</span>`,
         iconSize: [30, 30],
       }),
       title: center.name,
@@ -157,24 +159,43 @@ const reportMarkerColors = {
   Normal: ['#2f78b7', '#7fb6e2'],
 }
 
-// Incident pins for staff maps; only reports with GPS coordinates are drawn.
-export function drawReports(layer, reports, { onSelect } = {}) {
+// Incident pins for staff maps; only reports with a position are drawn.
+// Reports placed with lib/callLocation.js carry `accuracy` (drawn as a search
+// circle) and `isLive` (a ring that pulses while the person shares their live
+// location). With `onSelect`, tapping a pin selects the call instead of
+// opening a popup; `selectedId` highlights it.
+export function drawReports(layer, reports, { onSelect, selectedId } = {}) {
   reports.filter((report) => report.latitude != null).forEach((report) => {
     const [stroke, fill] = reportMarkerColors[report.priority] ?? reportMarkerColors.Normal
-    if (report.priority === 'Critical' && report.status !== 'Resolved') addHazardPulse(layer, report.latitude, report.longitude, 'high')
+    const isOpen = report.status !== 'Resolved'
+    if (report.priority === 'Critical' && isOpen) addHazardPulse(layer, report.latitude, report.longitude, 'high')
+    if (isOpen && report.accuracy >= 10) {
+      L.circle([report.latitude, report.longitude], {
+        radius: Math.min(report.accuracy, 2000),
+        color: stroke,
+        weight: 1.5,
+        opacity: 0.75,
+        dashArray: report.isLive ? null : '4 5',
+        fillColor: stroke,
+        fillOpacity: 0.08,
+        interactive: false,
+      }).addTo(layer)
+    }
+    const classes = ['report-marker', isOpen ? '' : 'is-resolved', report.isLive && isOpen ? 'is-live' : '', report.id === selectedId ? 'is-selected' : ''].filter(Boolean).join(' ')
     const marker = L.marker([report.latitude, report.longitude], {
       icon: L.divIcon({
-        className: `report-marker${report.status === 'Resolved' ? ' is-resolved' : ''}`,
-        html: `<span style="--stroke:${stroke};--fill:${fill}"><b>${report.report_type === 'SOS' ? 'SOS' : '!'}</b></span>`,
+        className: classes,
+        html: `${report.isLive && isOpen ? '<i class="report-live-ring"></i>' : ''}<span style="--stroke:${stroke};--fill:${fill}"><b>${report.report_type === 'SOS' ? 'SOS' : iconHtml(reportTypeStyle(report.report_type).icon, 15)}</b></span>`,
         iconSize: [34, 34],
         iconAnchor: [17, 34],
         popupAnchor: [0, -30],
       }),
       title: `${report.report_type} · ${report.location}`,
+      zIndexOffset: report.id === selectedId ? 1000 : report.report_type === 'SOS' ? 500 : 0,
     })
-      .bindPopup(hazardPopup(report.report_type, report.notes, report.location, report.priority === 'Normal' ? 'safe' : 'high', `${report.priority} · ${report.status}`), { maxWidth: 260 })
-      .addTo(layer)
     if (onSelect) marker.on('click', () => onSelect(report))
+    else marker.bindPopup(hazardPopup(report.report_type, report.notes, report.location, report.priority === 'Normal' ? 'safe' : 'high', `${report.priority} · ${report.status}`), { maxWidth: 260 })
+    marker.addTo(layer)
   })
 }
 

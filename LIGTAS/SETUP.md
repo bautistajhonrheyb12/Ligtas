@@ -78,8 +78,13 @@ citizen answers, and the verified categories on each report and SOS.
 `20261117090000_terms_acceptance.sql` records who accepted the Terms of Use and
 Privacy Policy, which version and when (section 13).
 
-The screens expect the newest migration. Until it is applied, report lists fail to load
-with a "column does not exist" error.
+`20261118090000_sos_live_location.sql` adds the GPS accuracy of each report and
+live SOS location (section 11): the `location_accuracy` and `live_*` columns and the
+`share_sos_location` function. Until it is applied, the app still works, but without
+accuracy circles or live location.
+
+Apply every migration, in order. Screens built for a newer migration than the
+database has fail with a "column does not exist" error, except the last one above.
 
 Apply each migration with either option:
 
@@ -338,6 +343,37 @@ screen keeps an *Open in Google Maps* fallback.
 - Rescuers navigating to their own call are marked *En route* when they start, and
   can mark *On scene* when they arrive.
 
+### Rescuer map and live SOS location
+
+Every open call with a position is a pin on the rescuer's *Map* tab. Tapping a
+pin, or *Show on map* on a call card, opens the call's details next to the map:
+address (looked up from the position), how far it is by road and how long it
+takes, how accurate the position is, the people affected and their priority
+needs, a *Call* button for the reporter, and the same actions as the call list
+(*Take this call*, *Navigate*, *Open in Google Maps*).
+
+**Accuracy.**
+
+- Each report saves how accurate the phone's GPS was. The map draws that as a
+  circle around the pin, and the details warn when it is rough (100 m or more),
+  so the team knows to search the area and call first.
+- After an SOS, the person's phone keeps sending its position while LIGTAS is
+  open: whenever they move (at least 15 m, more when the GPS is rough) and about
+  once a minute. It stops when the SOS is resolved, after 6 hours, or when they tap
+  *Stop* (it asks first). Fixes worse than 500 m are not sent.
+- The pin moves to the live position and pulses while it is fresh (updated in the
+  last 2 minutes); the details say how long ago it was updated. The position from
+  the original SOS stays saved and signed; the live one is kept in separate
+  columns.
+- When the person moves 30 m or more while a rescuer is navigating to them, the
+  route is recalculated to where they are now, and the app says so on screen and
+  by voice.
+
+**Checks on live positions** (in `share_sos_location`): only the person who sent
+the SOS, signed in as a citizen, while it is open and less than 6 hours old; the
+position must be inside Santa Maria and no faster than 150 km/h from the last
+one (ignoring hops under 3 km); at most one update every 10 seconds.
+
 **Routing server.** By default the app uses the free public Valhalla server run
 by FOSSGIS (valhalla1.openstreetmap.de). It is meant for light use, about one
 request per second, with no guarantee of availability; LIGTAS spaces its requests
@@ -347,8 +383,8 @@ launch. For heavy use, run your own Valhalla server and set
 `connect-src` in `vercel.json`.
 
 **Privacy.** Planning a route sends the start position and destination to the
-routing server. Mention this in the app's privacy notice; a self-hosted server
-keeps these positions within the LGU.
+routing server; the Privacy Policy says so, along with live SOS location. A
+self-hosted server keeps these positions within the LGU.
 
 ## 12. Priority rescue
 

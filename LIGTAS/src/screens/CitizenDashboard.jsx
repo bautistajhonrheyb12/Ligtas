@@ -45,6 +45,8 @@ import { CitizenMap } from './citizen/CitizenMap.jsx'
 import { MyReports } from './citizen/MyReports.jsx'
 import { PreparePanel } from './citizen/PreparePanel.jsx'
 import { PriorityQuestion } from './citizen/Priority.jsx'
+import { useSosLiveShare } from '../lib/useSosLiveShare.js'
+import { ConfirmAction } from '../components/ConfirmDialog.jsx'
 import { TermsGate } from '../components/TermsGate.jsx'
 import { LEGAL_VERSION, needsTermsAcceptance } from '../lib/legal.js'
 import { ReportDialog } from './citizen/ReportDialog.jsx'
@@ -100,6 +102,8 @@ export function CitizenDashboard({ onSignOut }) {
   const [wantsMyLocation, setWantsMyLocation] = useState(false)
   const isLocating = wantsMyLocation && !userPosition
   const isOutsideArea = Boolean(userPosition) && !isInsideSantaMaria(userPosition.latitude, userPosition.longitude)
+  // After an SOS, the phone keeps sharing where the person is with rescuers.
+  const sosLive = useSosLiveShare({ reports: myReports, position: userPosition, isOnline })
   const [focusTarget, setFocusTarget] = useState(null)
   const [dialog, setDialog] = useState(null)
   // The evacuation center being navigated to, if any.
@@ -359,7 +363,7 @@ export function CitizenDashboard({ onSignOut }) {
           aria-label={isMapFullscreen ? t('fullscreenExit') : t('fullscreenOpen')}
           title={isMapFullscreen ? t('fullscreenExit') : t('fullscreenOpen')}
         >
-          {isMapFullscreen ? '⤡' : '▢'}
+          <Icon name={isMapFullscreen ? 'collapse' : 'expand'} size={18} />
         </button>
         <button type="button" class="ops-signout" onClick={onSignOut}>{t('signOut')}</button>
       </div>
@@ -410,6 +414,18 @@ export function CitizenDashboard({ onSignOut }) {
         <OfflineBanner isOnline={isOnline} label={t('offline')} />
 
         {activeTab === 'home' && <>
+          {sosLive.sharing && <div class="sos-live-banner" role="status">
+            <span class="sos-live-dot" aria-hidden="true" />
+            <span><strong>{t('sosLiveSharing')}</strong><small>{t('sosLiveDetail', { time: timeAgo(sosLive.savedAt).toLowerCase() })}</small></span>
+            <ConfirmAction class="sos-live-stop" onConfirm={sosLive.stop} ask={{
+              title: t('sosLiveStopTitle'),
+              message: t('sosLiveStopText'),
+              confirmLabel: t('sosLiveStopButton'),
+              cancelLabel: t('cancel'),
+              tone: 'warning',
+              icon: 'locate',
+            }}>{t('sosLiveStop')}</ConfirmAction>
+          </div>}
           <div class="safety-actions">
             <button type="button" class="sos-trigger" onClick={() => setDialog('sos')}>
               <span class="sos-trigger-icon"><Icon name="sos" size={26} /></span>
@@ -422,7 +438,7 @@ export function CitizenDashboard({ onSignOut }) {
           </div>
 
           {urgentAlert && <button class="alert-banner citizen-sheet-alert" type="button" onClick={() => selectTab('alerts')}>
-            <div class="alert-icon">!</div>
+            <div class="alert-icon">{alertSymbol(urgentAlert)}</div>
             <div><strong>{urgentAlert.title}</strong><span>{urgentAlert.location} · {timeAgo(urgentAlert.createdAt)}</span></div>
           </button>}
 

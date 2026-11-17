@@ -41,6 +41,7 @@ import {
   reportTypeStyle,
   timeAgo,
   toAlertView,
+  alertIcon,
   useLivePosition,
   useOnlineStatus,
   useTabIndicator,
@@ -50,6 +51,9 @@ import {
 import { markTampered, useReportIntegrity } from '../lib/integrity.js'
 import { NavigationView } from '../components/NavigationView.jsx'
 import { PriorityTags, hasPriority } from '../components/PriorityTags.jsx'
+import { useConfirm } from '../components/ConfirmDialog.jsx'
+import { placeReport } from '../lib/callLocation.js'
+import { CallSheet } from './rescuer/CallSheet.jsx'
 import { privacyUrl, termsUrl } from '../lib/legal.js'
 
 const priorityRank = { Critical: 0, Urgent: 1, Normal: 2 }
@@ -65,7 +69,9 @@ function byUrgency(a, b) {
     || new Date(a.created_at) - new Date(b.created_at)
 }
 
-function RescuerSituationMap({ reports, points, centers, myPosition, isFullscreen, onToggleFullscreen }) {
+function RescuerSituationMap({ reports, points, centers, myPosition, isFullscreen, onToggleFullscreen, selectedId, onSelect, children }) {
+  const onSelectRef = useRef(onSelect)
+  onSelectRef.current = onSelect
   const mapRef = useRef(null)
   const mapInstanceRef = useRef(null)
   const layerRef = useRef(null)
@@ -99,14 +105,28 @@ function RescuerSituationMap({ reports, points, centers, myPosition, isFullscree
     layer.clearLayers()
     drawMapPoints(layer, points)
     drawEvacuationCenters(layer, centers)
-    drawReports(layer, reports)
+    drawReports(layer, reports, { selectedId, onSelect: (report) => onSelectRef.current?.(report) })
     const located = reports.filter((report) => report.latitude != null).map((report) => [report.latitude, report.longitude])
     const frame = located.length ? located : points.map((point) => [point.latitude, point.longitude])
     if (!userMovedRef.current && frame.length > fittedCountRef.current) {
       fitToContent(map, frame)
       fittedCountRef.current = frame.length
     }
-  }, [reports, points, centers])
+  }, [reports, points, centers, selectedId])
+
+  // The selected call is brought into view where the call details do not
+  // cover it: above them on phones, beside them on wider screens.
+  const selected = reports.find((report) => report.id === selectedId)
+  useEffect(() => {
+    const map = mapInstanceRef.current
+    if (!map || !selected || selected.latitude == null) return
+    userMovedRef.current = true
+    const zoom = Math.max(map.getZoom(), 16)
+    const size = map.getSize()
+    const offset = window.matchMedia('(min-width: 900px)').matches ? L.point(190, 0) : L.point(0, size.y * 0.27)
+    const center = map.unproject(map.project([selected.latitude, selected.longitude], zoom).add(offset), zoom)
+    map.flyTo(center, zoom, { duration: 0.6 })
+  }, [selectedId, selected?.latitude, selected?.longitude])
 
   useEffect(() => {
     const layer = userLayerRef.current
@@ -119,12 +139,13 @@ function RescuerSituationMap({ reports, points, centers, myPosition, isFullscree
 
   return <section class={`ops-map-frame${isFullscreen ? ' is-fullscreen' : ''}`}>
     <div class="map-toolbar">
-      <div><strong>Field map</strong><span>{reports.length} open calls{unlocated ? ` · ${unlocated} without GPS (see Calls)` : ''}</span></div>
+      <div><strong>Field map</strong><span>{reports.length} open calls{unlocated ? ` · ${unlocated} without GPS (see Calls)` : ''} · tap a call for details</span></div>
       <button type="button" class="map-fullscreen-btn" onClick={onToggleFullscreen} aria-label={isFullscreen ? 'Exit full screen map' : 'Open full screen map'}>
-        {isFullscreen ? '⤡' : '▢'}
+        <Icon name={isFullscreen ? 'collapse' : 'expand'} size={18} />
       </button>
     </div>
     <div class="real-map" ref={mapRef} />
+    {children}
     <div class="map-legend">
       <span><i class="legend-red" /> Critical call</span>
       <span><i class="legend-yellow" /> Urgent call</span>
@@ -158,9 +179,15 @@ export function RescuerDashboard({ onSignOut }) {
   const [updatingReportId, setUpdatingReportId] = useState(null)
   const [resolvingReport, setResolvingReport] = useState(null)
   const [resolutionNote, setResolutionNote] = useState('')
-  const [confirmReleaseId, setConfirmReleaseId] = useState(null)
+  const [confirm, confirmDialog] = useConfirm()
   // The call being navigated to, if any.
   const [navTarget, setNavTarget] = useState(null)
+  // The call picked on the field map.
+  const [selectedCallId, setSelectedCallId] = useState(null)
+  const showOnMap = (report) => {
+    setSelectedCallId(report.id)
+    setActiveTab('map')
+  }
   const [alerts, setAlerts] = useState([])
   const [alertsLoading, setAlertsLoading] = useState(true)
   const [alertsError, setAlertsError] = useState('')
@@ -183,7 +210,7 @@ export function RescuerDashboard({ onSignOut }) {
   useWakeLock(isSharingLocation)
 
   const loadReports = () => getRescuerIncidentReports()
-    .then((data) => { setReports(data); setReportsError(''); setLastUpdated(new Date()) })
+    .then((data) => { setReports(data.map(placeReport)); setReportsError(''); setLastUpdated(new Date()) })
     .catch((error) => setReportsError(error.message))
     .finally(() => setReportsLoading(false))
   const loadAlerts = () => getAlerts()
@@ -279,7 +306,7 @@ export function RescuerDashboard({ onSignOut }) {
     setReportsError('')
     try {
       const updated = await action()
-      setReports((current) => current.map((report) => report.id === reportId ? { ...report, ...updated } : report))
+      setReports((current) => current.map((report) => report.id === reportId ? placeReport({ ...report, ...updated }) : report))
       return true
     } catch (error) {
       setReportsError(error.message)
@@ -296,12 +323,14 @@ export function RescuerDashboard({ onSignOut }) {
     }
   })
   const release = async (report) => {
-    if (confirmReleaseId !== report.id) {
-      setConfirmReleaseId(report.id)
-      setTimeout(() => setConfirmReleaseId((current) => current === report.id ? null : current), 4000)
-      return
-    }
-    setConfirmReleaseId(null)
+    const sure = await confirm({
+      title: `Return this ${report.report_type === 'SOS' ? 'SOS' : report.report_type.toLowerCase()} call?`,
+      message: 'It goes back to the open queue so another team can take it. Do this only if you cannot respond.',
+      confirmLabel: 'Return the call',
+      tone: 'warning',
+      icon: 'refresh',
+    })
+    if (!sure) return
     const ok = await applyUpdate(report.id, async () => {
       await releaseIncidentReport(report.id)
       return { assigned_to: null, response_stage: null, assigned_at: null }
@@ -370,6 +399,8 @@ export function RescuerDashboard({ onSignOut }) {
   const resolvedReports = reports.filter((report) => report.status === 'Resolved')
     .sort((a, b) => new Date(b.resolved_at ?? b.created_at) - new Date(a.resolved_at ?? a.created_at))
   const visibleReports = queueView === 'mine' ? myReports : queueView === 'resolved' ? resolvedReports : openReports
+  // Only open calls with a position can be shown on the field map.
+  const selectedCall = activeReports.find((report) => report.id === selectedCallId && report.latitude != null) ?? null
   const urgentAlerts = alerts.filter((alert) => alert.accent === 'red')
   const visibleAlerts = alertFilter === 'urgent' ? alerts.filter((alert) => alert.severity !== 'Low Severity') : alerts
   const latestUrgentAlert = urgentAlerts[0]
@@ -415,8 +446,8 @@ export function RescuerDashboard({ onSignOut }) {
         </button>}
       <div class="rx-call-secondary">
         {stage !== 'On scene' && <button type="button" class="rx-link-button" onClick={() => { setResolvingReport(report); setResolutionNote('') }}>Resolve now</button>}
-        <button type="button" class={`rx-link-button rx-link-button--muted${confirmReleaseId === report.id ? ' is-confirming' : ''}`} disabled={isBusy} onClick={() => release(report)}>
-          {confirmReleaseId === report.id ? 'Tap again to return the call' : 'Unable to respond? Return the call'}
+        <button type="button" class="rx-link-button rx-link-button--muted" disabled={isBusy} onClick={() => release(report)}>
+          Unable to respond? Return the call
         </button>
       </div>
     </div>
@@ -445,7 +476,7 @@ export function RescuerDashboard({ onSignOut }) {
         <div class="rx-hero-meta">
           <span><Icon name="user" size={14} /> {myReports.length} assigned to you</span>
           <span><Icon name="check" size={14} /> {resolvedReports.length} resolved</span>
-          <span><Icon name="bell" size={14} /> {urgentAlerts.length} urgent alerts</span>
+          <span><Icon name="bell" size={14} /> {urgentAlerts.length} urgent {urgentAlerts.length === 1 ? 'alert' : 'alerts'}</span>
         </div>
       </section>}
 
@@ -484,7 +515,11 @@ export function RescuerDashboard({ onSignOut }) {
                   ? <span class="rx-status rx-status--resolved">Resolved</span>
                   : report.priority !== 'Normal' && <span class={`rx-priority rx-priority--${report.priority.toLowerCase()}`}>{report.priority}</span>}
               </div>
-              <p class="rx-call-location"><Icon name="pin" size={18} /><span>{report.location}</span></p>
+              <p class="rx-call-location">
+                <Icon name="pin" size={18} /><span>{report.location}</span>
+                {report.isLive && !isResolved && <b class="rx-live-badge" title="The person is sharing their live location">Live</b>}
+                {report.latitude != null && !isResolved && <button type="button" class="rx-map-link" onClick={() => showOnMap(report)}><Icon name="map" size={14} /> Show on map</button>}
+              </p>
               {integrity[report.id] === 'tampered' && !isResolved && <p class="integrity-warning" role="alert">
                 <Icon name="alert" size={15} /><span><b>Changed outside the app.</b> The details of this call do not match what the reporter sent. Confirm with operations before responding.</span>
               </p>}
@@ -527,7 +562,20 @@ export function RescuerDashboard({ onSignOut }) {
           myPosition={myPosition}
           isFullscreen={isMapFullscreen}
           onToggleFullscreen={() => setIsMapFullscreen((value) => !value)}
-        />
+          selectedId={selectedCall?.id}
+          onSelect={(report) => setSelectedCallId(report.id)}
+        >
+          {selectedCall && <CallSheet
+            key={selectedCall.id}
+            report={selectedCall}
+            myPosition={myPosition}
+            points={points}
+            reports={reports}
+            isTampered={integrity[selectedCall.id] === 'tampered'}
+            actions={renderActions(selectedCall)}
+            onClose={() => setSelectedCallId(null)}
+          />}
+        </RescuerSituationMap>
       </section>}
 
       {activeTab === 'alerts' && <section class="rx-panel" aria-labelledby="rx-alerts-title">
@@ -543,7 +591,7 @@ export function RescuerDashboard({ onSignOut }) {
         {alertsLoading && <LoadingCards label="Loading alerts…" />}
         <div class="rx-alert-list">
           {!alertsLoading && visibleAlerts.map((alert) => <article class={`rx-alert rx-alert--${alert.accent}`} key={alert.id}>
-            <span class="rx-alert-icon"><Icon name={alert.accent === 'blue' ? 'bell' : 'alert'} size={20} /></span>
+            <span class="rx-alert-icon"><Icon name={alertIcon(alert)} size={20} /></span>
             <div>
               <div class="rx-alert-title"><h3>{alert.title}</h3><span>{alert.severity.replace(' Severity', '')}</span></div>
               <p>{alert.description}</p>
@@ -601,7 +649,7 @@ export function RescuerDashboard({ onSignOut }) {
       </button>)}
     </nav>
     {navTarget && <NavigationView
-      destination={{ latitude: navTarget.latitude, longitude: navTarget.longitude, name: navTarget.report_type, location: navTarget.location }}
+      destination={{ latitude: navReport.latitude, longitude: navReport.longitude, name: navReport.report_type, location: navReport.location }}
       points={points}
       reports={reports}
       initialPosition={myPosition}
@@ -609,6 +657,7 @@ export function RescuerDashboard({ onSignOut }) {
       arrivalAction={isMyCall(navReport) && navReport.response_stage !== 'On scene' ? { label: 'Mark on scene', run: () => markOnScene(navReport) } : null}
       onClose={() => setNavTarget(null)}
     />}
+    {confirmDialog}
     <ToastStack toasts={toasts} onDismiss={dismissToast} />
   </main>
 }

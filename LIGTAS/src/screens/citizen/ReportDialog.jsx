@@ -125,6 +125,7 @@ export function ReportDialog({ t, ownerId, hasPhone, onAddPhone, onClose, onDone
       latitude: position?.latitude ?? null,
       longitude: position?.longitude ?? null,
       locationSource: position?.source ?? null,
+      locationAccuracy: position?.source === 'gps' ? position.accuracy ?? null : null,
       photoFile,
       priority: inDanger ? 'Urgent' : 'Normal',
       peopleAffected: peopleAffected === '' ? null : Number(peopleAffected),

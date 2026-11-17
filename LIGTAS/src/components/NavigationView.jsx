@@ -50,6 +50,7 @@ const TEXT = {
     gpsDenied: 'Location access is off. Allow location for this site in your browser settings to navigate.',
     offlineReroute: 'You left the route, but the route cannot be recalculated right now. Head back to the blue line or check your connection.',
     rerouted: 'Route recalculated.',
+    destinationMoved: 'The person moved {distance}. Route updated to where they are now.',
     reroutedHazard: 'Rerouted around a newly reported hazard: {label}.',
     arrived: 'You have arrived',
     voiceOn: 'Voice on',
@@ -100,6 +101,7 @@ const TEXT = {
     gpsDenied: 'Naka-off ang lokasyon. Payagan ang lokasyon para sa site na ito sa browser settings para makapag-navigate.',
     offlineReroute: 'Lumihis ka sa ruta pero hindi makalkula ang bagong ruta ngayon. Bumalik sa asul na linya o tingnan ang koneksyon mo.',
     rerouted: 'Nakalkula na ang bagong ruta.',
+    destinationMoved: 'Lumipat ang tao nang {distance}. Na-update ang ruta papunta sa kinaroroonan nila ngayon.',
     reroutedHazard: 'Iniwasan ang bagong naiulat na panganib: {label}.',
     arrived: 'Nakarating ka na',
     voiceOn: 'May boses',
@@ -122,24 +124,26 @@ const TEXT = {
 
 const REROUTE_COOLDOWN_MS = 20000
 const ARRIVAL_M = 30
+// A destination that moves (someone sharing their live location after an SOS)
+// is routed to again once it has moved this far.
+const DESTINATION_MOVE_M = 30
 const COLORS = { active: '#2f78b7', alternative: '#8aa1b4', unsafe: '#c94f4e' }
 
 // Arrow direction for each kind of Valhalla maneuver.
-function maneuverGlyph(type) {
-  if ([4, 5, 6].includes(type)) return { kind: 'flag' }
-  if ([26, 27].includes(type)) return { kind: 'roundabout' }
-  if ([12, 13].includes(type)) return { kind: 'arrow', angle: 180 }
-  const angles = { 9: 40, 10: 90, 11: 135, 14: -135, 15: -90, 16: -40, 18: 30, 19: -30, 20: 30, 21: -30, 23: 20, 24: -20, 37: 25, 38: -25 }
-  return { kind: 'arrow', angle: angles[type] ?? 0 }
+// Valhalla maneuver types to Lucide turn arrows.
+const MANEUVER_ICONS = {
+  4: 'flag', 5: 'flag', 6: 'flag',
+  9: 'slightRight', 18: 'slightRight', 20: 'slightRight', 23: 'slightRight', 37: 'slightRight',
+  16: 'slightLeft', 19: 'slightLeft', 21: 'slightLeft', 24: 'slightLeft', 38: 'slightLeft',
+  10: 'turnRight', 11: 'turnRight',
+  14: 'turnLeft', 15: 'turnLeft',
+  12: 'uturnRight', 13: 'uturnLeft',
+  25: 'merge',
+  26: 'roundabout', 27: 'roundabout',
 }
 
 function ManeuverIcon({ type, size = 34 }) {
-  const glyph = maneuverGlyph(type)
-  if (glyph.kind === 'flag') return <Icon name="pin" size={size} />
-  if (glyph.kind === 'roundabout') return <Icon name="refresh" size={size} />
-  return <svg width={size} height={size} viewBox="0 0 24 24" aria-hidden="true" style={{ transform: `rotate(${glyph.angle}deg)` }}>
-    <path d="M12 3l6 7h-4v11h-4V10H6z" fill="currentColor" />
-  </svg>
+  return <Icon name={MANEUVER_ICONS[type] ?? 'straight'} size={size} strokeWidth={2.4} />
 }
 
 function spokenDistance(meters) {
@@ -176,6 +180,8 @@ function summarize(zones, areasWord) {
 export function NavigationView({ destination, points = [], reports = [], initialPosition = null, defaultMode = 'auto', lang = 'en', notice = '', onStart, onArrive, arrivalAction = null, onQuickReport = null, onClose }) {
   const t = TEXT[lang] ?? TEXT.en
   const target = [destination.latitude, destination.longitude]
+  const targetRef = useRef(target)
+  targetRef.current = target
   const zones = useMemo(() => hazardZones({ points, reports }), [points, reports])
 
   const [phase, setPhase] = useState('locating')
@@ -263,6 +269,8 @@ export function NavigationView({ destination, points = [], reports = [], initial
   // ---------------------------------------------------------------- planning
   async function planRoutes({ origin, heading = null, reroute = false, reason = '' }) {
     const travelMode = state.current.mode
+    const target = targetRef.current
+    const zones = state.current.zones
     const areas = avoidAreas(zones, origin, target)
     const containingIds = new Set(areas.containing.map((zone) => zone.id))
     live.current.planned = true
@@ -426,10 +434,10 @@ export function NavigationView({ destination, points = [], reports = [], initial
 
     const progress = routeProgress(route, projection.alongM)
     setHud({ progress, arrival: new Date(Date.now() + progress.remainingTimeS * 1000) })
-    if (progress.remainingM <= ARRIVAL_M || distanceM(fix.point, target) <= ARRIVAL_M) {
+    if (progress.remainingM <= ARRIVAL_M || distanceM(fix.point, targetRef.current) <= ARRIVAL_M) {
       current.navigating = false
       setRotation(0)
-      mapRef.current.setView(target, 17, { animate: true })
+      mapRef.current.setView(targetRef.current, 17, { animate: true })
       setPhase('arrived')
       if (s.voiceOn) speak(`You have arrived at ${destination.name}.`)
       onArrive?.()
@@ -555,6 +563,26 @@ export function NavigationView({ destination, points = [], reports = [], initial
     setBanner(message)
     setTimeout(() => setBanner((value) => (value === message ? '' : value)), ms)
   }
+
+  // The destination moved (live location after an SOS): move the pin, and plan
+  // again from here once it has moved far enough to matter.
+  const routedTargetRef = useRef(target)
+  useEffect(() => {
+    layers.current.destination?.setLatLng(target)
+    const moved = distanceM(routedTargetRef.current, target)
+    if (moved < DESTINATION_MOVE_M) return
+    const fix = fixRef.current
+    const current = live.current
+    if (!fix || !current.planned || current.rerouting) return
+    routedTargetRef.current = target
+    const message = fill(t.destinationMoved, { distance: formatMeters(moved) })
+    if (current.navigating) {
+      planRoutes({ origin: fix.point, heading: fix.heading, reroute: true, reason: message })
+    } else if (state.current.phase === 'preview') {
+      showBriefly(message)
+      planRoutes({ origin: fix.point })
+    }
+  }, [target[0], target[1]])
 
   useEffect(() => {
     if (notice) setTimeout(() => setBanner((value) => (value === notice ? '' : value)), 10000)

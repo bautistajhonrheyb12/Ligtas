@@ -10,7 +10,7 @@ import {
   removeLigtasMap,
   watchMapSize,
 } from '../../lib/map.js'
-import { timeAgo } from '../../lib/ui.jsx'
+import { Icon, timeAgo } from '../../lib/ui.jsx'
 
 function drawTeams(layer, teams) {
   teams.forEach((team) => {
@@ -98,7 +98,7 @@ export function AdminOperationsMap({
     <div class="map-toolbar">
       <div><strong>Community operations map</strong><span>{points.length} map points · {located} located reports · {teams.length} teams sharing location</span></div>
       <button type="button" class={`map-fullscreen-btn${isFullscreen ? ' is-active' : ''}`} onClick={onToggleFullscreen} aria-label={isFullscreen ? 'Exit full screen map' : 'Open full screen map'} title={isFullscreen ? 'Exit full screen map' : 'Open full screen map'}>
-        <span class="map-fullscreen-icon" aria-hidden="true">{isFullscreen ? '⤡' : '▢'}</span>
+        <span class="map-fullscreen-icon" aria-hidden="true"><Icon name={isFullscreen ? 'collapse' : 'expand'} size={18} /></span>
       </button>
     </div>
     <div class="real-map" ref={mapRef} />

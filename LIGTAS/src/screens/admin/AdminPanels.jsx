@@ -1,26 +1,12 @@
 import { useState } from 'preact/hooks'
 import { createRescuerAccount, deleteEvacuationCenter, publishAlert, saveEvacuationCenter } from '../../lib/supabase.js'
-import { Icon, LoadingCards, PasswordChecklist, capacityLevel, passwordProblem, reportTypeStyle, timeAgo } from '../../lib/ui.jsx'
+import { Icon, LoadingCards, PasswordChecklist, alertIcon, capacityLevel, passwordProblem, reportTypeStyle, timeAgo } from '../../lib/ui.jsx'
+import { ConfirmAction, useConfirm } from '../../components/ConfirmDialog.jsx'
 
-// A destructive button that asks for a second tap within four seconds.
-export function ConfirmButton({ class: className, label, confirmLabel, onConfirm, disabled, children }) {
-  const [state, setState] = useState('idle')
-  const press = async () => {
-    if (state === 'idle') {
-      setState('confirm')
-      setTimeout(() => setState((current) => current === 'confirm' ? 'idle' : current), 4000)
-      return
-    }
-    setState('busy')
-    try {
-      await onConfirm()
-    } finally {
-      setState('idle')
-    }
-  }
-  return <button type="button" class={`${className}${state === 'confirm' ? ' is-confirming' : ''}`} disabled={disabled || state === 'busy'} onClick={press} aria-label={state === 'confirm' ? confirmLabel : label}>
-    {state === 'busy' ? <span class="btn-spinner" aria-hidden="true" /> : state === 'confirm' ? confirmLabel : children}
-  </button>
+// A button for something hard to undo: it asks in a confirmation box first.
+// `ask` is { title, message, confirmLabel, tone }.
+export function ConfirmButton({ class: className, label, ask, onConfirm, disabled, children }) {
+  return <ConfirmAction class={className} label={label} ask={ask} onConfirm={onConfirm} disabled={disabled}>{children}</ConfirmAction>
 }
 
 // ---------------------------------------------------------------------------
@@ -29,7 +15,7 @@ export function ConfirmButton({ class: className, label, confirmLabel, onConfirm
 
 function CenterCard({ center, onEdit, onNotice, onChanged }) {
   const [isSaving, setIsSaving] = useState(false)
-  const [confirmDelete, setConfirmDelete] = useState(false)
+  const [confirm, confirmDialog] = useConfirm()
   const level = capacityLevel(center.occupants, center.capacity)
   const percent = Math.round(center.occupants / center.capacity * 100)
 
@@ -57,12 +43,30 @@ function CenterCard({ center, onEdit, onNotice, onChanged }) {
 
   const adjust = (delta) => save({ occupants: Math.min(Math.max(center.occupants + delta, 0), center.capacity) })
 
-  const remove = async () => {
-    if (!confirmDelete) {
-      setConfirmDelete(true)
-      setTimeout(() => setConfirmDelete(false), 4000)
-      return
+  // Closing hides the center from citizens' "nearest center" and directions,
+  // so it is confirmed; opening is not.
+  const toggleOpen = async () => {
+    if (center.is_open) {
+      const sure = await confirm({
+        title: `Close ${center.name}?`,
+        message: 'Citizens will no longer be sent here: it is removed from "nearest evacuation center" and from directions.',
+        confirmLabel: 'Close center',
+        tone: 'warning',
+        icon: 'home',
+      })
+      if (!sure) return
     }
+    save({ isOpen: !center.is_open })
+  }
+
+  const remove = async () => {
+    const sure = await confirm({
+      title: `Remove ${center.name}?`,
+      message: 'It disappears from every map and from the list of evacuation centers. This cannot be undone.',
+      confirmLabel: 'Remove center',
+      icon: 'trash',
+    })
+    if (!sure) return
     setIsSaving(true)
     try {
       await deleteEvacuationCenter(center.id)
@@ -94,14 +98,15 @@ function CenterCard({ center, onEdit, onNotice, onChanged }) {
       </div>
     </div>
     <div class="admin-center-actions">
-      <button type="button" class={`admin-toggle${center.is_open ? ' is-on' : ''}`} role="switch" aria-checked={center.is_open} disabled={isSaving} onClick={() => save({ isOpen: !center.is_open })}>
+      <button type="button" class={`admin-toggle${center.is_open ? ' is-on' : ''}`} role="switch" aria-checked={center.is_open} disabled={isSaving} onClick={toggleOpen}>
         <i aria-hidden="true" /> {center.is_open ? 'Open' : 'Closed'}
       </button>
       <button type="button" class="admin-icon-button" onClick={() => onEdit(center)} aria-label={`Edit ${center.name}`}><Icon name="edit" size={16} /></button>
-      <button type="button" class={`admin-icon-button is-danger${confirmDelete ? ' is-confirming' : ''}`} disabled={isSaving} onClick={remove} aria-label={confirmDelete ? `Confirm removing ${center.name}` : `Remove ${center.name}`}>
-        {confirmDelete ? 'Remove?' : <Icon name="trash" size={16} />}
+      <button type="button" class="admin-icon-button is-danger" disabled={isSaving} onClick={remove} aria-label={`Remove ${center.name}`}>
+        <Icon name="trash" size={16} />
       </button>
     </div>
+    {confirmDialog}
   </article>
 }
 
@@ -196,10 +201,21 @@ export function TeamsPanel({ staff, locations, reports, onCreated, onNotice, onD
           </div>
           {active[0] && <p class="admin-team-current"><Icon name="navigate" size={13} /> {active[0].report_type} · {active[0].location} · {active[0].response_stage ?? 'Assigned'}</p>}
           <div class="admin-team-actions">
-            <ConfirmButton class="admin-team-signout" label={`Sign ${person.display_name || 'rescuer'} out everywhere`} confirmLabel="Tap again to sign out" onConfirm={() => onEndSessions(person)}>
+            <ConfirmButton class="admin-team-signout" label={`Sign ${person.display_name || 'rescuer'} out everywhere`} onConfirm={() => onEndSessions(person)} ask={{
+              title: `Sign ${person.display_name || 'this rescuer'} out everywhere?`,
+              message: 'Every device they use is signed out at once, for example after a lost phone or a suspected stolen login. They can sign in again.',
+              confirmLabel: 'Sign out everywhere',
+              tone: 'warning',
+              icon: 'logout',
+            }}>
               <Icon name="logout" size={13} /> Sign out everywhere
             </ConfirmButton>
-            <ConfirmButton class="admin-team-deactivate" label={`Deactivate ${person.display_name || 'rescuer'}`} confirmLabel="Tap again to deactivate" onConfirm={() => onDeactivate(person)}>
+            <ConfirmButton class="admin-team-deactivate" label={`Deactivate ${person.display_name || 'rescuer'}`} onConfirm={() => onDeactivate(person)} ask={{
+              title: `Deactivate ${person.display_name || 'this rescuer'}?`,
+              message: `They become a citizen account and are signed out.${active.length ? ` Their ${active.length} open ${active.length === 1 ? 'call goes' : 'calls go'} back to the queue.` : ''}`,
+              confirmLabel: 'Deactivate',
+              icon: 'x',
+            }}>
               <Icon name="x" size={13} /> Deactivate
             </ConfirmButton>
           </div>
@@ -276,7 +292,7 @@ export function AlertForm({ onCancel, onPublished }) {
 export function AlertList({ alerts, loading, error, onEnd, onDelete }) {
   return <div class="ops-alert-list">
     {alerts.map((alert) => <article class={`ops-alert-item ops-alert-item--${alert.accent}`} key={alert.id}>
-      <span class="ops-alert-symbol">{alert.accent === 'red' ? '!' : alert.accent === 'yellow' ? '↗' : 'i'}</span>
+      <span class="ops-alert-symbol"><Icon name={alertIcon(alert)} size={18} /></span>
       <div>
         <div class="ops-alert-title"><h3>{alert.title}</h3><span>{alert.severity}</span></div>
         <p>{alert.description}</p>
@@ -287,8 +303,19 @@ export function AlertList({ alerts, loading, error, onEnd, onDelete }) {
           {alert.expiresAt && <span><Icon name="clock" size={12} /> Expires {new Date(alert.expiresAt).toLocaleString([], { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}</span>}
         </div>
         {(onEnd || onDelete) && <div class="admin-alert-actions">
-          {onEnd && <ConfirmButton class="admin-alert-end" label={`End ${alert.title}`} confirmLabel="Tap again to end" onConfirm={() => onEnd(alert)}><Icon name="check" size={13} /> End alert</ConfirmButton>}
-          {onDelete && <ConfirmButton class="admin-icon-button is-danger" label={`Delete ${alert.title}`} confirmLabel="Delete?" onConfirm={() => onDelete(alert)}><Icon name="trash" size={14} /></ConfirmButton>}
+          {onEnd && <ConfirmButton class="admin-alert-end" label={`End ${alert.title}`} onConfirm={() => onEnd(alert)} ask={{
+            title: `End "${alert.title}"?`,
+            message: 'It stops showing for everyone right away. Use this when the danger is over.',
+            confirmLabel: 'End alert',
+            tone: 'warning',
+            icon: 'bell',
+          }}><Icon name="check" size={13} /> End alert</ConfirmButton>}
+          {onDelete && <ConfirmButton class="admin-icon-button is-danger" label={`Delete ${alert.title}`} onConfirm={() => onDelete(alert)} ask={{
+            title: `Delete "${alert.title}"?`,
+            message: 'It is removed for everyone and from the records. This cannot be undone. To stop showing it but keep the record, end it instead.',
+            confirmLabel: 'Delete alert',
+            icon: 'trash',
+          }}><Icon name="trash" size={14} /></ConfirmButton>}
         </div>}
       </div>
     </article>)}

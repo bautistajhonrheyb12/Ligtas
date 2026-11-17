@@ -1,5 +1,6 @@
 import { useState } from 'preact/hooks'
 import { getReportPhotoUrl } from '../../lib/supabase.js'
+import { ConfirmAction } from '../../components/ConfirmDialog.jsx'
 import { Icon, LoadingCards, reportTypeStyle, timeAgo } from '../../lib/ui.jsx'
 
 const statusKey = { Pending: 'statusPending', Verified: 'statusVerified', Resolved: 'statusResolved', Rejected: 'statusRejected', Cancelled: 'statusCancelled' }
@@ -31,23 +32,18 @@ function ReportPhoto({ path, t }) {
   </button>
 }
 
-// Two taps so a report is never withdrawn by accident.
+// Asks first, so a report is never withdrawn by accident.
 function WithdrawButton({ t, onWithdraw }) {
-  const [state, setState] = useState('idle')
-  const press = async () => {
-    if (state === 'idle') {
-      setState('confirm')
-      setTimeout(() => setState((current) => current === 'confirm' ? 'idle' : current), 4000)
-      return
-    }
-    setState('busy')
-    await onWithdraw()
-    setState('idle')
-  }
-  return <button type="button" class={`my-report-withdraw${state === 'confirm' ? ' is-confirming' : ''}`} onClick={press} disabled={state === 'busy'}>
-    {state === 'busy' ? <span class="btn-spinner" aria-hidden="true" /> : <Icon name="x" size={14} />}
-    {state === 'confirm' ? t('withdrawConfirm') : t('withdraw')}
-  </button>
+  return <ConfirmAction class="my-report-withdraw" onConfirm={onWithdraw} ask={{
+    title: t('withdrawAskTitle'),
+    message: t('withdrawAskText'),
+    confirmLabel: t('withdrawAskButton'),
+    cancelLabel: t('cancel'),
+    tone: 'warning',
+    icon: 'x',
+  }}>
+    <Icon name="x" size={14} /> {t('withdraw')}
+  </ConfirmAction>
 }
 
 export function MyReports({ t, reports, queued, loading, error, onWithdraw }) {

@@ -1,5 +1,6 @@
 import { useState } from 'preact/hooks'
 import { getPriorityProofUrl } from '../../lib/supabase.js'
+import { useConfirm } from '../../components/ConfirmDialog.jsx'
 import { Icon, LoadingCards, timeAgo } from '../../lib/ui.jsx'
 import { CHILD_MAX_AGE, PRIORITY_ICONS, SENIOR_AGE, STAFF_LABELS, ageFromBirthYear } from '../../lib/priority.js'
 
@@ -18,7 +19,6 @@ const REJECT_REASONS = [
   'The birth year or due date does not match the proof',
   'The proof appears to be altered',
 ]
-const OTHER = 'Other reason'
 
 const formatDate = (value) => new Date(`${value}T00:00:00`).toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' })
 
@@ -52,26 +52,23 @@ function ProofViewer({ path }) {
   </button>
 }
 
-function RejectBox({ busy, revoking, onCancel, onReject }) {
-  const [reason, setReason] = useState(REJECT_REASONS[0])
-  const [other, setOther] = useState('')
-  const text = reason === OTHER ? other.trim() : reason
-  return <div class="admin-reject-box priority-reject-box">
-    <label><span>Reason shown to the household</span>
-      <select value={reason} onChange={(event) => setReason(event.currentTarget.value)}>
-        {[...REJECT_REASONS, OTHER].map((item) => <option key={item}>{item}</option>)}
-      </select>
-    </label>
-    {reason === OTHER && <input value={other} maxLength="300" placeholder="Say what to fix, for example: upload the back of the ID" onInput={(event) => setOther(event.currentTarget.value)} aria-label="Other reason" />}
-    <div>
-      <button type="button" class="alert-cancel-button" onClick={onCancel}>Cancel</button>
-      <button type="button" class="reject-button" disabled={busy || text.length < 3} onClick={() => onReject(text)}>{revoking ? 'Revoke' : 'Reject'}</button>
-    </div>
-  </div>
-}
-
 function ReviewCard({ member, busy, onReview }) {
-  const [isRejecting, setIsRejecting] = useState(false)
+  const [confirm, confirmDialog] = useConfirm()
+  const reject = async () => {
+    const revoking = member.status === 'verified'
+    const reason = await confirm({
+      title: revoking ? `Revoke ${member.full_name}'s priority?` : `Reject the proof for ${member.full_name}?`,
+      message: revoking
+        ? 'Rescuers stop seeing this category as verified on the household\'s calls. The household sees the reason and can send a new proof.'
+        : 'The household sees the reason and can send a new proof. Until then, rescuers see this category as unverified.',
+      confirmLabel: revoking ? 'Revoke' : 'Reject proof',
+      reasons: REJECT_REASONS,
+      reasonLabel: 'Reason shown to the household',
+      otherPlaceholder: 'Say what to fix, for example: upload the back of the ID',
+      icon: 'x',
+    })
+    if (reason) onReview(member, 'rejected', reason)
+  }
   const age = ageFromBirthYear(member.birth_year)
   // A child turns 18, or a pregnancy is long past its due date: no longer counted.
   const lapsed = (member.category === 'child' && age > CHILD_MAX_AGE)
@@ -102,12 +99,11 @@ function ReviewCard({ member, busy, onReview }) {
       {member.review_note && <div><dt>{member.status === 'rejected' ? 'Reason given' : 'Note'}</dt><dd>{member.review_note}</dd></div>}
     </dl>
     <ProofViewer key={member.proof_path} path={member.proof_path} />
-    {isRejecting
-      ? <RejectBox busy={busy} revoking={member.status === 'verified'} onCancel={() => setIsRejecting(false)} onReject={(reason) => onReview(member, 'rejected', reason)} />
-      : <div class="priority-review-actions">
-        {member.status !== 'verified' && <button type="button" class="approve-button" disabled={busy} onClick={() => onReview(member, 'verified')}><Icon name="check" size={14} /> Verify</button>}
-        {member.status !== 'rejected' && <button type="button" class="reject-button" disabled={busy} onClick={() => setIsRejecting(true)}>{member.status === 'verified' ? 'Revoke' : 'Reject'}</button>}
-      </div>}
+    <div class="priority-review-actions">
+      {member.status !== 'verified' && <button type="button" class="approve-button" disabled={busy} onClick={() => onReview(member, 'verified')}><Icon name="check" size={14} /> Verify</button>}
+      {member.status !== 'rejected' && <button type="button" class="reject-button" disabled={busy} onClick={reject}><Icon name="x" size={14} /> {member.status === 'verified' ? 'Revoke' : 'Reject'}</button>}
+    </div>
+    {confirmDialog}
   </article>
 }
 

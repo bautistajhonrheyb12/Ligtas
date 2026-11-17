@@ -42,6 +42,9 @@ import { CenterForm, PointForm } from './admin/AdminForms.jsx'
 import { ActivityFeed, AlertForm, AlertList, CentersPanel, TeamsPanel } from './admin/AdminPanels.jsx'
 import { AnalyticsPanel } from './admin/AnalyticsPanel.jsx'
 import { PriorityPanel } from './admin/PriorityPanel.jsx'
+import { useConfirm } from '../components/ConfirmDialog.jsx'
+import { rejectQuestion } from './admin/reportDecisions.js'
+import { placeReport } from '../lib/callLocation.js'
 import { privacyUrl, termsUrl } from '../lib/legal.js'
 import { ReportsPanel } from './admin/ReportsPanel.jsx'
 import { SecurityPanel } from './admin/SecurityPanel.jsx'
@@ -61,6 +64,17 @@ const PAGE_TITLES = {
   analytics: 'Analytics',
   priority: 'Priority rescue',
   security: 'Security',
+}
+const PAGE_DESCRIPTIONS = {
+  dashboard: 'What needs attention now across Santa Maria, Bulacan.',
+  alerts: 'Publish warnings to citizens and rescuers, and end them when the danger is over.',
+  map: 'Hazards, closed roads, evacuation centers, open reports and teams in the field.',
+  reports: 'Review, verify and assign reports from citizens. SOS calls go straight to rescuers.',
+  centers: 'Keep shelter capacity up to date so citizens are sent where there is space.',
+  teams: 'Rescue teams, their current calls and the activity log.',
+  analytics: 'How quickly reports are handled, and where they come from.',
+  priority: 'Check proofs for persons with disability, pregnant women, senior citizens and children.',
+  security: 'Accounts whose reports failed the location checks.',
 }
 
 export function AdminDashboard({ onSignOut }) {
@@ -101,7 +115,12 @@ export function AdminDashboard({ onSignOut }) {
   const [addingPoint, setAddingPoint] = useState('')
   const [pendingPoint, setPendingPoint] = useState(null)
   const [centerForm, setCenterForm] = useState(null)
-  const [confirmDeletePointId, setConfirmDeletePointId] = useState(null)
+  const [confirm, confirmDialog] = useConfirm()
+
+  const quickReject = async (report) => {
+    const reason = await confirm(rejectQuestion(report))
+    if (reason) updateReport(report.id, { status: 'Rejected', resolution_note: reason })
+  }
 
   const loadReports = () => getIncidentReports()
     .then(setReports)
@@ -200,12 +219,13 @@ export function AdminDashboard({ onSignOut }) {
   }
 
   const removePoint = async (point) => {
-    if (confirmDeletePointId !== point.id) {
-      setConfirmDeletePointId(point.id)
-      setTimeout(() => setConfirmDeletePointId(null), 4000)
-      return
-    }
-    setConfirmDeletePointId(null)
+    const sure = await confirm({
+      title: `Remove "${point.name}" from the map?`,
+      message: `This ${point.point_type.toLowerCase()} disappears from every citizen and rescuer map${point.point_type === 'Danger zone' || point.point_type === 'Closed road' ? ', and directions stop avoiding it' : ''}.`,
+      confirmLabel: 'Remove point',
+      icon: 'trash',
+    })
+    if (!sure) return
     try {
       await deleteMapPoint(point.id)
       setPoints((current) => current.filter((item) => item.id !== point.id))
@@ -294,7 +314,8 @@ export function AdminDashboard({ onSignOut }) {
   const pendingReports = reports.filter((report) => report.status === 'Pending')
   const sosReports = reports.filter((report) => report.report_type === 'SOS' && report.status === 'Verified' && !report.assigned_to)
   const activeReports = reports.filter((report) => report.status === 'Verified' || report.status === 'Pending')
-  const mapReports = markTampered(activeReports, integrity)
+  // Open SOS calls are shown where the person is now (live location).
+  const mapReports = markTampered(activeReports, integrity).map(placeReport)
   const teams = locations.filter((location) => Date.now() - new Date(location.updated_at).getTime() < TEAM_LIVE_MS).map((location) => ({
     ...location,
     id: location.rescuer_id,
@@ -307,15 +328,15 @@ export function AdminDashboard({ onSignOut }) {
   const flaggedAccounts = new Set(security.flags.filter((flag) => !flag.cleared_at).map((flag) => flag.user_id)).size
 
   const adminNavItems = [
-    { id: 'dashboard', label: 'Dashboard', icon: '▦' },
-    { id: 'reports', label: 'Reports', icon: '▤', count: pendingReports.length },
-    { id: 'alerts', label: 'Alerts', icon: '!', count: alerts.filter((alert) => alert.accent === 'red').length },
-    { id: 'map', label: 'Map', icon: '⌖' },
-    { id: 'centers', label: 'Centers', icon: '⌂' },
-    { id: 'teams', label: 'Teams', icon: '◎' },
-    { id: 'priority', label: 'Priority', icon: '♥', count: priority.members.filter((member) => member.status === 'pending').length },
-    { id: 'analytics', label: 'Analytics', icon: '▥' },
-    { id: 'security', label: 'Security', icon: '⛨', count: flaggedAccounts },
+    { id: 'dashboard', label: 'Dashboard', icon: 'grid' },
+    { id: 'reports', label: 'Reports', icon: 'calls', count: pendingReports.length },
+    { id: 'alerts', label: 'Alerts', icon: 'bell', count: alerts.filter((alert) => alert.accent === 'red').length },
+    { id: 'map', label: 'Map', icon: 'map' },
+    { id: 'centers', label: 'Centers', icon: 'home' },
+    { id: 'teams', label: 'Teams', icon: 'users' },
+    { id: 'priority', label: 'Priority', icon: 'accessible', count: priority.members.filter((member) => member.status === 'pending').length },
+    { id: 'analytics', label: 'Analytics', icon: 'chart' },
+    { id: 'security', label: 'Security', icon: 'shield', count: flaggedAccounts },
   ]
 
   const noticeBanner = notice && <p class={`admin-notice${noticeIsError ? ' is-error' : ''}`} role={noticeIsError ? 'alert' : 'status'}>{notice}</p>
@@ -352,7 +373,7 @@ export function AdminDashboard({ onSignOut }) {
           tabIndex={isAdminNavOpen ? 0 : -1}
           onClick={() => selectAdminTab(item.id)}
         >
-          <span class="admin-sidebar-icon" aria-hidden="true">{item.icon}</span>
+          <span class="admin-sidebar-icon" aria-hidden="true"><Icon name={item.icon} size={18} /></span>
           <span>{item.label}</span>
           {item.count > 0 && <span class="admin-sidebar-count">{item.count}</span>}
         </button>)}
@@ -362,31 +383,31 @@ export function AdminDashboard({ onSignOut }) {
         <a href={privacyUrl} target="_blank" rel="noopener" tabIndex={isAdminNavOpen ? 0 : -1}>Privacy Policy</a>
       </p>
       <div class="admin-sidebar-location" aria-label="Service area">
-        <span class="admin-sidebar-location-icon" aria-hidden="true">⌖</span>
+        <span class="admin-sidebar-location-icon" aria-hidden="true"><Icon name="pin" size={16} /></span>
         <div><small>Service area</small><strong>Santa Maria, Bulacan</strong></div>
       </div>
     </aside>
 
     <section class="ops-heading admin-page-heading" id="admin-home">
-      <div><span class="ops-eyebrow">Community operations</span><h1>{PAGE_TITLES[activeTab]}</h1><p>Santa Maria, Bulacan · Community safety overview</p></div>
+      <div><span class="ops-eyebrow">Community operations</span><h1>{PAGE_TITLES[activeTab]}</h1><p>{PAGE_DESCRIPTIONS[activeTab]}</p></div>
       <div class="admin-heading-actions">
         <span class="ops-updated"><i /> Live</span>
-        {activeTab === 'dashboard' && <button type="button" class="admin-send-alert" onClick={() => { selectAdminTab('alerts'); setIsAlertFormOpen(true) }}><span>＋</span> Send alert</button>}
+        {activeTab === 'dashboard' && <button type="button" class="admin-send-alert" onClick={() => { selectAdminTab('alerts'); setIsAlertFormOpen(true) }}><Icon name="plus" size={16} /> Send alert</button>}
       </div>
     </section>
 
     {activeTab === 'dashboard' && <>
       {noticeBanner}
       {sosReports.length > 0 && <button class="ops-alert-banner admin-dashboard-alert admin-sos-banner" type="button" onClick={() => { setReportFilter('SOS'); selectAdminTab('reports') }}>
-        <span class="ops-alert-icon">!</span>
+        <span class="ops-alert-icon"><Icon name="sos" size={20} /></span>
         <span class="ops-alert-copy"><strong>{sosReports.length} SOS {sosReports.length === 1 ? 'call has' : 'calls have'} no team yet</strong><small>{sosReports[0].location} · {timeAgo(sosReports[0].created_at)} · Assign a rescue team now</small></span>
         <span class="ops-alert-meta"><b>Critical</b><small>Open reports</small></span>
       </button>}
       <section class="ops-stats admin-stats" aria-label="Community operations overview">
-        <article class="ops-stat ops-stat--blue"><span class="ops-stat-icon">⌂</span><div><strong><CountUp value={openCenters.length} /></strong><span>Open evac. centers</span></div></article>
-        <article class="ops-stat ops-stat--red"><span class="ops-stat-icon">!</span><div><strong><CountUp value={activeReports.length} /></strong><span>Active reports</span></div></article>
-        <article class="ops-stat ops-stat--orange"><span class="ops-stat-icon">◎</span><div><strong><CountUp value={teams.length} /></strong><span>Teams in the field</span></div></article>
-        <article class="ops-stat ops-stat--green"><span class="ops-stat-icon">✓</span><div><strong><CountUp value={recentCheckins.length - needHelp} /></strong><span>{needHelp ? `Marked safe · ${needHelp} need help` : 'Marked safe (3 days)'}</span></div></article>
+        <article class="ops-stat ops-stat--blue"><span class="ops-stat-icon"><Icon name="home" size={18} /></span><div><strong><CountUp value={openCenters.length} /></strong><span>Open evac. centers</span></div></article>
+        <article class="ops-stat ops-stat--red"><span class="ops-stat-icon"><Icon name="alert" size={18} /></span><div><strong><CountUp value={activeReports.length} /></strong><span>Active reports</span></div></article>
+        <article class="ops-stat ops-stat--orange"><span class="ops-stat-icon"><Icon name="users" size={18} /></span><div><strong><CountUp value={teams.length} /></strong><span>Teams in the field</span></div></article>
+        <article class="ops-stat ops-stat--green"><span class="ops-stat-icon"><Icon name="check" size={18} /></span><div><strong><CountUp value={recentCheckins.length - needHelp} /></strong><span>{needHelp ? `Marked safe · ${needHelp} need help` : 'Marked safe (3 days)'}</span></div></article>
       </section>
       <div class="ops-content admin-overview-content">
         <div class="admin-overview-map">
@@ -403,7 +424,7 @@ export function AdminDashboard({ onSignOut }) {
                 <div><strong>{report.report_type}{report.priority !== 'Normal' && <span class={`admin-priority admin-priority--${report.priority.toLowerCase()}`}>{report.priority}</span>}</strong><small>{report.location}</small></div>
                 <div class="admin-review-actions">
                   <button type="button" class="approve-button" disabled={updatingReportId === report.id} onClick={() => updateReport(report.id, { status: 'Verified' })} aria-label={`Approve ${report.report_type} report`}><Icon name="check" size={16} /></button>
-                  <button type="button" class="reject-button" disabled={updatingReportId === report.id} onClick={() => updateReport(report.id, { status: 'Rejected' })} aria-label={`Reject ${report.report_type} report`}><Icon name="plus" size={16} /></button>
+                  <button type="button" class="reject-button" disabled={updatingReportId === report.id} onClick={() => quickReject(report)} aria-label={`Reject ${report.report_type} report`}><Icon name="x" size={16} /></button>
                 </div>
               </article>
             })}
@@ -436,7 +457,7 @@ export function AdminDashboard({ onSignOut }) {
         {isAlertFormOpen
           ? <AlertForm onCancel={() => setIsAlertFormOpen(false)} onPublished={() => { setIsAlertFormOpen(false); showNotice('Alert published to the selected audience.'); loadAlerts() }} />
           : <>
-            <div class="queue-heading"><div><span class="ops-eyebrow">Situation updates</span><h2>Active alerts</h2></div><button type="button" class="add-alert-button" onClick={() => { setIsAlertFormOpen(true); setNotice('') }}>＋ Create alert</button></div>
+            <div class="queue-heading"><div><span class="ops-eyebrow">Situation updates</span><h2>Active alerts</h2></div><button type="button" class="add-alert-button" onClick={() => { setIsAlertFormOpen(true); setNotice('') }}><Icon name="plus" size={16} /> Create alert</button></div>
             <AlertList alerts={alerts} loading={alertsLoading} error={alertsError} onEnd={handleEndAlert} onDelete={handleDeleteAlert} />
           </>}
       </section>}
@@ -467,8 +488,8 @@ export function AdminDashboard({ onSignOut }) {
               <i class={`admin-point-dot admin-point-dot--${point.point_type.toLowerCase().replace(/[^a-z]+/g, '-')}`} />
               <span>{point.name}</span>
               <small>{point.point_type}</small>
-              <button type="button" class={`admin-point-delete${confirmDeletePointId === point.id ? ' is-confirming' : ''}`} onClick={() => removePoint(point)} aria-label={confirmDeletePointId === point.id ? `Confirm removing ${point.name}` : `Remove ${point.name}`}>
-                {confirmDeletePointId === point.id ? 'Remove?' : <Icon name="trash" size={14} />}
+              <button type="button" class="admin-point-delete" onClick={() => removePoint(point)} aria-label={`Remove ${point.name}`}>
+                <Icon name="trash" size={14} />
               </button>
             </div>)}
             {points.length === 0 && <p class="admin-empty-state">No map points yet.</p>}
@@ -531,6 +552,7 @@ export function AdminDashboard({ onSignOut }) {
         showNotice(`${center.name} saved.`)
       }}
     />}
+    {confirmDialog}
     <ToastStack toasts={toasts} onDismiss={dismissToast} />
   </main>
 }

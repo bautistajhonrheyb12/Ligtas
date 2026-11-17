@@ -3,11 +3,12 @@ import { getReportPhotoUrl } from '../../lib/supabase.js'
 import { Icon, LoadingCards, downloadCsv, reportTypeStyle, timeAgo } from '../../lib/ui.jsx'
 import { STAFF_LABELS, countCategories } from '../../lib/priority.js'
 import { PriorityTags } from '../../components/PriorityTags.jsx'
+import { useConfirm } from '../../components/ConfirmDialog.jsx'
+import { assignQuestion, rejectQuestion, statusQuestion } from './reportDecisions.js'
 
 const FILTERS = ['All', 'Pending', 'Verified', 'Resolved', 'Rejected', 'Cancelled', 'SOS']
 const FILTER_LABELS = { Cancelled: 'Withdrawn' }
 const PAGE_SIZE = 30
-const REJECT_REASONS = ['Duplicate of another report', 'Not enough details to act on', 'Outside the service area', 'Already handled', 'Not an emergency']
 
 function ReportPhotoLink({ path }) {
   const [state, setState] = useState('idle')
@@ -25,30 +26,36 @@ function ReportPhotoLink({ path }) {
   </button>
 }
 
-// Rejecting asks for a reason, which the citizen sees on their report.
-function RejectControl({ disabled, onReject }) {
-  const [isOpen, setIsOpen] = useState(false)
-  const [reason, setReason] = useState(REJECT_REASONS[0])
-  if (!isOpen) return <button type="button" class="reject-button" disabled={disabled} onClick={() => setIsOpen(true)}>Reject</button>
-  return <div class="admin-reject-box">
-    <label><span>Reason shown to the citizen</span>
-      <select value={reason} onChange={(event) => setReason(event.currentTarget.value)}>
-        {REJECT_REASONS.map((item) => <option key={item}>{item}</option>)}
-      </select>
-    </label>
-    <div>
-      <button type="button" class="alert-cancel-button" onClick={() => setIsOpen(false)}>Cancel</button>
-      <button type="button" class="reject-button" disabled={disabled} onClick={() => onReject(reason)}>Reject report</button>
-    </div>
-  </div>
-}
-
 export function ReportsPanel({ reports, integrity = {}, loading, staff, updatingReportId, onUpdate, initialFilter = 'All' }) {
+  const [confirm, confirmDialog] = useConfirm()
   const [filter, setFilter] = useState(initialFilter)
   const [search, setSearch] = useState('')
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE)
   const rescuers = staff.filter((person) => person.role === 'rescuer')
   const staffName = (id) => staff.find((person) => person.id === id)?.display_name || 'Unnamed rescuer'
+
+  // Decisions that are hard to undo are confirmed first. A dropdown snaps
+  // back to its current value until the change is confirmed and saved.
+  const reject = async (report) => {
+    const reason = await confirm(rejectQuestion(report))
+    if (reason) onUpdate(report.id, { status: 'Rejected', resolution_note: reason })
+  }
+  const changeStatus = async (report, select) => {
+    const status = select.value
+    select.value = report.status
+    if (status === report.status) return
+    const { ask, changes } = statusQuestion(report, status)
+    const answer = await confirm(ask)
+    if (answer) onUpdate(report.id, changes(answer))
+  }
+  const changeTeam = async (report, select) => {
+    const teamId = select.value || null
+    select.value = report.assigned_to ?? ''
+    if (teamId === (report.assigned_to ?? null)) return
+    const ask = assignQuestion(report, teamId, staffName)
+    if (ask && !(await confirm(ask))) return
+    onUpdate(report.id, { assigned_to: teamId, response_stage: teamId ? 'Assigned' : null })
+  }
 
   const filtered = reports.filter((report) => {
     const matchesFilter = filter === 'All' || (filter === 'SOS' ? report.report_type === 'SOS' : report.status === filter)
@@ -140,7 +147,7 @@ export function ReportsPanel({ reports, integrity = {}, loading, staff, updating
             <span class={`admin-report-status admin-report-status--${report.status.toLowerCase()}`}><span>{FILTER_LABELS[report.status] ?? report.status}</span></span>
             {report.status === 'Pending' && <div class="admin-report-actions">
               <button type="button" class="approve-button" disabled={isBusy} onClick={() => onUpdate(report.id, { status: 'Verified' })}><Icon name="check" size={14} /> Approve</button>
-              <RejectControl disabled={isBusy} onReject={(reason) => onUpdate(report.id, { status: 'Rejected', resolution_note: reason })} />
+              <button type="button" class="reject-button" disabled={isBusy} onClick={() => reject(report)}><Icon name="x" size={14} /> Reject</button>
             </div>}
             {(report.status === 'Pending' || report.status === 'Verified') && report.report_type !== 'SOS' && <label class="admin-status-override admin-priority-select">
               <span>Priority</span>
@@ -150,7 +157,7 @@ export function ReportsPanel({ reports, integrity = {}, loading, staff, updating
             </label>}
             {report.status === 'Verified' && <label class="admin-assign">
               <span>Assigned team</span>
-              <select disabled={isBusy} value={report.assigned_to ?? ''} onChange={(event) => onUpdate(report.id, { assigned_to: event.currentTarget.value || null, response_stage: event.currentTarget.value ? 'Assigned' : null })}>
+              <select disabled={isBusy} value={report.assigned_to ?? ''} onChange={(event) => changeTeam(report, event.currentTarget)}>
                 <option value="">Unassigned</option>
                 {rescuers.map((person) => <option value={person.id} key={person.id}>{person.display_name || 'Unnamed rescuer'}</option>)}
               </select>
@@ -159,7 +166,7 @@ export function ReportsPanel({ reports, integrity = {}, loading, staff, updating
             {report.status === 'Resolved' && report.assigned_to && <small class="admin-report-by">by {staffName(report.assigned_to)}{report.resolved_at ? ` · ${timeAgo(report.resolved_at)}` : ''}</small>}
             {report.status !== 'Pending' && report.status !== 'Cancelled' && <label class="admin-status-override">
               <span>Change status</span>
-              <select aria-label={`Change ${report.report_type} status`} value={report.status} disabled={isBusy} onChange={(event) => onUpdate(report.id, { status: event.currentTarget.value })}>
+              <select aria-label={`Change ${report.report_type} status`} value={report.status} disabled={isBusy} onChange={(event) => changeStatus(report, event.currentTarget)}>
                 <option>Pending</option><option>Verified</option><option>Resolved</option><option>Rejected</option>
               </select>
             </label>}
@@ -171,5 +178,6 @@ export function ReportsPanel({ reports, integrity = {}, loading, staff, updating
       </button>}
       {filtered.length === 0 && <p class="admin-empty-state">No reports match this search.</p>}
     </div>}
+    {confirmDialog}
   </section>
 }

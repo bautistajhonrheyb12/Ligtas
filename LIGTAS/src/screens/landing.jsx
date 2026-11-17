@@ -1,3 +1,4 @@
+import { Icon } from '../lib/ui.jsx'
 
 export const slides = [
   {
@@ -50,7 +51,7 @@ export function Illustration({ type }) {
 
       <div class="alert-row"><i>☁</i><div><b>Heavy Rainfall</b><span>Santa Maria, Bulacan<br/>Today, 8:30 PM</span></div></div>
       <hr />
-      <div class="alert-row"><i>⌂</i><div><b>Flood Warning</b><span>Santa Maria, Bulacan<br/>Today, 8:30 PM</span></div></div>
+      <div class="alert-row"><i><Icon name="droplet" size={14} /></i><div><b>Flood Warning</b><span>Santa Maria, Bulacan<br/>Today, 8:30 PM</span></div></div>
     </div>
   </div>
   return <div class="island-visual" aria-hidden="true">

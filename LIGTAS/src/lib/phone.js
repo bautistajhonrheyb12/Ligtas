@@ -9,6 +9,12 @@ export function toLocalDigits(value) {
     .slice(0, 10)
 }
 
+// The 10 digits grouped for reading, like the placeholder: 917 123 4567.
+export function formatLocalDigits(value) {
+  const digits = toLocalDigits(value)
+  return [digits.slice(0, 3), digits.slice(3, 6), digits.slice(6, 10)].filter(Boolean).join(' ')
+}
+
 export const isValidMobile = (stored) => /^\+639\d{9}$/.test(stored ?? '')
 
 export function toStoredMobile(value) {

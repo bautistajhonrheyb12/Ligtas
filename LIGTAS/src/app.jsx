@@ -11,10 +11,10 @@ import {
   takeGoogleSignIn,
 } from './lib/supabase.js'
 import { rescueHotline } from './lib/hotlines.js'
-import { Logo } from './lib/ui.jsx'
+import { Icon, Logo } from './lib/ui.jsx'
 import { LEGAL_VERSION, privacyUrl, termsUrl } from './lib/legal.js'
 import { TermsGate } from './components/TermsGate.jsx'
-import { slides, IconPlaceholder, Illustration } from './screens/landing.jsx'
+import { slides, Illustration } from './screens/landing.jsx'
 import { AboutPage } from './screens/AboutPage.jsx'
 import { AuthScreen } from './screens/AuthScreen.jsx'
 import { ResetPasswordScreen } from './screens/ResetPasswordScreen.jsx'
@@ -31,6 +31,7 @@ import './about.css'
 import './navigation.css'
 import './priority.css'
 import './legal.css'
+import './enhance.css'
 
 // Each dashboard (and the map library) downloads only when that role signs in,
 // which keeps the first page light on slow mobile connections.
@@ -436,9 +437,9 @@ export function App() {
     <section class="how-it-works" id="how-it-works">
       <div class="section-heading" data-reveal><span>How it works</span><h2>Preparedness starts<br />with one clear view.</h2><p>LIGTAS brings important local information together, so every community member can act with confidence.</p></div>
       <div class="steps">
-        <article class="step-card" data-reveal><b>01</b><div class="step-symbol"><IconPlaceholder name="verified-alert-icon" /></div><h3>Receive verified alerts</h3><p>Get timely updates on heavy rainfall, flooding, earthquakes, and other hazards near you.</p></article>
-        <article class="step-card" data-reveal><b>02</b><div class="step-symbol"><IconPlaceholder name="hazard-map-icon" /></div><h3>See the situation clearly</h3><p>Use localized hazard maps and live reports to understand risks in your barangay.</p></article>
-        <article class="step-card" data-reveal><b>03</b><div class="step-symbol"><IconPlaceholder name="community-response-icon" /></div><h3>Respond together</h3><p>Report incidents, find safety information, and help responders coordinate faster.</p></article>
+        <article class="step-card" data-reveal><b>01</b><div class="step-symbol"><Icon name="bell" size={30} /></div><h3>Receive verified alerts</h3><p>Get timely updates on heavy rainfall, flooding, earthquakes, and other hazards near you.</p></article>
+        <article class="step-card" data-reveal><b>02</b><div class="step-symbol"><Icon name="map" size={30} /></div><h3>See the situation clearly</h3><p>Use localized hazard maps and live reports to understand risks in your barangay.</p></article>
+        <article class="step-card" data-reveal><b>03</b><div class="step-symbol"><Icon name="users" size={30} /></div><h3>Respond together</h3><p>Report incidents, find safety information, and help responders coordinate faster.</p></article>
       </div>
     </section>
     <section class="feature-strip" id="about" data-reveal><div><b>01</b><h2>Live mapping</h2><p>See locations and hazards with clarity.</p></div><div><b>02</b><h2>Verified alerts</h2><p>Stay informed with timely updates.</p></div><div><b>03</b><h2>Better coordination</h2><p>Help communities respond together.</p></div></section>

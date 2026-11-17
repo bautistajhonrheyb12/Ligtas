@@ -1,0 +1,296 @@
+/* ==========================================================
+   Interface polish, loaded last: the confirmation box, real
+   icons in place of text symbols, aligned admin pages and
+   small fixes found in a full review of every screen.
+   ========================================================== */
+
+/* Keyboard focus is always visible; disabled controls say so. */
+button:focus-visible,
+a:focus-visible,
+select:focus-visible,
+summary:focus-visible,
+[role='switch']:focus-visible {
+  outline: 2px solid #2f78b7;
+  outline-offset: 2px;
+}
+button:disabled { cursor: not-allowed; }
+
+/* ---------------------------------------------------------------
+   Confirmation box (components/ConfirmDialog.jsx)
+   --------------------------------------------------------------- */
+.alert-modal-backdrop.confirm-backdrop { z-index: 2500; }
+.confirm-dialog {
+  width: min(100%, 420px);
+  padding: 26px 22px 20px;
+  border-radius: 20px;
+  text-align: center;
+}
+.confirm-icon {
+  display: grid;
+  width: 54px;
+  height: 54px;
+  margin: 0 auto 14px;
+  place-items: center;
+  border-radius: 50%;
+  color: #c43d3a;
+  background: #fdeceb;
+}
+.confirm-dialog--warning .confirm-icon { color: #9a5d0b; background: #fff3d6; }
+.confirm-dialog--primary .confirm-icon { color: var(--ui-green-dark); background: var(--ui-green-soft); }
+.confirm-dialog h2 { margin: 0 0 8px; color: var(--ui-ink); font: 800 19px/1.3 Manrope, sans-serif; }
+.confirm-dialog p { margin: 0 0 6px; color: #4d615a; font-size: 14px; line-height: 1.55; }
+.confirm-dialog .confirm-details { color: var(--ui-muted); font-size: 13px; }
+.confirm-reason { display: grid; gap: 8px; margin: 16px 0 2px; text-align: left; }
+.confirm-reason label { display: grid; gap: 6px; color: #425a4e; font-size: 12.5px; font-weight: 800; }
+.confirm-reason select,
+.confirm-reason input {
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 44px;
+  padding: 0 12px;
+  border: 1px solid #dbe5de;
+  border-radius: 10px;
+  color: var(--ui-ink);
+  background: #fff;
+  font: 500 14px 'DM Sans', sans-serif;
+}
+.confirm-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 20px; }
+.confirm-actions button { min-height: 46px; border-radius: 12px; font: 800 14.5px 'DM Sans', sans-serif; cursor: pointer; }
+.confirm-cancel { border: 1px solid #cfdcd4; color: #2f5a45; background: #fff; }
+.confirm-cancel:hover { background: #f3f8f4; }
+.confirm-ok { border: 0; color: #fff; background: #c43d3a; }
+.confirm-ok:hover:not(:disabled) { background: #a8322f; }
+.confirm-dialog--warning .confirm-ok { background: #9a5d0b; }
+.confirm-dialog--warning .confirm-ok:hover:not(:disabled) { background: #7f4c08; }
+.confirm-dialog--primary .confirm-ok { background: var(--ui-green); }
+.confirm-dialog--primary .confirm-ok:hover:not(:disabled) { background: var(--ui-green-dark); }
+.confirm-ok:disabled { opacity: .5; }
+@media (max-width: 380px) {
+  .confirm-actions { grid-template-columns: 1fr; }
+  .confirm-ok { order: -1; }
+}
+
+/* ---------------------------------------------------------------
+   Icons that replaced text symbols
+   --------------------------------------------------------------- */
+.admin-sidebar-icon { display: grid; width: 22px; place-items: center; }
+.admin-sidebar-location-icon { display: grid; place-items: center; }
+.ops-stat-icon { display: grid; place-items: center; }
+.ops-alert-icon { display: grid; place-items: center; }
+.admin-send-alert { display: inline-flex; align-items: center; gap: 6px; }
+.citizen-map-fullscreen,
+.map-fullscreen-btn,
+.map-fullscreen-icon { display: grid; place-items: center; }
+.alert-item__icon,
+.ops-alert-symbol { display: grid; place-items: center; }
+.ops-alert-symbol .ui-icon { width: 18px; height: 18px; }
+
+/* Home page "How it works": real icons, coloured per step. */
+.step-card .step-symbol::before { content: none !important; }
+.step-card .step-symbol .ui-icon { display: block; }
+.step-card:nth-child(1) .step-symbol { color: #2f78b7; }
+.step-card:nth-child(2) .step-symbol { color: #b9770e; }
+.step-card:nth-child(3) .step-symbol { color: var(--ui-green); }
+
+/* ---------------------------------------------------------------
+   Admin: every page lines up with its heading
+   --------------------------------------------------------------- */
+.admin-content > .admin-reports-panel,
+.admin-content > .admin-centers-panel,
+.admin-content > .ops-alerts-panel {
+  width: 100%;
+  max-width: 1100px;
+  margin-left: 0;
+  margin-right: auto;
+  box-sizing: border-box;
+}
+.admin-content > .admin-notice { max-width: 1100px; }
+.admin-report-card--rich .admin-report-main { align-content: start; }
+.admin-page-heading p { max-width: 640px; }
+.admin-point-delete { display: grid; place-items: center; }
+/* The quick reject button used a turned "+"; it now has a real "x". */
+.admin-review-actions .reject-button .ui-icon { rotate: 0deg; }
+
+/* ---------------------------------------------------------------
+   Citizen
+   --------------------------------------------------------------- */
+/* The count beside "Alerts" and "My reports" as a badge. */
+.alerts-header-row { align-items: center; }
+.alerts-header-row .severity-button {
+  display: inline-grid;
+  min-width: 28px;
+  height: 28px;
+  padding: 0 8px;
+  place-items: center;
+  border: 0;
+  border-radius: 999px;
+  color: var(--ui-green-dark);
+  background: var(--ui-green-soft);
+  font: 800 13px 'DM Sans', sans-serif;
+  box-shadow: none;
+}
+
+/* A clear Save button for "My details". */
+.profile-form .secondary-action {
+  justify-content: center;
+  width: 100%;
+  border-color: transparent;
+  color: #fff;
+  background: var(--ui-green);
+}
+.profile-form .secondary-action:hover:not(:disabled) { background: var(--ui-green-dark); }
+
+/* SOS without GPS: the reason, then "Try again" and the rescue number. */
+.sos-dialog .sos-location-reason { display: grid; gap: 8px; margin: -2px 0 10px; text-align: center; }
+.sos-dialog .sos-location-reason p { margin: 0; color: #8e2f2c; font-size: 12px; line-height: 1.45; }
+.sos-dialog .sos-location-reason div { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; }
+.sos-dialog .sos-location-reason button,
+.sos-dialog .sos-location-reason a {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 34px;
+  padding: 0 14px;
+  border: 1px solid #f1c4c0;
+  border-radius: 999px;
+  color: #8e2f2c;
+  background: #fff;
+  font: 800 12.5px 'DM Sans', sans-serif;
+  text-decoration: none;
+  cursor: pointer;
+}
+.sos-dialog .sos-location-reason a { border-color: #c43d3a; color: #fff; background: #c43d3a; }
+
+/* ---------------------------------------------------------------
+   Home page on phones: a visible way in
+   --------------------------------------------------------------- */
+@media (max-width: 720px) {
+  .hero-copy .hero-actions { display: flex; justify-content: center; margin: 2px 0 18px; }
+  .hero-copy .hero-actions .primary { min-height: 48px; padding: 0 26px; }
+  /* The illustration no longer stretches to fill the screen, which left a
+     large empty gap before "How it works". */
+  .hero { min-height: 0; padding-bottom: 8px; }
+  .hero-art { flex: 0 0 auto; min-height: 300px; }
+}
+
+/* "SOS sent": the badge turns green with a check. */
+.sos-badge.is-sent { background: var(--ui-green); box-shadow: 0 10px 24px rgba(39, 116, 91, .3); animation: none; }
+
+/* ---------------------------------------------------------------
+   Rescuer: call details on the field map (screens/rescuer/CallSheet.jsx)
+   --------------------------------------------------------------- */
+.ops-map-frame { position: relative; }
+.rx-call-sheet {
+  position: absolute;
+  /* Above the map's zoom buttons. */
+  z-index: 1100;
+  right: 10px;
+  bottom: 46px;
+  left: 10px;
+  display: grid;
+  gap: 10px;
+  max-height: min(56%, 520px);
+  overflow-y: auto;
+  padding: 14px;
+  border: 1px solid var(--ui-border);
+  border-radius: 18px;
+  background: #fff;
+  box-shadow: 0 16px 40px rgba(20, 40, 30, .28);
+  animation: ligtas-rise .25s var(--ease-out) both;
+}
+.rx-call-sheet.is-critical { border-color: #f1c4c0; }
+.rx-sheet-head { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 10px; }
+.rx-sheet-head strong { display: block; color: var(--ui-ink); font: 800 17px Manrope, sans-serif; }
+.rx-sheet-head small { display: inline-flex; align-items: center; gap: 4px; color: var(--ui-muted); font-size: 12px; }
+.rx-sheet-close { display: grid; width: 36px; height: 36px; place-items: center; border: 1px solid var(--ui-border); border-radius: 50%; color: #53675e; background: #fff; cursor: pointer; }
+.rx-sheet-place { display: grid; gap: 6px; padding: 10px 12px; border-radius: 12px; background: #f6f9f7; }
+.rx-sheet-place p { display: flex; align-items: flex-start; gap: 8px; margin: 0; color: #33473f; font-size: 13.5px; line-height: 1.45; }
+.rx-sheet-place p > .ui-icon { flex: 0 0 auto; margin-top: 2px; }
+.rx-sheet-place .rx-sheet-address { color: var(--ui-ink); font-weight: 700; }
+.rx-sheet-address small { display: block; margin-top: 2px; color: var(--ui-muted); font-size: 12px; font-weight: 500; }
+.rx-sheet-position i { flex: 0 0 auto; width: 10px; height: 10px; margin: 5px 3px 0; border-radius: 50%; background: #9aa8a2; }
+.rx-sheet-place .rx-sheet-position.is-live { color: #1f6b43; font-weight: 700; }
+.rx-sheet-position.is-live i { background: #2e9d5b; animation: live-pulse 1.6s ease-out infinite; }
+.rx-sheet-place .rx-sheet-position.is-stale { color: #8a5a0b; }
+.rx-sheet-position.is-stale i { background: #d9a63b; }
+.rx-sheet-place .rx-sheet-search { color: #8a5a0b; font-weight: 600; }
+.rx-sheet-road b { color: var(--ui-ink); }
+.rx-sheet-road .is-warning { color: #a2453f; font-weight: 700; }
+.rx-sheet-notes { margin: 0; padding: 10px 12px; border-radius: 12px; color: #33473f; background: #f6f9f7; font-size: 13.5px; line-height: 1.5; }
+.rx-call-sheet .rx-call-actions { margin: 0; }
+.rx-sheet-google { justify-self: center; color: #2f78b7; font-size: 12.5px; font-weight: 700; }
+@media (min-width: 900px) {
+  .rx-call-sheet { top: 64px; right: 14px; bottom: auto; left: auto; width: 380px; max-height: calc(100% - 130px); }
+}
+
+/* Queue: the live badge and "Show on map" */
+.rx-call-location { flex-wrap: wrap; }
+.rx-live-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  color: #fff;
+  background: #2e9d5b;
+  font-size: 10.5px;
+  font-weight: 800;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+}
+.rx-live-badge::before { width: 6px; height: 6px; border-radius: 50%; background: #fff; content: ''; animation: live-blink 1.2s ease-in-out infinite; }
+.rx-map-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: auto;
+  padding: 4px 10px;
+  border: 1px solid #cfe0f0;
+  border-radius: 999px;
+  color: #2f78b7;
+  background: #f3f8fc;
+  font: 700 12px 'DM Sans', sans-serif;
+  cursor: pointer;
+}
+
+/* Map pins: a ring while the person shares their live location; the
+   selected call stands out. */
+.report-marker { overflow: visible; }
+.report-live-ring {
+  position: absolute;
+  top: 40%;
+  left: 50%;
+  width: 46px;
+  height: 46px;
+  margin: -23px 0 0 -23px;
+  border: 3px solid #2e9d5b;
+  border-radius: 50%;
+  pointer-events: none;
+  animation: live-ring 1.8s ease-out infinite;
+}
+.report-marker.is-selected span { box-shadow: 0 0 0 5px rgba(47, 120, 183, .4), 0 6px 12px rgba(28, 58, 45, .35); transform: scale(1.15); }
+
+/* Citizen: sharing the live location after an SOS */
+.sos-live-banner {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 12px;
+  padding: 12px 14px;
+  border: 1px solid #bfe3cc;
+  border-radius: 14px;
+  background: #ecf8f0;
+}
+.sos-live-dot { width: 12px; height: 12px; border-radius: 50%; background: #2e9d5b; animation: live-pulse 1.6s ease-out infinite; }
+.sos-live-banner strong { display: block; color: #1f6b43; font-size: 14px; }
+.sos-live-banner small { display: block; color: #3f6b55; font-size: 12px; line-height: 1.4; }
+.sos-live-stop { min-height: 34px; padding: 0 12px; border: 1px solid #bfe3cc; border-radius: 999px; color: #1f6b43; background: #fff; font: 800 12.5px 'DM Sans', sans-serif; cursor: pointer; }
+.sos-dialog .sos-live-note { display: flex; align-items: flex-start; justify-content: center; gap: 6px; color: #1f6b43; font-weight: 600; }
+
+@keyframes live-pulse { 0% { box-shadow: 0 0 0 0 rgba(46, 157, 91, .55); } 100% { box-shadow: 0 0 0 10px rgba(46, 157, 91, 0); } }
+@keyframes live-ring { 0% { transform: scale(.55); opacity: .9; } 100% { transform: scale(1.45); opacity: 0; } }
+@keyframes live-blink { 50% { opacity: .3; } }
+@media (prefers-reduced-motion: reduce) {
+  .report-live-ring, .sos-live-dot, .rx-sheet-position.is-live i, .rx-live-badge::before { animation: none; }
+}

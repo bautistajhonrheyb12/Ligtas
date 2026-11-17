@@ -50,7 +50,13 @@ export function SecurityPanel({ flags, people, loading, error, country, onClear 
           </li>)}
         </ul>
         {isPaused(items) && <p class="admin-security-paused"><Icon name="alert" size={14} /> Reporting is paused for this account (SOS still works). Clearing the flags lifts the pause.</p>}
-        <ConfirmButton class="admin-security-clear" label={`Clear flags for ${person?.display_name || 'this account'}`} confirmLabel="Tap again to clear" onConfirm={() => onClear(userId)}>
+        <ConfirmButton class="admin-security-clear" label={`Clear flags for ${person?.display_name || 'this account'}`} onConfirm={() => onClear(userId)} ask={{
+          title: `Clear ${items.length} ${items.length === 1 ? 'flag' : 'flags'} for ${person?.display_name || 'this account'}?`,
+          message: `Do this only after checking the reports. ${isPaused(items) ? 'Their paused reporting starts working again.' : 'They are marked as reviewed.'}`,
+          confirmLabel: 'Clear flags',
+          tone: 'warning',
+          icon: 'shield',
+        }}>
           <Icon name="check" size={13} /> Clear flags
         </ConfirmButton>
       </article>)}

@@ -9,7 +9,23 @@ export const supabase = supabaseUrl && supabasePublishableKey
   ? createClient(supabaseUrl, supabasePublishableKey)
   : null
 
-const REPORT_COLUMNS = 'id, report_type, location, notes, status, created_at, latitude, longitude, photo_path, priority, people_affected, vulnerable_people, assigned_to, response_stage, assigned_at, resolution_note, resolved_at, contact_name, contact_phone, location_source, location_flag, priority_needs, priority_pending'
+const REPORT_COLUMNS_BASE = 'id, report_type, location, notes, status, created_at, latitude, longitude, photo_path, priority, people_affected, vulnerable_people, assigned_to, response_stage, assigned_at, resolution_note, resolved_at, contact_name, contact_phone, location_source, location_flag, priority_needs, priority_pending'
+// GPS accuracy and an open SOS's live position (SOS live-location migration).
+const REPORT_COLUMNS_LIVE = `${REPORT_COLUMNS_BASE}, location_accuracy, live_latitude, live_longitude, live_accuracy, live_updated_at`
+let reportColumns = REPORT_COLUMNS_LIVE
+
+const isMissingColumn = (error) => error?.code === '42703' || error?.code === 'PGRST204'
+
+// Until the newest migration is applied, report queries fall back (once) to
+// the columns that exist, so the app keeps working in the meantime.
+async function withReportColumns(run) {
+  let result = await run(reportColumns)
+  if (isMissingColumn(result.error) && reportColumns !== REPORT_COLUMNS_BASE) {
+    reportColumns = REPORT_COLUMNS_BASE
+    result = await run(reportColumns)
+  }
+  return result
+}
 const PHOTO_BUCKET = 'report-photos'
 const PROOF_BUCKET = 'priority-proofs'
 const PRIORITY_COLUMNS = 'id, user_id, category, full_name, birth_year, due_date, details, proof_path, status, review_note, reviewed_at, created_at, updated_at'
@@ -381,13 +397,14 @@ export async function submitIncidentReport({
   priority = 'Normal',
   peopleAffected = null,
   vulnerablePeople = false,
+  locationAccuracy = null,
 }) {
   const client = requireClient()
   const userId = await currentUserId()
   const isSos = reportType === 'SOS'
   const photoPath = photoFile ? await uploadReportPhoto(userId, photoFile) : null
 
-  const { data, error } = await client.from('incident_reports').insert({
+  const row = {
     reporter_id: userId,
     report_type: reportType,
     location,
@@ -400,7 +417,13 @@ export async function submitIncidentReport({
     people_affected: peopleAffected,
     vulnerable_people: vulnerablePeople,
     status: isSos ? 'Verified' : 'Pending',
-  }).select('id')
+    location_accuracy: latitude != null && locationSource === 'gps' && Number.isFinite(locationAccuracy) ? Math.round(locationAccuracy) : null,
+  }
+  let { data, error } = await client.from('incident_reports').insert(row).select('id')
+  if (isMissingColumn(error)) {
+    delete row.location_accuracy
+    ;({ data, error } = await client.from('incident_reports').insert(row).select('id'))
+  }
 
   if (error) {
     await failIfSessionEnded(error)
@@ -414,6 +437,22 @@ export async function submitIncidentReport({
   // Signed in the background: the report is already delivered, and an unsigned
   // report only shows as "Not signed" to staff.
   signReport(data[0].id)
+}
+
+// While an SOS is open and LIGTAS stays open, the person's phone shares its
+// latest position, so rescuers go where the person is now. Returns true when
+// saved, false when skipped (too soon after the last one). Errors marked
+// `final` mean sharing should stop (the SOS was closed, or the feature is not
+// set up in the database yet).
+export async function shareSosLocation({ sosId, latitude, longitude, accuracy }) {
+  const { data, error } = await requireClient().rpc('share_sos_location', { sos_id: sosId, lat: latitude, lng: longitude, accuracy_m: accuracy ?? null })
+  if (error) {
+    const failure = new Error(error.message)
+    failure.code = error.code
+    failure.final = error.code === 'PGRST202' || /no longer open|not your SOS|6 hours/i.test(error.message)
+    throw failure
+  }
+  return data === true
 }
 
 // Asks the report-integrity function to sign a report just sent, so staff can
@@ -436,12 +475,13 @@ export async function verifyReports(ids) {
 }
 
 export async function getMyReports() {
-  const { data, error } = await requireClient()
+  const userId = await currentUserId()
+  const { data, error } = await withReportColumns((columns) => requireClient()
     .from('incident_reports')
-    .select(REPORT_COLUMNS)
-    .eq('reporter_id', await currentUserId())
+    .select(columns)
+    .eq('reporter_id', userId)
     .order('created_at', { ascending: false })
-    .limit(20)
+    .limit(20))
 
   if (error) {
     throw new Error(`Could not load your reports: ${error.message}`)
@@ -478,10 +518,10 @@ export async function getReportPhotoUrl(path) {
 }
 
 export async function getIncidentReports() {
-  const { data, error } = await requireClient()
+  const { data, error } = await withReportColumns((columns) => requireClient()
     .from('incident_reports')
-    .select(REPORT_COLUMNS)
-    .order('created_at', { ascending: false })
+    .select(columns)
+    .order('created_at', { ascending: false }))
 
   if (error) {
     throw new Error(`Could not load incident reports: ${error.message}`)
@@ -491,11 +531,11 @@ export async function getIncidentReports() {
 }
 
 export async function getRescuerIncidentReports() {
-  const { data, error } = await requireClient()
+  const { data, error } = await withReportColumns((columns) => requireClient()
     .from('incident_reports')
-    .select(REPORT_COLUMNS)
+    .select(columns)
     .in('status', ['Verified', 'Resolved'])
-    .order('created_at', { ascending: false })
+    .order('created_at', { ascending: false }))
 
   if (error) {
     throw new Error(`Could not load verified incident reports: ${error.message}`)
@@ -505,12 +545,12 @@ export async function getRescuerIncidentReports() {
 }
 
 export async function updateIncidentReport(reportId, changes) {
-  const { data, error } = await requireClient()
+  const { data, error } = await withReportColumns((columns) => requireClient()
     .from('incident_reports')
     .update(changes)
     .eq('id', reportId)
-    .select(REPORT_COLUMNS)
-    .single()
+    .select(columns)
+    .single())
 
   if (error) {
     throw new Error(`Could not update incident report: ${error.message}`)
