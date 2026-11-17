@@ -294,3 +294,140 @@ button:disabled { cursor: not-allowed; }
 @media (prefers-reduced-motion: reduce) {
   .report-live-ring, .sos-live-dot, .rx-sheet-position.is-live i, .rx-live-badge::before { animation: none; }
 }
+
+/* ---------------------------------------------------------------
+   Installing LIGTAS and notifications (components/PhoneSetup.jsx)
+   --------------------------------------------------------------- */
+.install-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  cursor: pointer;
+}
+.nav-links .nav-install {
+  padding: 10px 15px;
+  border: 1px solid #cfe0d6;
+  border-radius: 10px;
+  color: var(--ui-green-dark);
+  background: #fff;
+  font: 700 14px 'DM Sans', sans-serif;
+}
+.nav-links .nav-install:hover { border-color: #a8c9b3; background: var(--ui-green-soft); }
+.site .hero-actions .hero-install {
+  min-height: 48px;
+  padding: 0 20px;
+  border: 1px solid #cfe0d6;
+  border-radius: 10px;
+  color: var(--ui-green-dark);
+  background: #fff;
+  font: 700 14px 'DM Sans', sans-serif;
+}
+.site .hero-actions .hero-install:hover { border-color: #a8c9b3; background: var(--ui-green-soft); }
+.mobile-nav .mobile-install { justify-content: flex-start; color: var(--ui-green-dark); background: var(--ui-green-soft); font-weight: 700; }
+@media (max-width: 720px) {
+  .hero-copy .hero-actions { flex-wrap: wrap; gap: 10px; }
+}
+
+.alert-modal-backdrop.phone-backdrop { z-index: 2400; }
+.install-steps, .phone-dialog { width: min(100%, 440px); text-align: left; }
+.install-steps ol { display: grid; gap: 12px; margin: 0; padding: 0; list-style: none; counter-reset: step; }
+.install-steps li { display: grid; grid-template-columns: 38px 1fr; align-items: center; gap: 12px; color: #34504a; font-size: 14.5px; line-height: 1.45; }
+.install-step-icon { display: grid; width: 38px; height: 38px; place-items: center; border-radius: 11px; color: var(--ui-green-dark); background: var(--ui-green-soft); }
+.install-steps-note { margin: 14px 0 0; color: var(--ui-muted); font-size: 13px; line-height: 1.5; }
+.install-steps-done {
+  width: 100%;
+  min-height: 46px;
+  margin-top: 18px;
+  border: 0;
+  border-radius: 12px;
+  color: #fff;
+  background: var(--ui-green);
+  font: 800 14.5px 'DM Sans', sans-serif;
+  cursor: pointer;
+}
+.install-steps-done:hover { background: var(--ui-green-dark); }
+
+.phone-settings { display: grid; gap: 10px; }
+.phone-row { display: grid; grid-template-columns: 40px 1fr; gap: 12px; padding: 14px; border: 1px solid var(--ui-border); border-radius: 14px; background: #fff; }
+.phone-row-icon { display: grid; width: 40px; height: 40px; place-items: center; border-radius: 12px; color: var(--ui-green-dark); background: var(--ui-green-soft); }
+.phone-notify.is-blocked .phone-row-icon,
+.phone-notify.is-unsupported .phone-row-icon { color: #9a5d0b; background: #fff3d6; }
+.phone-row-text { min-width: 0; }
+.phone-row-text strong { display: flex; align-items: center; gap: 8px; color: var(--ui-ink); font: 800 15px/1.3 Manrope, sans-serif; }
+.phone-row-text p { margin: 4px 0 0; color: #4d615a; font-size: 13.5px; line-height: 1.5; }
+.phone-row-text small { display: block; margin-top: 6px; color: var(--ui-muted); font-size: 12.5px; line-height: 1.45; }
+.phone-on-badge { padding: 2px 8px; border-radius: 999px; color: #fff; background: var(--ui-green); font: 800 10.5px/1.6 'DM Sans', sans-serif; font-style: normal; letter-spacing: .04em; text-transform: uppercase; }
+.phone-row-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+.phone-row-actions:empty { display: none; }
+.phone-primary, .phone-secondary, .phone-quiet {
+  display: inline-flex;
+  min-height: 40px;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  padding: 0 15px;
+  border-radius: 10px;
+  font: 800 13.5px 'DM Sans', sans-serif;
+  cursor: pointer;
+}
+.phone-primary { border: 0; color: #fff; background: var(--ui-green); }
+.phone-primary:hover:not(:disabled) { background: var(--ui-green-dark); }
+.phone-secondary { border: 1px solid #cfe0d6; color: var(--ui-green-dark); background: #fff; }
+.phone-secondary:hover:not(:disabled) { background: var(--ui-green-soft); }
+.phone-quiet { border: 0; color: #5d7068; background: transparent; }
+.phone-quiet:hover:not(:disabled) { color: var(--ui-ink); background: #f1f5f2; }
+.phone-primary:disabled, .phone-secondary:disabled, .phone-quiet:disabled { opacity: .55; }
+.phone-primary .btn-spinner { width: 15px; height: 15px; border-color: rgba(255, 255, 255, .45); border-top-color: #fff; }
+.phone-note { margin: 10px 0 0 !important; color: var(--ui-green-dark) !important; font-weight: 700; }
+.phone-note.is-error { color: #a8322f !important; }
+
+.notify-prompt {
+  display: grid;
+  grid-template-columns: 40px 1fr;
+  align-items: center;
+  gap: 4px 12px;
+  padding: 13px 14px;
+  border: 1px solid #cfe3d7;
+  border-radius: 14px;
+  background: linear-gradient(135deg, #f1f8f3, #e7f3ec);
+}
+.notify-prompt-icon { display: grid; width: 40px; height: 40px; place-items: center; border-radius: 12px; color: #fff; background: var(--ui-green); }
+.notify-prompt-icon .ui-icon { animation: notify-ring 2.6s ease-in-out infinite; transform-origin: 50% 10%; }
+.notify-prompt-text { min-width: 0; }
+.notify-prompt-text strong { display: block; color: var(--ui-ink); font: 800 14.5px/1.3 Manrope, sans-serif; }
+.notify-prompt-text small { display: block; margin-top: 3px; color: #557066; font-size: 12.5px; line-height: 1.45; }
+.notify-prompt-actions { display: flex; grid-column: 1 / -1; gap: 8px; margin-top: 8px; }
+.notify-prompt-actions .phone-primary { flex: 1 1 auto; }
+@media (min-width: 640px) {
+  .notify-prompt { grid-template-columns: 40px 1fr auto; }
+  .notify-prompt-actions { grid-column: auto; margin-top: 0; }
+}
+@keyframes notify-ring {
+  0%, 70%, 100% { rotate: 0deg; }
+  74% { rotate: 14deg; }
+  80% { rotate: -12deg; }
+  86% { rotate: 8deg; }
+  92% { rotate: -4deg; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .notify-prompt-icon .ui-icon { animation: none; }
+}
+
+/* Header buttons that open the notification settings (rescuer and admin). */
+.rx-notify-btn.is-on { border-color: #b9d8c6; color: var(--ui-green-dark); background: var(--ui-green-soft); }
+.ops-notify {
+  display: grid;
+  width: 38px;
+  height: 38px;
+  place-items: center;
+  border: 1px solid #d5e2d9;
+  border-radius: 9px;
+  color: #3e6652;
+  background: #fff;
+  cursor: pointer;
+}
+.ops-notify:hover { border-color: #a8c9b3; background: #f2f7f3; }
+.ops-notify.is-on { border-color: #b9d8c6; color: var(--ui-green-dark); background: var(--ui-green-soft); }
+.citizen-sheet-scroll .notify-prompt { margin: 12px 0; }
+.admin-ui .notify-prompt { margin-bottom: 14px; }

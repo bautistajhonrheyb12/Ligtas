@@ -14,6 +14,7 @@ import { rescueHotline } from './lib/hotlines.js'
 import { Icon, Logo } from './lib/ui.jsx'
 import { LEGAL_VERSION, privacyUrl, termsUrl } from './lib/legal.js'
 import { TermsGate } from './components/TermsGate.jsx'
+import { InstallButton } from './components/PhoneSetup.jsx'
 import { slides, Illustration } from './screens/landing.jsx'
 import { AboutPage } from './screens/AboutPage.jsx'
 import { AuthScreen } from './screens/AuthScreen.jsx'
@@ -396,11 +397,12 @@ export function App() {
         <a href="#features">Features</a>
         <a href="#about-us" aria-current={showAbout ? 'page' : undefined}>About us</a>
         <a href={termsUrl}>Terms &amp; Privacy</a>
+        <InstallButton class="nav-install" />
         <button class="nav-cta" onClick={openAuth}>Log in</button>
       </div>
       <button class="menu" onClick={() => setMenuOpen(!menuOpen)} aria-label="Open menu" aria-expanded={menuOpen}><span/><span/></button>
     </nav>
-    {menuOpen && <div class="mobile-nav"><a href="#how-it-works" onClick={() => setMenuOpen(false)}>How it works</a><a href="#features" onClick={() => setMenuOpen(false)}>Features</a><a href="#about-us" onClick={() => setMenuOpen(false)}>About us</a><a href={termsUrl} onClick={() => setMenuOpen(false)}>Terms of Use</a><a href={privacyUrl} onClick={() => setMenuOpen(false)}>Privacy Policy</a><button onClick={openAuth}>Log in <b>→</b></button></div>}
+    {menuOpen && <div class="mobile-nav"><a href="#how-it-works" onClick={() => setMenuOpen(false)}>How it works</a><a href="#features" onClick={() => setMenuOpen(false)}>Features</a><a href="#about-us" onClick={() => setMenuOpen(false)}>About us</a><a href={termsUrl} onClick={() => setMenuOpen(false)}>Terms of Use</a><a href={privacyUrl} onClick={() => setMenuOpen(false)}>Privacy Policy</a><InstallButton class="mobile-install" /><button onClick={openAuth}>Log in <b>→</b></button></div>}
   </>
   const footer = <footer class="site-footer">
     <span>© {new Date().getFullYear()} LIGTAS · Santa Maria, Bulacan</span>
@@ -422,7 +424,7 @@ export function App() {
         <Logo />
         <h1 class="hero-title" key={`title-${active}`}>{slide.title.split('\n').map((line, i) => <span key={line}>{line}{i === 0 && <br />}</span>)}</h1>
         <p class="hero-lede" key={`copy-${active}`}>{slide.copy}</p>
-        <div class="hero-actions"><button class="primary" onClick={openAuth}>Get started <b>→</b></button></div>
+        <div class="hero-actions"><button class="primary" onClick={openAuth}>Get started <b>→</b></button><InstallButton class="hero-install" /></div>
         <div class="progress" aria-label={`Slide ${active + 1} of ${slides.length}`}>{slides.map((_, index) => <button key={index} class={index === active ? 'active' : ''} onClick={() => setActive(index)} aria-label={`Go to slide ${index + 1}`} />)}</div>
       </div>
       <div class="hero-art">

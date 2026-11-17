@@ -38,6 +38,7 @@ export const privacy = {
           ['Priority rescue (sensitive)', 'Names, category (PWD, pregnant, senior citizen, child), birth year or due date, optional details, and a proof such as an ID or medical record.', 'Only if you add people, after you consent.', 'So the people who need help first are reached first.'],
           ['Your location', 'Your phone\'s position while LIGTAS is open.', 'Only if you allow location access.', 'To show you on the map, fill in report addresses, find the nearest safe evacuation center, and give directions.'],
           ['Rescuer location', 'A rescuer\'s latest position.', 'While a rescuer shares location on duty.', 'To coordinate response teams.'],
+          ['Notifications', 'A notification address for your phone from your browser\'s push service (it does not identify you), the keys that encrypt messages to it, and your language.', 'Only if you turn on notifications.', 'To send alerts and updates on your reports to your phone, even when LIGTAS is closed.'],
           ['Sign-in records', 'Session records kept by our sign-in provider, such as sign-in time, device type and IP address.', 'When you sign in.', 'To keep you signed in, and to sign out lost or stolen devices.'],
           ['Security records', 'The country your network appears to be in, a scrambled (hashed) form of your IP address when a location check fails, digital signatures on reports, and a log of staff actions on reports.', 'Automatically.', 'To detect fake reports, stolen accounts and tampering, and to keep staff accountable.'],
           ['Website logs', 'Basic request logs kept by our hosting provider, such as IP address, browser type and the page requested.', 'When you open LIGTAS.', 'To deliver the site and protect it from attacks.'],
@@ -59,7 +60,7 @@ export const privacy = {
       { id: 'use', title: 'Why we use it, and our legal basis', blocks: [
         { p: 'We process personal information only for these purposes, on these grounds under Sections 12 and 13 of the Data Privacy Act:' },
         { list: [
-          ['Your consent', 'to create your account, to hold priority rescue information, and to use your location while the app is open. You can withdraw consent at any time; this does not affect what was done before.'],
+          ['Your consent', 'to create your account, to hold priority rescue information, to use your location while the app is open, and to send you notifications. You can withdraw consent at any time; this does not affect what was done before.'],
           ['To protect life and health', 'to share reports, SOS, locations and priority categories with responders during emergencies.'],
           ['To provide the service you asked for', 'to sign you in, show alerts for your barangay, and let responders call you back.'],
           ['To keep LIGTAS reliable and safe', 'to detect fake reports, abuse and stolen accounts, which protects everyone who relies on LIGTAS in an emergency.'],
@@ -94,6 +95,7 @@ export const privacy = {
           ['Google', 'Sign-in, only if you choose Continue with Google.', GOOGLE],
           ['OpenStreetMap', 'Map images of the area you view, and the address of a spot you pin in a report (Nominatim).', OSM],
           ['FOSSGIS (Germany)', 'Directions and travel times: your starting point and destination, and the nearest named road to a pinned spot.', FOSSGIS],
+          ['Your browser\'s push service (Google, Apple, Mozilla or Microsoft)', 'Delivers notifications to your phone, if you turn them on. Messages are encrypted, so the push service cannot read them.'],
         ] },
         { p: 'Some of these providers store or process information outside the Philippines. We choose providers that protect information with industry-standard security, and we remain responsible for your information under the Data Privacy Act wherever it is processed.' },
       ] },
@@ -114,6 +116,8 @@ export const privacy = {
           'Reports written without a connection wait on your phone, and are sent when you are back online.',
           'Your language, go-bag checklist and the map images you have viewed stay on your phone for offline use.',
           'Signing in keeps a session key on your phone. LIGTAS uses no advertising or tracking cookies, and no analytics.',
+          'If you turn on notifications, your browser keeps a notification subscription for LIGTAS, so alerts reach you while it is closed. Turn them off in Prepare → This phone; signing out also stops them.',
+          'Notifications can appear on your lock screen. They show the type and place of a report or the text of an alert, never your name or number.',
         ] },
       ] },
       { id: 'keep', title: 'How long we keep it', blocks: [
@@ -124,6 +128,7 @@ export const privacy = {
           ['Safety check-ins', 'Only your latest check-in is kept.'],
           ['Rescuer locations', 'Only the latest position, removed when the rescuer stops sharing.'],
           ['Security records', 'Until your account is deleted, so misuse can be investigated and reports can be trusted.'],
+          ['Notification subscriptions', 'Until you turn notifications off. Deleted after you sign out on that phone, or when the subscription stops working.'],
           ['Information on your phone', 'Saved data until you sign out; settings until you clear the app\'s data.'],
         ] },
         { p: 'When your account is deleted, your profile, reports, check-ins, priority entries, security records, photos and proofs are deleted with it. Information is kept longer only where the law requires it.' },
@@ -197,6 +202,7 @@ export const privacy = {
           ['Priority rescue (sensitibo)', 'Mga pangalan, kategorya (PWD, buntis, senior citizen, bata), taon ng kapanganakan o due date, opsyonal na detalye, at patunay gaya ng ID o medical record.', 'Kung magdadagdag ka lang ng tao, matapos kang pumayag.', 'Para unang marating ang mga dapat unahing tulungan.'],
           ['Ang lokasyon mo', 'Ang posisyon ng telepono mo habang bukas ang LIGTAS.', 'Kung papayagan mo lang ang access sa lokasyon.', 'Para maipakita ka sa mapa, mapunan ang address ng ulat, mahanap ang pinakamalapit na ligtas na evacuation center, at makapagbigay ng direksyon.'],
           ['Lokasyon ng rescuer', 'Ang pinakahuling posisyon ng rescuer.', 'Habang nagbabahagi ng lokasyon ang rescuer habang naka-duty.', 'Para maayos ang koordinasyon ng mga team.'],
+          ['Mga notification', 'Isang notification address ng telepono mo mula sa push service ng browser mo (hindi ka nito nakikilala), ang mga key na nag-e-encrypt ng mga mensahe rito, at ang wika mo.', 'Kung bubuksan mo lang ang notifications.', 'Para maipadala sa telepono mo ang mga alerto at update sa mga ulat mo, kahit nakasara ang LIGTAS.'],
           ['Rekord ng sign-in', 'Rekord ng session na hawak ng sign-in provider namin, gaya ng oras ng sign-in, uri ng device at IP address.', 'Kapag nag-sign in ka.', 'Para manatili kang naka-sign in, at ma-sign out ang nawala o nanakaw na device.'],
           ['Rekord pangseguridad', 'Ang bansang mukhang pinanggagalingan ng network mo, naka-scramble (hashed) na anyo ng IP address mo kapag pumalya ang location check, digital signature sa mga ulat, at talaan ng mga ginawa ng staff sa mga ulat.', 'Awtomatiko.', 'Para matukoy ang pekeng ulat, nanakaw na account at pakikialam, at mapanagot ang staff.'],
           ['Log ng website', 'Simpleng log ng request na hawak ng hosting provider namin, gaya ng IP address, uri ng browser at pahinang hiniling.', 'Kapag binuksan mo ang LIGTAS.', 'Para maihatid ang site at maprotektahan ito sa mga atake.'],
@@ -218,7 +224,7 @@ export const privacy = {
       { id: 'use', title: 'Bakit namin ito ginagamit, at ang legal na batayan', blocks: [
         { p: 'Pinoproseso lang namin ang personal na impormasyon para sa mga layuning ito, batay sa Seksyon 12 at 13 ng Data Privacy Act:' },
         { list: [
-          ['Pahintulot mo', 'para magawa ang account mo, mahawakan ang impormasyon sa priority rescue, at magamit ang lokasyon mo habang bukas ang app. Puwede mong bawiin ang pahintulot anumang oras; hindi nito naaapektuhan ang nagawa na bago iyon.'],
+          ['Pahintulot mo', 'para magawa ang account mo, mahawakan ang impormasyon sa priority rescue, magamit ang lokasyon mo habang bukas ang app, at mapadalhan ka ng mga notification. Puwede mong bawiin ang pahintulot anumang oras; hindi nito naaapektuhan ang nagawa na bago iyon.'],
           ['Para protektahan ang buhay at kalusugan', 'para maibahagi ang mga ulat, SOS, lokasyon at kategorya ng priority sa mga tagatugon sa panahon ng emergency.'],
           ['Para maibigay ang serbisyong hiniling mo', 'para ma-sign in ka, maipakita ang mga babala para sa barangay mo, at matawagan ka ng mga tagatugon.'],
           ['Para manatiling maaasahan at ligtas ang LIGTAS', 'para matukoy ang pekeng ulat, pang-aabuso at nanakaw na account, na nagpoprotekta sa lahat ng umaasa sa LIGTAS sa emergency.'],
@@ -253,6 +259,7 @@ export const privacy = {
           ['Google', 'Sign-in, kung pipiliin mo lang ang Continue with Google.', GOOGLE],
           ['OpenStreetMap', 'Mga larawan ng mapa ng lugar na tinitingnan mo, at ang address ng lugar na pinin mo sa ulat (Nominatim).', OSM],
           ['FOSSGIS (Germany)', 'Direksyon at tagal ng biyahe: ang simula at destinasyon mo, at ang pinakamalapit na kalyeng may pangalan sa naka-pin na lugar.', FOSSGIS],
+          ['Push service ng browser mo (Google, Apple, Mozilla o Microsoft)', 'Naghahatid ng mga notification sa telepono mo, kung bubuksan mo ang mga ito. Naka-encrypt ang mga mensahe, kaya hindi ito mababasa ng push service.'],
         ] },
         { p: 'Ang ilan sa mga provider na ito ay nag-iimbak o nagpoproseso ng impormasyon sa labas ng Pilipinas. Pumipili kami ng mga provider na nagpoprotekta ng impormasyon ayon sa karaniwang pamantayan sa seguridad ng industriya, at kami pa rin ang mananagot sa impormasyon mo sa ilalim ng Data Privacy Act saanman ito iproseso.' },
       ] },
@@ -273,6 +280,8 @@ export const privacy = {
           'Ang mga ulat na isinulat nang walang koneksyon ay naghihintay sa telepono mo, at ipinapadala kapag may koneksyon na.',
           'Nananatili sa telepono mo ang wika, go-bag checklist at mga larawan ng mapang natingnan mo, para magamit offline.',
           'Nag-iiwan ng session key sa telepono mo ang pag-sign in. Walang advertising o tracking cookie at walang analytics ang LIGTAS.',
+          'Kapag binuksan mo ang notifications, nag-iingat ang browser mo ng notification subscription para sa LIGTAS, para maabot ka ng mga alerto kahit nakasara ito. Maisasara ito sa Maghanda → Ang teleponong ito; tumitigil din ito kapag nag-sign out ka.',
+          'Puwedeng lumabas ang mga notification sa lock screen mo. Ipinapakita nito ang uri at lugar ng ulat o ang teksto ng alerto, pero hindi kailanman ang pangalan o numero mo.',
         ] },
       ] },
       { id: 'keep', title: 'Gaano katagal namin ito iniingatan', blocks: [
@@ -283,6 +292,7 @@ export const privacy = {
           ['Mga safety check-in', 'Ang pinakahuling check-in mo lang ang iniingatan.'],
           ['Lokasyon ng rescuer', 'Ang pinakahuling posisyon lang, binubura kapag tumigil sa pagbabahagi ang rescuer.'],
           ['Rekord pangseguridad', 'Hanggang mabura ang account mo, para maimbestigahan ang pang-aabuso at mapagkatiwalaan ang mga ulat.'],
+          ['Mga notification subscription', 'Hanggang isara mo ang notifications. Binubura ito pagkatapos mong mag-sign out sa teleponong iyon, o kapag hindi na ito gumagana.'],
           ['Impormasyon sa telepono mo', 'Ang naka-save na data, hanggang mag-sign out ka; ang mga setting, hanggang burahin mo ang data ng app.'],
         ] },
         { p: 'Kapag nabura ang account mo, kasamang nabubura ang profile, mga ulat, check-in, priority entry, rekord pangseguridad, litrato at patunay mo. Mas matagal lang itong iingatan kung hinihingi ng batas.' },

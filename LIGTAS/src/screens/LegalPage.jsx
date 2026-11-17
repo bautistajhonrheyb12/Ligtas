@@ -114,7 +114,7 @@ function Block({ block, links, ui }) {
       {block.providers.map(([name, what, url]) => <li key={name}>
         <b>{name}</b>
         <span>{what}</span>
-        <a href={url} target="_blank" rel="noreferrer">{ui.providerLink} <Icon name="arrow" size={13} /></a>
+        {url && <a href={url} target="_blank" rel="noreferrer">{ui.providerLink} <Icon name="arrow" size={13} /></a>}
       </li>)}
     </ul>
   }

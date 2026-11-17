@@ -34,6 +34,7 @@ import {
   toAlertView,
   useLivePosition,
   useOnlineStatus,
+  useRefreshOnReturn,
   useTabIndicator,
   useToasts,
 } from '../lib/ui.jsx'
@@ -51,6 +52,8 @@ import { TermsGate } from '../components/TermsGate.jsx'
 import { LEGAL_VERSION, needsTermsAcceptance } from '../lib/legal.js'
 import { ReportDialog } from './citizen/ReportDialog.jsx'
 import { SosDialog } from './citizen/SosDialog.jsx'
+import { NotificationPrompt } from '../components/PhoneSetup.jsx'
+import { syncPush } from '../lib/push.js'
 
 const capacityKeys = { open: 'capOpen', busy: 'capBusy', critical: 'capCritical' }
 const severityKeys = { High: 'sevHigh', Moderate: 'sevModerate', Low: 'sevLow' }
@@ -104,6 +107,8 @@ export function CitizenDashboard({ onSignOut }) {
   const isOutsideArea = Boolean(userPosition) && !isInsideSantaMaria(userPosition.latitude, userPosition.longitude)
   // After an SOS, the phone keeps sharing where the person is with rescuers.
   const sosLive = useSosLiveShare({ reports: myReports, position: userPosition, isOnline })
+  // Keeps this phone's notifications (if turned on) linked to this sign-in and language.
+  useEffect(() => { syncPush(lang) }, [lang])
   const [focusTarget, setFocusTarget] = useState(null)
   const [dialog, setDialog] = useState(null)
   // The evacuation center being navigated to, if any.
@@ -131,6 +136,15 @@ export function CitizenDashboard({ onSignOut }) {
     .then((data) => { priorityMembersRef.current = data; setPriorityMembers(data) })
     .catch(() => {})
   const updateProfile = (changes) => setProfile((current) => current && { ...current, ...changes })
+  // Catches up on anything missed while the phone had LIGTAS in the background.
+  useRefreshOnReturn(() => {
+    loadAlerts()
+    loadCenters()
+    loadPoints()
+    loadMyReports()
+    loadPriority()
+    getMyCheckin().then(setCheckin).catch(() => {})
+  })
 
   const flushQueue = async () => {
     const owner = myIdRef.current
@@ -436,6 +450,7 @@ export function CitizenDashboard({ onSignOut }) {
               <span><strong>{t('safeButton')}</strong><small>{checkin?.status === 'Safe' ? t('safeMarked', { time: timeAgo(checkin.updated_at).toLowerCase() }) : t('safeHint')}</small></span>
             </button>
           </div>
+          <NotificationPrompt role="citizen" lang={lang} />
 
           {urgentAlert && <button class="alert-banner citizen-sheet-alert" type="button" onClick={() => selectTab('alerts')}>
             <div class="alert-icon">{alertSymbol(urgentAlert)}</div>

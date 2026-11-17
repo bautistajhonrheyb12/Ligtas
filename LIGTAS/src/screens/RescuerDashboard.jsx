@@ -44,6 +44,7 @@ import {
   alertIcon,
   useLivePosition,
   useOnlineStatus,
+  useRefreshOnReturn,
   useTabIndicator,
   useToasts,
   useWakeLock,
@@ -55,6 +56,8 @@ import { useConfirm } from '../components/ConfirmDialog.jsx'
 import { placeReport } from '../lib/callLocation.js'
 import { CallSheet } from './rescuer/CallSheet.jsx'
 import { privacyUrl, termsUrl } from '../lib/legal.js'
+import { NotificationPrompt, PhoneSettingsDialog } from '../components/PhoneSetup.jsx'
+import { syncPush, usePush } from '../lib/push.js'
 
 const priorityRank = { Critical: 0, Urgent: 1, Normal: 2 }
 const nextStage = { Assigned: 'En route', 'En route': 'On scene' }
@@ -208,6 +211,10 @@ export function RescuerDashboard({ onSignOut }) {
   const lastSharedRef = useRef(0)
   const rescuerNavRef = useTabIndicator(activeTab)
   useWakeLock(isSharingLocation)
+  // Notifications for this phone: settings window, and keeping them linked to this sign-in.
+  const [isPhoneSettingsOpen, setIsPhoneSettingsOpen] = useState(false)
+  const push = usePush()
+  useEffect(() => { syncPush('en') }, [])
 
   const loadReports = () => getRescuerIncidentReports()
     .then((data) => { setReports(data.map(placeReport)); setReportsError(''); setLastUpdated(new Date()) })
@@ -217,6 +224,13 @@ export function RescuerDashboard({ onSignOut }) {
     .then((data) => { setAlerts(data.map(toAlertView)); setAlertsError('') })
     .catch((error) => setAlertsError(error.message))
     .finally(() => setAlertsLoading(false))
+  // Catches up on anything missed while the phone had LIGTAS in the background.
+  useRefreshOnReturn(() => {
+    loadReports()
+    loadAlerts()
+    getMapPoints().then(setPoints).catch(() => {})
+    getEvacuationCenters().then(setCenters).catch(() => {})
+  })
 
   useEffect(() => {
     currentUserId().then(setMyId).catch(() => {})
@@ -460,12 +474,15 @@ export function RescuerDashboard({ onSignOut }) {
         <button type="button" class={`rx-duty${isSharingLocation ? ' is-sharing' : ''}`} aria-pressed={isSharingLocation} onClick={toggleLocationSharing} title={isSharingLocation ? 'Stop sharing your location' : 'Share your location with operations'}>
           <i /> {isSharingLocation ? 'Sharing location' : 'Share location'}
         </button>
+        <button type="button" class={`rx-icon-btn rx-notify-btn${push.status === 'on' ? ' is-on' : ''}`} onClick={() => setIsPhoneSettingsOpen(true)} aria-label={push.status === 'on' ? 'Notifications are on. Open settings' : 'Notifications. Open settings'} title="Notifications"><Icon name={push.status === 'on' ? 'bellRing' : 'bell'} /></button>
         <button type="button" class="rx-icon-btn" onClick={signOut} aria-label="Sign out" title="Sign out"><Icon name="logout" /></button>
       </div>
     </header>
+    {isPhoneSettingsOpen && <PhoneSettingsDialog role="rescuer" onClose={() => setIsPhoneSettingsOpen(false)} />}
 
     <div class="rx-main" id="rescuer-home">
       <OfflineBanner isOnline={isOnline} label="You are offline. Calls shown may be out of date." />
+      {activeTab === 'calls' && <NotificationPrompt role="rescuer" />}
 
       {activeTab === 'calls' && <section class={`rx-hero${unclaimedCount === 0 && !reportsLoading ? ' is-clear' : ''}`} aria-live="polite">
         <span class="rx-hero-greeting">{greeting}{myName ? `, ${myName}` : ', rescue team'}</span>

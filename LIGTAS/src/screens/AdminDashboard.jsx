@@ -33,6 +33,7 @@ import {
   reportTypeStyle,
   timeAgo,
   toAlertView,
+  useRefreshOnReturn,
   useToasts,
 } from '../lib/ui.jsx'
 import { markTampered, useReportIntegrity } from '../lib/integrity.js'
@@ -48,6 +49,8 @@ import { placeReport } from '../lib/callLocation.js'
 import { privacyUrl, termsUrl } from '../lib/legal.js'
 import { ReportsPanel } from './admin/ReportsPanel.jsx'
 import { SecurityPanel } from './admin/SecurityPanel.jsx'
+import { NotificationPrompt, PhoneSettingsDialog } from '../components/PhoneSetup.jsx'
+import { syncPush, usePush } from '../lib/push.js'
 
 const POINT_TYPES = ['Evac. center', 'Danger zone', 'Closed road', 'Other info']
 // Team locations older than this are treated as not in the field.
@@ -82,6 +85,10 @@ export function AdminDashboard({ onSignOut }) {
   const [activeTab, setActiveTab] = useState('dashboard')
   const [isAdminNavOpen, setIsAdminNavOpen] = useState(() => window.matchMedia('(min-width: 901px)').matches)
   const [isMapFullscreen, setIsMapFullscreen] = useState(false)
+  // Notifications for this device: settings window, and keeping them linked to this sign-in.
+  const [isPhoneSettingsOpen, setIsPhoneSettingsOpen] = useState(false)
+  const push = usePush()
+  useEffect(() => { syncPush('en') }, [])
   const [notice, setNotice] = useState('')
   const [noticeIsError, setNoticeIsError] = useState(false)
   const showNotice = (message, isError = false) => { setNotice(message); setNoticeIsError(isError) }
@@ -149,6 +156,18 @@ export function AdminDashboard({ onSignOut }) {
   const loadPriority = () => getPriorityReviewQueue()
     .then((members) => setPriority({ members, loading: false, error: '' }))
     .catch((error) => setPriority((current) => ({ ...current, loading: false, error: error.message })))
+  // Catches up on anything missed while the device had LIGTAS in the background.
+  useRefreshOnReturn(() => {
+    loadReports()
+    loadAlerts()
+    loadPoints()
+    loadCenters()
+    loadLocations()
+    loadEvents()
+    loadCheckins()
+    loadSecurity()
+    loadPriority()
+  })
 
   useEffect(() => {
     getMyProfile().then((profile) => setMyName(profile.display_name ?? '')).catch(() => {})
@@ -356,8 +375,13 @@ export function AdminDashboard({ onSignOut }) {
         <span />
       </button>
       <a class="ops-brand" href="#admin-home" aria-label="LIGTAS admin dashboard"><Logo small /><span>LIGTAS <i>/</i> ADMIN</span></a>
-      <div class="ops-user"><span class="ops-user-name">{myName || 'Santa Maria operations'}</span><button type="button" class="ops-signout" onClick={onSignOut}>Sign out</button></div>
+      <div class="ops-user">
+        <span class="ops-user-name">{myName || 'Santa Maria operations'}</span>
+        <button type="button" class={`ops-notify${push.status === 'on' ? ' is-on' : ''}`} onClick={() => setIsPhoneSettingsOpen(true)} aria-label={push.status === 'on' ? 'Notifications are on. Open settings' : 'Notifications. Open settings'} title="Notifications"><Icon name={push.status === 'on' ? 'bellRing' : 'bell'} size={18} /></button>
+        <button type="button" class="ops-signout" onClick={onSignOut}>Sign out</button>
+      </div>
     </header>
+    {isPhoneSettingsOpen && <PhoneSettingsDialog role="admin" onClose={() => setIsPhoneSettingsOpen(false)} />}
 
     {isAdminNavOpen && <button type="button" class="admin-nav-backdrop" aria-label="Close admin navigation" onClick={() => setIsAdminNavOpen(false)} />}
     <aside class="admin-sidebar" id="admin-navigation" aria-label="Admin navigation" aria-hidden={!isAdminNavOpen}>
@@ -403,6 +427,7 @@ export function AdminDashboard({ onSignOut }) {
         <span class="ops-alert-copy"><strong>{sosReports.length} SOS {sosReports.length === 1 ? 'call has' : 'calls have'} no team yet</strong><small>{sosReports[0].location} · {timeAgo(sosReports[0].created_at)} · Assign a rescue team now</small></span>
         <span class="ops-alert-meta"><b>Critical</b><small>Open reports</small></span>
       </button>}
+      <NotificationPrompt role="admin" />
       <section class="ops-stats admin-stats" aria-label="Community operations overview">
         <article class="ops-stat ops-stat--blue"><span class="ops-stat-icon"><Icon name="home" size={18} /></span><div><strong><CountUp value={openCenters.length} /></strong><span>Open evac. centers</span></div></article>
         <article class="ops-stat ops-stat--red"><span class="ops-stat-icon"><Icon name="alert" size={18} /></span><div><strong><CountUp value={activeReports.length} /></strong><span>Active reports</span></div></article>

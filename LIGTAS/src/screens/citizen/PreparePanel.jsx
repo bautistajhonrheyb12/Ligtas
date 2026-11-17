@@ -4,6 +4,7 @@ import { hotlines } from '../../lib/hotlines.js'
 import { toStoredMobile } from '../../lib/phone.js'
 import { Icon } from '../../lib/ui.jsx'
 import { PrioritySection } from './Priority.jsx'
+import { PhoneSettings } from '../../components/PhoneSetup.jsx'
 import { privacyUrl, termsUrl } from '../../lib/legal.js'
 
 const CHECKLIST_KEY = 'ligtas-gobag'
@@ -110,6 +111,11 @@ export function PreparePanel({ t, lang, setLang, profile, onSaveProfile, priorit
       <ul class="tip-list" key={`${hazard}-${phase}`}>
         {hazards[hazard][phase].map((tip) => <li key={tip}><Icon name="check" size={16} />{tip}</li>)}
       </ul>
+    </section>
+
+    <section class="prepare-card" id="this-phone">
+      <h2><Icon name="phoneApp" size={18} /> {t('phoneTitle')}</h2>
+      <PhoneSettings role="citizen" lang={lang} />
     </section>
 
     <section class="prepare-card">

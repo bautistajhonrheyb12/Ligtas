@@ -437,6 +437,15 @@ export async function submitIncidentReport({
   // Signed in the background: the report is already delivered, and an unsigned
   // report only shows as "Not signed" to staff.
   signReport(data[0].id)
+  requestPush('report', data[0].id)
+}
+
+// The database asks the send-push function to notify people about every new
+// alert and report change. The app asks too, as a backup in case that request
+// failed; the function sends each notification only once.
+function requestPush(type, id) {
+  if (!id) return
+  requireClient().functions.invoke('send-push', { body: { type, id } }).catch(() => {})
 }
 
 // While an SOS is open and LIGTAS stays open, the person's phone shares its
@@ -556,6 +565,7 @@ export async function updateIncidentReport(reportId, changes) {
     throw new Error(`Could not update incident report: ${error.message}`)
   }
 
+  requestPush('report', reportId)
   return data
 }
 
@@ -578,6 +588,7 @@ export async function releaseIncidentReport(reportId) {
   if (error) {
     throw new Error(`Could not hand back the call: ${error.message}`)
   }
+  requestPush('report', reportId)
 }
 
 // ---------------------------------------------------------------------------
@@ -664,7 +675,7 @@ export async function getAlerts() {
 }
 
 export async function publishAlert({ alertType, severity, title, message, location, targetRoles, barangays = null, expiresAt = null }) {
-  const { error } = await requireClient().from('alerts').insert({
+  const { data, error } = await requireClient().from('alerts').insert({
     created_by: await currentUserId(),
     alert_type: alertType,
     severity,
@@ -674,11 +685,12 @@ export async function publishAlert({ alertType, severity, title, message, locati
     target_roles: targetRoles,
     barangays: barangays?.length ? barangays : null,
     expires_at: expiresAt,
-  })
+  }).select('id').single()
 
   if (error) {
     throw new Error(`Could not publish alert: ${error.message}`)
   }
+  requestPush('alert', data.id)
 }
 
 export async function endAlert(alertId) {

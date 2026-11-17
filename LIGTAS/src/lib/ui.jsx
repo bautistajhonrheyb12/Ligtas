@@ -316,6 +316,36 @@ export function useOnlineStatus() {
   return isOnline
 }
 
+// Phones pause apps in the background, and the live connection with them, so
+// alerts and reports changed meanwhile would be missed. This reloads a screen's
+// data when LIGTAS comes back to the front (after a few seconds away), when it
+// is restored from the recent-apps list, and when the connection returns.
+export function useRefreshOnReturn(reload) {
+  const reloadRef = useRef(reload)
+  reloadRef.current = reload
+  useEffect(() => {
+    let hiddenAt = document.hidden ? Date.now() : 0
+    const onVisibility = () => {
+      if (document.hidden) {
+        hiddenAt = Date.now()
+        return
+      }
+      if (hiddenAt && Date.now() - hiddenAt > 3000) reloadRef.current()
+      hiddenAt = 0
+    }
+    const onPageShow = (event) => { if (event.persisted) reloadRef.current() }
+    const onOnline = () => reloadRef.current()
+    document.addEventListener('visibilitychange', onVisibility)
+    window.addEventListener('pageshow', onPageShow)
+    window.addEventListener('online', onOnline)
+    return () => {
+      document.removeEventListener('visibilitychange', onVisibility)
+      window.removeEventListener('pageshow', onPageShow)
+      window.removeEventListener('online', onOnline)
+    }
+  }, [])
+}
+
 let audioContext = null
 
 // Short two-tone chime (and a vibration on phones) for urgent events.

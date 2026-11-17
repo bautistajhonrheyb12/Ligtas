@@ -73,3 +73,40 @@ self.addEventListener('fetch', (event) => {
     )
   }
 })
+
+// ---------------------------------------------------------------------------
+// Push notifications (sent by the send-push server function). They arrive even
+// when LIGTAS is closed; the message is encrypted so only this phone can read it.
+self.addEventListener('push', (event) => {
+  let data = {}
+  try {
+    data = event.data ? event.data.json() : {}
+  } catch {
+    data = { body: event.data ? event.data.text() : '' }
+  }
+  const urgent = Boolean(data.urgent)
+  event.waitUntil(self.registration.showNotification(data.title || 'LIGTAS', {
+    body: data.body || '',
+    icon: '/icon-192.png',
+    badge: '/badge-96.png',
+    tag: data.tag || undefined,
+    // A newer update about the same report replaces the older one, and still alerts.
+    renotify: Boolean(data.tag),
+    // SOS calls and high alerts stay on screen until they are tapped.
+    requireInteraction: urgent,
+    vibrate: urgent ? [300, 120, 300, 120, 300] : [200],
+    timestamp: data.at || Date.now(),
+    data: { url: data.url || '/' },
+  }))
+})
+
+// Tapping a notification opens LIGTAS, or brings it forward if it is open.
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close()
+  const target = new URL(event.notification.data?.url || '/', self.location.origin).href
+  event.waitUntil(self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((windows) => {
+    const open = windows.find((client) => client.url.startsWith(self.location.origin))
+    if (open) return open.focus()
+    return self.clients.openWindow(target)
+  }))
+})

@@ -83,12 +83,26 @@ live SOS location (section 11): the `location_accuracy` and `live_*` columns and
 `share_sos_location` function. Until it is applied, the app still works, but without
 accuracy circles or live location.
 
+`20261119090000_push_notifications.sql` adds push notifications (section 14): the
+`push_subscriptions` table, the functions that save and remove a phone, and the
+triggers that call the `send-push` function through `pg_net` (which it turns on).
+
+`20261119100000_server_function_access.sql` lets the server functions
+(`create-rescuer`, `report-integrity`, `send-push`) read and write the tables they
+use. New tables on this project do not give the secret (service role) key access
+automatically, so without it notifications are not sent, reports are not signed
+and creating rescuers fails. Each function gets only what it needs.
+
 Apply every migration, in order. Screens built for a newer migration than the
 database has fail with a "column does not exist" error, except the last one above.
 
 Apply each migration with either option:
 
-- **Supabase CLI:** `npx supabase db push` (the project is already linked)
+- **Supabase CLI:** `npx supabase db push --remote` (the project is already linked; without
+  `--remote` the CLI looks for a local database). It skips migrations its history
+  lists as applied. Migrations run in the SQL Editor are not in that history, so
+  record them first with `npx supabase migration repair --status applied <version> --remote`,
+  or run a single file with `npx supabase db query --remote -f <file>`
 - **Dashboard:** open *SQL Editor*, paste the file's contents and run it once
 
 ## 3. Auth redirect URLs
@@ -481,6 +495,78 @@ team, and check with the National Privacy Commission (privacy.gov.ph) whether
 LIGTAS must be registered. Registration is generally required when sensitive
 personal information of 1,000 or more people is processed. Have the documents
 reviewed by a lawyer before a wide public launch.
+
+## 14. Push notifications
+
+Alerts and report updates reach phones **even when LIGTAS is closed**, through
+standard Web Push (the same system websites use for notifications). People turn
+them on with the banner on their dashboard, under *Prepare → This phone*
+(citizens), or with the bell in the header (rescuers and admins). *Send a test*
+checks a phone.
+
+| Who | Gets a notification for |
+|---|---|
+| Citizens | Alerts for everyone or for their barangay; their report verified, not accepted (with the reason) or resolved; a team assigned, on the way, or arrived |
+| Rescuers | Every new SOS (urgent: stays on screen until tapped); newly verified calls; a call assigned to them; alerts for rescuers |
+| Admins | Every new SOS (urgent); new reports to review; calls handed back; alerts for admins |
+
+Nobody is notified about their own action. Citizens get notifications in the
+language they chose; staff get English.
+
+**How it works.**
+
+1. Turning notifications on asks the phone's permission, creates a push
+   subscription in the browser and saves it in `push_subscriptions`, tied to that
+   phone's sign-in. Signing out (or being signed out by an admin) stops
+   notifications to that phone at once; the row is deleted soon after.
+2. A new alert, or a change logged in `report_events`, makes the database call
+   the `send-push` Edge Function through `pg_net`. The app also calls it, as a
+   backup. Each event is sent only once (`push_sent`).
+3. `send-push` reads the alert or report, picks who to tell, encrypts each message
+   so only that phone can read it, and sends it to the phone's push service
+   (Google, Apple, Mozilla or Microsoft). Phones that unsubscribed are removed.
+4. The service worker (`public/sw.js`) shows the notification. Tapping it opens
+   LIGTAS.
+
+**Set it up once.** The keys are in `supabase/.env.local`, which git ignores: never
+commit it or share the private key. (To make new keys, see the comment in
+`supabase/functions/send-push/webpush.ts`; the public key also goes in
+`src/lib/push.js` or `VITE_VAPID_PUBLIC_KEY`.)
+
+```bash
+npx supabase db query --remote -f supabase/migrations/20261119090000_push_notifications.sql
+npx supabase secrets set --env-file supabase/.env.local
+npx supabase functions deploy send-push --no-verify-jwt --use-api
+```
+
+The first line runs the migration (or paste the file into the *SQL Editor*);
+`--use-api` deploys without Docker. `--no-verify-jwt` is needed because the
+database calls the function without a
+user's token. It is safe: the function only reads real alerts and reports from
+the database, only events from the last 15 minutes, sends each once, and only to
+the push services of the major browsers. Only *Send a test* needs a signed-in user.
+
+If the project moves to a different Supabase project, change the address in
+`public.push_function_url()`.
+
+**Phones.**
+
+- *Android:* Chrome, Edge, Samsung Internet or Firefox. Works without installing,
+  but installing is recommended. If notifications arrive late, set the browser (or
+  the installed LIGTAS app) to *Unrestricted* battery use.
+- *iPhone and iPad:* iOS 16.4 or newer, and only after LIGTAS is added to the Home
+  Screen and opened from there. The app explains this and shows the steps.
+- *Computers:* Chrome, Edge, Firefox and Safari, while the browser is running.
+
+**Install button.** The landing page, the phone menu and *This phone* show
+*Install app*. Chrome and Edge install with one tap; on iPhone and on other
+Android browsers it shows the steps (Share → Add to Home Screen, or the browser
+menu → Install app).
+
+**Checking delivery.** In the Supabase dashboard, *Edge Functions → send-push →
+Logs* shows how many notifications each event sent, failed or removed.
+`select * from net._http_response order by created desc limit 20;` shows the
+database's calls to the function.
 
 ## Notes
 
