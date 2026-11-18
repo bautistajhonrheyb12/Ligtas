@@ -5,6 +5,7 @@ import { toStoredMobile } from '../../lib/phone.js'
 import { Icon } from '../../lib/ui.jsx'
 import { PrioritySection } from './Priority.jsx'
 import { PhoneSettings } from '../../components/PhoneSetup.jsx'
+import { FamilyCard } from './Family.jsx'
 import { privacyUrl, termsUrl } from '../../lib/legal.js'
 
 const CHECKLIST_KEY = 'ligtas-gobag'
@@ -24,7 +25,7 @@ const profileDraft = (profile) => ({
   barangay: profile?.barangay ?? '',
 })
 
-export function PreparePanel({ t, lang, setLang, profile, onSaveProfile, priority, onStartTour }) {
+export function PreparePanel({ t, lang, setLang, profile, onSaveProfile, priority, onStartTour, family }) {
   const [packed, setPacked] = useState(readChecklist)
   const [hazard, setHazard] = useState('flood')
   const [phase, setPhase] = useState('before')
@@ -85,6 +86,8 @@ export function PreparePanel({ t, lang, setLang, profile, onSaveProfile, priorit
         </a>)}
       </div>
     </section>
+
+    {family && <FamilyCard t={t} {...family} />}
 
     <PrioritySection t={t} profile={profile} {...priority} />
 

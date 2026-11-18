@@ -99,8 +99,8 @@ export const TOURS = {
       icon: 'grid',
       title: { en: 'The tabs', tl: 'Ang mga tab' },
       body: {
-        en: 'Map: this home screen. Alerts: warnings from MDRRMO. My reports: what happened to the reports you sent. Prepare: hotlines, a go-bag checklist, safety tips, notifications and your details.',
-        tl: 'Mapa: ang home screen na ito. Alerto: mga babala mula sa MDRRMO. Aking ulat: ang nangyari sa mga ulat na ipinadala mo. Maghanda: mga hotline, go-bag checklist, payo sa kaligtasan, notifications at ang detalye mo.',
+        en: 'Map: this home screen. Alerts: warnings from MDRRMO. My reports: what happened to the reports you sent. Prepare: hotlines, your family, a go-bag checklist, safety tips, notifications and your details.',
+        tl: 'Mapa: ang home screen na ito. Alerto: mga babala mula sa MDRRMO. Aking ulat: ang nangyari sa mga ulat na ipinadala mo. Maghanda: mga hotline, ang pamilya mo, go-bag checklist, payo sa kaligtasan, notifications at ang detalye mo.',
       },
     },
     {

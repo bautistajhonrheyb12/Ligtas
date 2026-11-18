@@ -38,15 +38,45 @@ function requireClient() {
 }
 
 export async function currentUserId() {
+  // Without a connection, the sign-in saved on this phone is used straight away
+  // (renewing an expired pass would only retry until it times out).
+  const offlineId = offlineSignInUserId()
+  if (offlineId) return offlineId
   const { data: { session }, error } = await requireClient().auth.getSession()
+  if (session) return session.user.id
+  // Offline with an expired sign-in pass: the sign-in saved on this phone still
+  // counts until the connection returns and the pass can be renewed.
+  if (error && isNetworkError(error)) {
+    const saved = savedSignInUserId()
+    if (saved) return saved
+  }
   if (error) throw new Error(`Could not verify your account: ${error.message}`)
-  if (!session) throw new Error('Your session has ended. Sign in again to continue.')
-  return session.user.id
+  throw new Error('Your session has ended. Sign in again to continue.')
 }
 
 export function isNetworkError(error) {
   const message = error instanceof Error ? error.message : String(error ?? '')
-  return error instanceof TypeError || /failed to fetch|networkerror|load failed|network request failed/i.test(message)
+  return error instanceof TypeError || error?.name === 'AuthRetryableFetchError' || /failed to fetch|networkerror|load failed|network request failed/i.test(message)
+}
+
+// The person signed in on this phone, read from the saved sign-in. Used only
+// while offline, when the sign-in pass has expired and cannot be renewed yet.
+export function savedSignInUserId() {
+  try {
+    return JSON.parse(localStorage.getItem(requireClient().auth.storageKey))?.user?.id ?? null
+  } catch {
+    return null
+  }
+}
+
+// True when the phone reports no connection at all.
+export function isOffline() {
+  return typeof navigator !== 'undefined' && navigator.onLine === false
+}
+
+// The saved sign-in, but only while the phone has no connection.
+export function offlineSignInUserId() {
+  return isOffline() ? savedSignInUserId() : null
 }
 
 // Last successful responses are kept on the device so key safety information
@@ -79,6 +109,12 @@ export function clearCachedData() {
 }
 
 async function withOfflineCache(key, load) {
+  // No connection: show what was saved at once. Each request would otherwise
+  // be retried for several seconds before failing.
+  if (isOffline()) {
+    const saved = readCache(key)
+    if (saved) return saved.data
+  }
   try {
     const data = await load()
     writeCache(key, data)
@@ -142,7 +178,17 @@ export async function acceptTerms(version) {
 
 // Sign-in only needs the role; keeping this query minimal lets login work even
 // before the newer profile columns have been migrated.
+// The role is saved on the phone after each check. Opened without signal (as
+// in a typhoon), LIGTAS uses the saved role for the person still signed in on
+// this phone, so they reach their saved alerts, centers, hotlines and offline
+// reports instead of the sign-in screen. The database still checks every
+// request once the phone is back online.
 export async function getProfileRole(userId) {
+  const savedRole = readCache('role')?.data
+  if (isOffline()) {
+    if (savedRole?.userId === userId && ['citizen', 'rescuer', 'admin'].includes(savedRole.role)) return savedRole.role
+    throw new TypeError('Failed to fetch: this phone is offline')
+  }
   const { data, error } = await requireClient()
     .from('profiles')
     .select('role')
@@ -150,6 +196,7 @@ export async function getProfileRole(userId) {
     .single()
 
   if (error) {
+    if (isNetworkError(error) && savedRole?.userId === userId && ['citizen', 'rescuer', 'admin'].includes(savedRole.role)) return savedRole.role
     throw new Error(`Could not load your account role: ${error.message}`)
   }
 
@@ -157,11 +204,13 @@ export async function getProfileRole(userId) {
     throw new Error('Your account has an invalid role. Contact an administrator.')
   }
 
+  writeCache('role', { userId, role: data.role })
   return data.role
 }
 
 export async function getMyProfile() {
-  return getProfile(await currentUserId())
+  const userId = await currentUserId()
+  return withOfflineCache('my-profile', () => getProfile(userId))
 }
 
 export async function updateMyProfile({ displayName, barangay, phone }) {
@@ -178,6 +227,10 @@ export async function updateMyProfile({ displayName, barangay, phone }) {
 }
 
 export async function getStaffProfiles() {
+  return withOfflineCache('staff', loadStaffProfiles)
+}
+
+async function loadStaffProfiles() {
   const { data, error } = await requireClient()
     .from('profiles')
     .select('id, role, display_name, created_at')
@@ -485,6 +538,10 @@ export async function verifyReports(ids) {
 
 export async function getMyReports() {
   const userId = await currentUserId()
+  return withOfflineCache('my-reports', () => loadMyReports(userId))
+}
+
+async function loadMyReports(userId) {
   const { data, error } = await withReportColumns((columns) => requireClient()
     .from('incident_reports')
     .select(columns)
@@ -540,6 +597,10 @@ export async function getIncidentReports() {
 }
 
 export async function getRescuerIncidentReports() {
+  return withOfflineCache('rescuer-calls', loadRescuerIncidentReports)
+}
+
+async function loadRescuerIncidentReports() {
   const { data, error } = await withReportColumns((columns) => requireClient()
     .from('incident_reports')
     .select(columns)
@@ -795,10 +856,15 @@ export async function deleteMapPoint(id) {
 // ---------------------------------------------------------------------------
 
 export async function getMyCheckin() {
+  const userId = await currentUserId()
+  return withOfflineCache('my-checkin', () => loadMyCheckin(userId))
+}
+
+async function loadMyCheckin(userId) {
   const { data, error } = await requireClient()
     .from('safety_checkins')
     .select('status, note, updated_at')
-    .eq('user_id', await currentUserId())
+    .eq('user_id', userId)
     .maybeSingle()
 
   if (error) {
@@ -809,13 +875,61 @@ export async function getMyCheckin() {
 }
 
 export async function saveCheckin({ status, note = null, latitude = null, longitude = null }) {
+  const userId = await currentUserId()
   const { error } = await requireClient()
     .from('safety_checkins')
-    .upsert({ user_id: await currentUserId(), status, note, latitude, longitude })
+    .upsert({ user_id: userId, status, note, latitude, longitude })
 
   if (error) {
     throw new Error(`Could not save your check-in: ${error.message}`)
   }
+  // Tells the person's family (if any); the database asks too.
+  requestPush('checkin', userId)
+}
+
+// ---------------------------------------------------------------------------
+// Family safety (citizens)
+// ---------------------------------------------------------------------------
+
+// The family, or null when not in one. { unavailable: true } until the
+// database has family safety (supabase/migrations/20261119120000_family_safety.sql).
+export async function getMyFamily() {
+  return withOfflineCache('family', async () => {
+    const { data, error } = await requireClient().rpc('my_family')
+    if (error?.code === 'PGRST202') return { unavailable: true }
+    if (error) throw new Error(`Could not load your family: ${error.message}`)
+    return data ?? null
+  })
+}
+
+async function familyCall(name, params, failure) {
+  const { data, error } = await requireClient().rpc(name, params)
+  if (error) {
+    await failIfSessionEnded(error)
+    throw new Error(error.message.startsWith('Could not') ? error.message : `${failure}: ${error.message}`)
+  }
+  return data
+}
+
+export function createFamily() {
+  return familyCall('create_family', {}, 'Could not start a family')
+}
+
+// 'joined', 'not-found' or 'full'.
+export function joinFamily(code) {
+  return familyCall('join_family', { join_code: code }, 'Could not join the family')
+}
+
+export function leaveFamily() {
+  return familyCall('leave_family', {}, 'Could not leave the family')
+}
+
+export function removeFamilyMember(memberId) {
+  return familyCall('remove_family_member', { member: memberId }, 'Could not remove this person')
+}
+
+export function renewFamilyCode() {
+  return familyCall('renew_family_code', {}, 'Could not make a new code')
 }
 
 export async function getCheckins() {

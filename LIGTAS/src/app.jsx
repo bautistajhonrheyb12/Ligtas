@@ -5,6 +5,9 @@ import {
   getProfileRole,
   getTwoStepStatus,
   isGoogleSession,
+  isNetworkError,
+  offlineSignInUserId,
+  savedSignInUserId,
   isSessionEnded,
   SESSION_ENDED_EVENT,
   supabase,
@@ -222,19 +225,34 @@ export function App() {
     }
     window.addEventListener('hashchange', openStaffSignIn)
 
-    supabase.auth.getSession().then(async ({ data, error }) => {
+    // Without a connection, the saved sign-in is used at once instead of waiting
+    // for an expired sign-in pass to fail to renew.
+    const offlineUserId = offlineSignInUserId()
+    const restoring = offlineUserId ? Promise.resolve({ data: { session: null }, error: null }) : supabase.auth.getSession()
+    restoring.then(async ({ data, error }) => {
       if (!isMounted) return
+      // Opened without signal after the sign-in pass expired: keep the person
+      // signed in with what this phone saved, so their saved alerts, centers,
+      // hotlines and offline reports stay usable. Admins need a connection.
+      let userId = data?.session?.user.id ?? offlineUserId
       if (error) {
-        setAuthMessage(`Could not restore your session: ${error.message}`)
-        return
+        userId = isNetworkError(error) ? savedSignInUserId() : null
+        if (!userId) {
+          setAuthMessage(`Could not restore your session: ${error.message}`)
+          return
+        }
       }
-      if (!data.session) return
+      if (!userId) return
 
       try {
-        const role = await getProfileRole(data.session.user.id)
+        const role = await getProfileRole(userId)
+        if (!data?.session && role === 'admin') {
+          if (isMounted) setAuthMessage('You are offline. Connect to the internet to open the admin dashboard.')
+          return
+        }
         // Rescuer and admin accounts must use their email and password, even
         // when Google is linked to the same email address.
-        if (role !== 'citizen' && isGoogleSession(data.session)) {
+        if (role !== 'citizen' && data?.session && isGoogleSession(data.session)) {
           await supabase.auth.signOut({ scope: 'local' })
           if (isMounted) {
             setAuthMessage('Google sign-in is for citizen accounts only. Sign in with your email and password instead.')
@@ -248,8 +266,14 @@ export function App() {
           setShowAuth(false)
         }
       } catch (profileError) {
-        await supabase.auth.signOut({ scope: 'local' })
-        if (isMounted) setAuthMessage(profileError.message)
+        // Never sign someone out just because the phone is offline.
+        if (!isNetworkError(profileError)) await supabase.auth.signOut({ scope: 'local' })
+        if (isMounted) {
+          setAuthMessage(isNetworkError(profileError)
+            ? 'You are offline, and LIGTAS has not been opened on this phone while signed in. Connect to the internet and try again.'
+            : profileError.message)
+          setShowAuth(true)
+        }
       }
     }).catch((sessionError) => {
       if (isMounted) setAuthMessage(`Could not restore your session: ${sessionError.message}`)

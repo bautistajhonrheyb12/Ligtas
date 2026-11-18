@@ -98,6 +98,11 @@ spam: at most 3 waiting for review at once (an admin checking one frees a place)
 3 per 10 minutes and 10 per 24 hours. SOS keeps its own limit and is never blocked.
 The same numbers are in `src/lib/limits.js`, which the report form checks first.
 
+`20261119120000_family_safety.sql` adds family safety (section 15): the `families`
+and `family_members` tables, the functions to start, join, leave and manage a
+family, and a trigger that tells the family about safety check-ins. After running
+it, deploy `send-push` again (section 14), since it now also notifies families.
+
 Apply every migration, in order. Screens built for a newer migration than the
 database has fail with a "column does not exist" error, except the last one above.
 
@@ -572,6 +577,45 @@ menu → Install app).
 Logs* shows how many notifications each event sent, failed or removed.
 `select * from net._http_response order by created desc limit 20;` shows the
 database's calls to the function.
+
+## 15. Family safety
+
+Citizens link their accounts into a family (*Prepare → My family*) and see each
+other's safety on the Home tab: *Safe*, *Needs help*, or *SOS sent* with how the
+rescue is going (waiting for a team, team assigned, on the way, arrived).
+Members with notifications on are told when someone in the family sends an SOS,
+needs help, or marks themselves safe, even when LIGTAS is closed.
+
+- One person taps *Start a family* and shares the 8-character code (Copy or
+  Share). Relatives enter it on their own phones. At most 12 people, one family
+  per person.
+- Family members see each other's name, barangay, safety check-in and SOS
+  progress from the last 24 hours. **Never locations, reports or phone numbers.**
+- Anyone can leave at any time. The person who started the family can remove
+  members and make a new code (the old one stops working); if they leave, the
+  longest-standing member takes over.
+- Codes have no look-alike characters and about 10^12 combinations; each person
+  can try at most 10 codes an hour.
+- Only citizens use it. Everything goes through the database functions in the
+  migration; the tables themselves cannot be read.
+- After the migration, redeploy the function:
+  `npx supabase functions deploy send-push --no-verify-jwt --use-api`
+
+## Working without signal
+
+LIGTAS keeps working when a phone has no data connection:
+
+- People stay signed in. Opened offline (even after the one-hour sign-in pass
+  has expired), LIGTAS opens with the account saved on the phone instead of the
+  sign-in screen. Admins need a connection (two-step verification).
+- Saved on the phone and shown at once when offline: alerts, evacuation centers,
+  map points, the person's profile, reports, safety check-in and family status,
+  and for rescuers the call list with each reporter's number (phone calls still
+  work without data). Everything saved is deleted on sign-out.
+- Reports written offline wait on the phone and are sent when the connection
+  returns. Screens reload when the connection comes back.
+- A phone that has never opened LIGTAS while signed in cannot start offline; it
+  says so and asks for a connection.
 
 ## Notes
 

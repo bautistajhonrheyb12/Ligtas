@@ -5,6 +5,7 @@ import {
   getEvacuationCenters,
   getMapPoints,
   getMyCheckin,
+  getMyFamily,
   getMyPriorityMembers,
   getMyProfile,
   getMyReports,
@@ -54,6 +55,7 @@ import { ReportDialog } from './citizen/ReportDialog.jsx'
 import { reportLimitReached } from '../lib/limits.js'
 import { SosDialog } from './citizen/SosDialog.jsx'
 import { NotificationPrompt } from '../components/PhoneSetup.jsx'
+import { FamilyStatus } from './citizen/Family.jsx'
 import { Tour } from '../components/Tour.jsx'
 import { TOURS, markTourDone, tourDone } from '../lib/tours.js'
 import { syncPush } from '../lib/push.js'
@@ -153,6 +155,9 @@ export function CitizenDashboard({ onSignOut }) {
     .then((data) => { priorityMembersRef.current = data; setPriorityMembers(data) })
     .catch(() => {})
   const updateProfile = (changes) => setProfile((current) => current && { ...current, ...changes })
+  // Family safety: undefined while loading, null when not in a family.
+  const [family, setFamily] = useState(undefined)
+  const loadFamily = () => getMyFamily().then(setFamily).catch(() => {})
   // Catches up on anything missed while the phone had LIGTAS in the background.
   useRefreshOnReturn(() => {
     loadAlerts()
@@ -160,8 +165,20 @@ export function CitizenDashboard({ onSignOut }) {
     loadPoints()
     loadMyReports()
     loadPriority()
+    loadFamily()
     getMyCheckin().then(setCheckin).catch(() => {})
   })
+  // Family members' safety changes on their phones, so it is checked every
+  // minute while LIGTAS is open (notifications cover the time it is closed).
+  useEffect(() => {
+    loadFamily()
+    const timer = setInterval(() => { if (document.visibilityState === 'visible' && navigator.onLine) loadFamily() }, 60000)
+    return () => clearInterval(timer)
+  }, [])
+  const openFamily = () => {
+    selectTab('prepare')
+    setTimeout(() => document.getElementById('my-family')?.scrollIntoView({ block: 'start', behavior: 'smooth' }), 350)
+  }
 
   const flushQueue = async () => {
     const owner = myIdRef.current
@@ -341,6 +358,7 @@ export function CitizenDashboard({ onSignOut }) {
       await saveCheckin({ status: 'Safe', latitude: userPosition?.latitude ?? null, longitude: userPosition?.longitude ?? null })
       setCheckin({ status: 'Safe', updated_at: new Date().toISOString() })
       pushToast(t('safeSaved'), 'success')
+      loadFamily()
     } catch (error) {
       pushToast(error.message, 'urgent')
     } finally {
@@ -467,6 +485,7 @@ export function CitizenDashboard({ onSignOut }) {
               <span><strong>{t('safeButton')}</strong><small>{checkin?.status === 'Safe' ? t('safeMarked', { time: timeAgo(checkin.updated_at).toLowerCase() }) : t('safeHint')}</small></span>
             </button>
           </div>
+          <FamilyStatus t={t} family={family} onManage={openFamily} />
           <NotificationPrompt role="citizen" lang={lang} />
 
           {urgentAlert && <button class="alert-banner citizen-sheet-alert" type="button" onClick={() => selectTab('alerts')}>
@@ -561,6 +580,7 @@ export function CitizenDashboard({ onSignOut }) {
           lang={lang}
           setLang={setLang}
           onStartTour={() => setIsTourOpen(true)}
+          family={{ family, onChanged: loadFamily, onToast: pushToast }}
           profile={profile}
           onSaveProfile={saveProfile}
           priority={{
@@ -621,6 +641,7 @@ export function CitizenDashboard({ onSignOut }) {
     {dialog === 'sos' && <SosDialog t={t} livePosition={userPosition} onClose={() => setDialog(null)} onSent={() => {
       setCheckin({ status: 'Need help', updated_at: new Date().toISOString() })
       loadMyReports()
+      loadFamily()
     }} />}
     {isTourOpen && <Tour
       steps={TOURS.citizen}

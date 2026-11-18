@@ -667,3 +667,73 @@ button.forgot-password { min-height: 36px; }
 .report-limit-sos:hover { background: #a8322f; }
 .report-limit-call { border: 1px solid #f0c6c3; color: #8e2f2c; background: #fff7f6; }
 .report-limit-call:hover { background: #ffeeec; }
+
+/* ---------------------------------------------------------------
+   Family safety (screens/citizen/Family.jsx)
+   --------------------------------------------------------------- */
+.family-card { gap: 12px; }
+.family-privacy { display: flex; gap: 7px; margin: 0; padding: 10px 12px; border-radius: 12px; color: #456158; background: #f3f8f5; font-size: 12.5px; line-height: 1.5; }
+.family-privacy .ui-icon { flex: 0 0 auto; margin-top: 2px; color: var(--ui-green); }
+.family-primary, .family-secondary, .family-quiet, .family-leave {
+  display: inline-flex;
+  min-height: 44px;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  padding: 0 16px;
+  border-radius: 12px;
+  font: 800 14px 'DM Sans', sans-serif;
+  cursor: pointer;
+}
+.family-primary { border: 0; color: #fff; background: var(--ui-green); }
+.family-primary:hover:not(:disabled) { background: var(--ui-green-dark); }
+.family-secondary { border: 1px solid #cfe0d6; color: var(--ui-green-dark); background: #fff; }
+.family-secondary:hover:not(:disabled) { background: var(--ui-green-soft); }
+.family-quiet { border: 0; color: #5d7068; background: transparent; }
+.family-leave { justify-self: start; min-height: 40px; padding: 0 4px; border: 0; color: #a8322f; background: transparent; }
+.family-leave:hover { text-decoration: underline; }
+.family-primary:disabled, .family-secondary:disabled { opacity: .55; }
+.family-join { display: grid; gap: 6px; padding-top: 12px; border-top: 1px solid var(--ui-border); }
+.family-join label { color: #425a4e; font-size: 13px; font-weight: 800; }
+.family-join-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; }
+.family-join input {
+  min-width: 0;
+  min-height: 46px;
+  padding: 0 14px;
+  border: 1px solid #dbe5de;
+  border-radius: 12px;
+  color: var(--ui-ink);
+  background: #fbfcfb;
+  font: 700 17px/1 ui-monospace, 'Cascadia Mono', Consolas, monospace;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+}
+.family-join input:focus { border-color: #75a88c; outline: 3px solid #27745b1a; }
+.family-list { display: grid; gap: 8px; margin: 0; padding: 0; list-style: none; }
+.family-member { display: grid; grid-template-columns: 34px minmax(0, 1fr) auto; align-items: center; gap: 10px; padding: 10px 12px; border: 1px solid var(--ui-border); border-radius: 14px; background: #fff; }
+.family-member-icon { display: grid; width: 34px; height: 34px; place-items: center; border-radius: 11px; color: #6b7d75; background: #f1f4f2; }
+.family-member.is-safe .family-member-icon { color: #fff; background: #2f8a5f; }
+.family-member.is-sos .family-member-icon, .family-member.is-help .family-member-icon { color: #fff; background: #c43d3a; }
+.family-member.is-sos, .family-member.is-help { border-color: #f0c6c3; background: #fff6f5; }
+.family-member.is-resolved .family-member-icon { color: var(--ui-green-dark); background: var(--ui-green-soft); }
+.family-member-text { min-width: 0; }
+.family-member-text strong { display: flex; align-items: center; gap: 6px; color: var(--ui-ink); font-size: 14.5px; overflow-wrap: anywhere; }
+.family-member-text strong em { padding: 1px 7px; border-radius: 999px; color: var(--ui-green-dark); background: var(--ui-green-soft); font-size: 11px; font-style: normal; font-weight: 800; }
+.family-member-text small { display: block; margin-top: 2px; color: #5d7068; font-size: 12.5px; line-height: 1.4; }
+.family-member.is-sos .family-member-text small, .family-member.is-help .family-member-text small { color: #8e2f2c; font-weight: 700; }
+.family-remove { display: grid; width: 36px; height: 36px; place-items: center; border: 0; border-radius: 10px; color: #8a9b94; background: transparent; cursor: pointer; }
+.family-remove:hover { color: #a8322f; background: #fff1ef; }
+.family-code { display: grid; gap: 4px; padding: 14px; border: 1px dashed #b9d3c4; border-radius: 14px; background: #f8fbf9; }
+.family-code > span { color: #5d7068; font-size: 12px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; }
+.family-code strong { color: var(--ui-ink); font: 800 26px/1.2 ui-monospace, 'Cascadia Mono', Consolas, monospace; letter-spacing: .12em; }
+.family-code small { color: #5d7068; font-size: 12.5px; line-height: 1.45; }
+.family-code-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+.family-code-actions > * { min-height: 40px; }
+
+/* The family on the Home tab */
+.family-status { display: grid; gap: 8px; margin: 12px 0; padding: 12px; border: 1px solid var(--ui-border); border-radius: 16px; background: #fff; }
+.family-status-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.family-status-head span { display: inline-flex; align-items: center; gap: 7px; color: var(--ui-ink); font: 800 14.5px Manrope, sans-serif; }
+.family-status-head span .ui-icon { color: var(--ui-green); }
+.family-status-head button { min-height: 36px; padding: 0 10px; border: 0; border-radius: 10px; color: var(--ui-green-dark); background: var(--ui-green-soft); font: 800 13px 'DM Sans', sans-serif; cursor: pointer; }
+.family-status-empty { margin: 0; color: #5d7068; font-size: 13px; line-height: 1.5; }

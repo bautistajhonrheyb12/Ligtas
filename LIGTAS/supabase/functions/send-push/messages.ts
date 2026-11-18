@@ -215,3 +215,49 @@ export function testNotice(userId: string): Notice {
     }),
   }
 }
+
+// Family safety: what a family hears when one of them sends an SOS or checks in.
+function familyName(name: string | null) {
+  return name ? clip(name, 40) : 'A family member'
+}
+// Filipino needs the right marker: "si Maria" / "ang isang kapamilya" (who),
+// "ni Maria" / "ng isang kapamilya" (whose).
+const tlWho = (name: string | null) => (name ? `si ${clip(name, 40)}` : 'ang isang kapamilya')
+const tlWhose = (name: string | null) => (name ? `ni ${clip(name, 40)}` : 'ng isang kapamilya')
+
+export function familySosNotice(personId: string, name: string | null, family: string[]): Notice {
+  return {
+    users: family,
+    skip: personId,
+    message: (lang) => ({
+      ...(lang === 'tl'
+        ? { title: `Nagpadala ng SOS ${tlWho(name)}`, body: 'Naabisuhan na ang mga rescuer. Buksan ang LIGTAS para masundan ito.' }
+        : { title: `${familyName(name)} sent an SOS`, body: 'Rescuers have been alerted. Open LIGTAS to follow it.' }),
+      tag: `family-${personId}`,
+      urgent: true,
+      ttl: 6 * HOUR,
+      urgency: 'high',
+    }),
+  }
+}
+
+export function familyCheckinNotice(personId: string, name: string | null, status: string, family: string[]): Notice {
+  const safe = status === 'Safe'
+  return {
+    users: family,
+    skip: personId,
+    message: (lang) => ({
+      ...(safe
+        ? (lang === 'tl'
+          ? { title: `Ligtas ${tlWho(name)}`, body: 'Minarkahan nila ang sarili bilang ligtas sa LIGTAS.' }
+          : { title: `${familyName(name)} is safe`, body: 'They marked themselves safe in LIGTAS.' })
+        : (lang === 'tl'
+          ? { title: `Kailangan ng tulong ${tlWhose(name)}`, body: 'Tawagan sila kung kaya mo, o ang MDRRMO Rescue.' }
+          : { title: `${familyName(name)} needs help`, body: 'Call them if you can, or call MDRRMO Rescue.' })),
+      tag: `family-${personId}`,
+      urgent: !safe,
+      ttl: 6 * HOUR,
+      urgency: safe ? 'normal' : 'high',
+    }),
+  }
+}

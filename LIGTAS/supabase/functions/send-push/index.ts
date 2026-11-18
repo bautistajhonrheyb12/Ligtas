@@ -5,6 +5,8 @@
 //   { type: 'report_event', id }  a report change (called by the database)
 //   { type: 'report', id }        recent changes of one report (called by the app
 //                                 as a backup, in case the database call failed)
+//   { type: 'checkin', id }       a safety check-in, told to the person's family
+//                                 (called by the database; id is the person)
 //   { type: 'test' }              a test notification to the caller's own phones
 //
 // Deployed without the JWT check, because the database calls it without a
@@ -12,7 +14,7 @@
 // database, only for events from the last 15 minutes, and sends each event
 // once (push_claim), so calling it again or with made-up IDs sends nothing.
 import { createClient } from 'npm:@supabase/supabase-js@2'
-import { alertNotices, reportNotices, testNotice, type AlertRow, type EventRow, type Lang, type Notice, type ReportRow } from './messages.ts'
+import { alertNotices, familyCheckinNotice, familySosNotice, reportNotices, testNotice, type AlertRow, type EventRow, type Lang, type Notice, type ReportRow } from './messages.ts'
 import { sendWebPush, type Vapid } from './webpush.ts'
 
 const corsHeaders = {
@@ -119,12 +121,44 @@ Deno.serve(async (req) => {
     }
   }
 
+  // The other members of a person's family, and the person's name.
+  async function familyOf(personId: string) {
+    const { data: family, error } = await admin.rpc('family_of', { person: personId })
+    if (error) throw error
+    if (!family?.length) return { family: [] as string[], name: null }
+    const { data: profile } = await admin.from('profiles').select('display_name').eq('id', personId).maybeSingle()
+    return { family: family as string[], name: (profile?.display_name ?? '').trim() || null }
+  }
+
   async function reportEvent(event: EventRow & { created_at: string }) {
     if (!NOTIFY_ACTIONS.includes(event.action) || !isRecent(event.created_at)) return
     const { data: report, error } = await admin.from('incident_reports').select(REPORT_COLUMNS).eq('id', event.report_id).maybeSingle()
     if (error) throw error
     if (!report) return
-    await deliver(`event:${event.id}`, reportNotices(event, report as ReportRow))
+    const notices = reportNotices(event, report as ReportRow)
+    // An SOS is also told to the person's family.
+    if (event.action === 'SOS sent' && report.reporter_id) {
+      const { family, name } = await familyOf(report.reporter_id)
+      if (family.length) notices.push(familySosNotice(report.reporter_id, name, family))
+    }
+    await deliver(`event:${event.id}`, notices)
+  }
+
+  async function checkin(personId: string) {
+    const { data: row, error } = await admin.from('safety_checkins').select('status, updated_at').eq('user_id', personId).maybeSingle()
+    if (error) throw error
+    if (!row || !isRecent(row.updated_at)) return
+    // "Need help" is saved with every SOS; the family already hears about the SOS.
+    if (row.status !== 'Safe') {
+      const { count } = await admin.from('incident_reports').select('id', { count: 'exact', head: true })
+        .eq('reporter_id', personId).eq('report_type', 'SOS').gte('created_at', new Date(Date.now() - RECENT_MS).toISOString())
+      if (count) return
+    }
+    const { family, name } = await familyOf(personId)
+    if (!family.length) return
+    // The same status again counts once per half hour.
+    const bucket = Math.floor(Date.parse(row.updated_at) / (30 * 60 * 1000))
+    await deliver(`checkin:${personId}:${row.status}:${bucket}`, [familyCheckinNotice(personId, name, row.status, family)])
   }
 
   try {
@@ -149,6 +183,8 @@ Deno.serve(async (req) => {
         .order('id')
       if (error) throw error
       for (const event of events ?? []) await reportEvent(event)
+    } else if (type === 'checkin' && typeof id === 'string' && UUID.test(id)) {
+      await checkin(id)
     } else if (type === 'test') {
       const authorization = req.headers.get('Authorization') ?? ''
       const caller = createClient(url, anonKey, { global: { headers: { Authorization: authorization } }, auth: { persistSession: false } })
