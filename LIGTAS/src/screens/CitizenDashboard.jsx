@@ -51,8 +51,11 @@ import { ConfirmAction } from '../components/ConfirmDialog.jsx'
 import { TermsGate } from '../components/TermsGate.jsx'
 import { LEGAL_VERSION, needsTermsAcceptance } from '../lib/legal.js'
 import { ReportDialog } from './citizen/ReportDialog.jsx'
+import { reportLimitReached } from '../lib/limits.js'
 import { SosDialog } from './citizen/SosDialog.jsx'
 import { NotificationPrompt } from '../components/PhoneSetup.jsx'
+import { Tour } from '../components/Tour.jsx'
+import { TOURS, markTourDone, tourDone } from '../lib/tours.js'
 import { syncPush } from '../lib/push.js'
 
 const capacityKeys = { open: 'capOpen', busy: 'capBusy', critical: 'capCritical' }
@@ -118,6 +121,20 @@ export function CitizenDashboard({ onSignOut }) {
   const [travelTimes, setTravelTimes] = useState(null)
   const [isFindingSafeCenter, setIsFindingSafeCenter] = useState(false)
   const travelOriginRef = useRef(null)
+
+  // The guided tour: shown once, the first time someone reaches this screen
+  // (after the terms and the priority question), and again from Prepare.
+  const [isTourOpen, setIsTourOpen] = useState(false)
+  const isReadyForTour = Boolean(profile) && !needsTermsAcceptance(profile) && profile.priority_answered_at !== null
+  useEffect(() => {
+    if (!isReadyForTour || dialog || navTarget || isTourOpen || tourDone('citizen')) return undefined
+    const timer = setTimeout(() => setIsTourOpen(true), 900)
+    return () => clearTimeout(timer)
+  }, [isReadyForTour, dialog, navTarget])
+  const tourPrepare = {
+    map: () => { setIsMapFullscreen(false); setActiveTab('home'); setIsSheetExpanded(false) },
+    home: () => { setIsMapFullscreen(false); setActiveTab('home'); setIsSheetExpanded(true) },
+  }
 
   const loadAlerts = () => getAlerts()
     .then((data) => { setAlerts(data.map(toAlertView)); setAlertsError('') })
@@ -543,6 +560,7 @@ export function CitizenDashboard({ onSignOut }) {
           t={t}
           lang={lang}
           setLang={setLang}
+          onStartTour={() => setIsTourOpen(true)}
           profile={profile}
           onSaveProfile={saveProfile}
           priority={{
@@ -585,7 +603,7 @@ export function CitizenDashboard({ onSignOut }) {
       onSignOut={onSignOut}
       onToast={pushToast}
     />}
-    {dialog === 'report' && <ReportDialog t={t} ownerId={myId} hasPhone={Boolean(profile?.phone)} onAddPhone={() => { setDialog(null); selectTab('prepare') }} onClose={() => setDialog(null)} onDone={(result) => {
+    {dialog === 'report' && <ReportDialog t={t} ownerId={myId} limit={reportLimitReached(myReports, queuedReports)} onSos={() => setDialog('sos')} hasPhone={Boolean(profile?.phone)} onAddPhone={() => { setDialog(null); selectTab('prepare') }} onClose={() => setDialog(null)} onDone={(result) => {
       setDialog(null)
       setQueuedReports(getQueuedReports(myId))
       pushToast(result === 'queued' ? t('reportQueued') : t('reportSent'), result === 'queued' ? 'info' : 'success')
@@ -604,6 +622,15 @@ export function CitizenDashboard({ onSignOut }) {
       setCheckin({ status: 'Need help', updated_at: new Date().toISOString() })
       loadMyReports()
     }} />}
+    {isTourOpen && <Tour
+      steps={TOURS.citizen}
+      lang={lang}
+      prepare={tourPrepare}
+      onClose={() => {
+        markTourDone('citizen')
+        setIsTourOpen(false)
+      }}
+    />}
     <ToastStack toasts={toasts} onDismiss={dismissToast} />
   </main>
 }

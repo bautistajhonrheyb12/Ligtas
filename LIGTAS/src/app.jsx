@@ -378,7 +378,7 @@ export function App() {
   if (showAuth) return <main class="site auth-site"><AuthScreen showAdmin={isStaffAccess} role={authRole} mode={authMode} onChooseRole={(role) => { setAuthMessage(''); setAuthRole(role) }} onModeChange={setAuthMode} onBack={() => setAuthRole(null)} onClose={() => setShowAuth(false)} onLogin={handleLogin} authMessage={authMessage} /></main>
   if (isAuthenticated && userRole) {
     if (dashboard.Dashboard) return <>
-      <dashboard.Dashboard onSignOut={handleSignOut} />
+      <dashboard.Dashboard onSignOut={handleSignOut} canStartTour={staffTerms === 'accepted'} />
       {staffTerms !== 'accepted' && <TermsGate isStaff isUpdate={staffTerms === 'update'} onAccepted={() => setStaffTerms('accepted')} onSignOut={handleSignOut} />}
     </>
     return <main class="app-splash" aria-busy={!dashboard.error} aria-label="Loading LIGTAS">

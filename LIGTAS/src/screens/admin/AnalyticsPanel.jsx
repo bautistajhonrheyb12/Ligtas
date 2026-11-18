@@ -52,7 +52,7 @@ function ColumnChart({ title, subtitle, items }) {
           type="button"
           class={`chart-column${active === index ? ' is-active' : ''}`}
           key={item.label}
-          aria-label={`${item.fullLabel}: ${item.value} reports`}
+          aria-label={`${item.fullLabel}: ${item.value} ${item.value === 1 ? 'report' : 'reports'}`}
           onPointerEnter={() => setActive(index)}
           onFocus={() => setActive(index)}
           onBlur={() => setActive(null)}

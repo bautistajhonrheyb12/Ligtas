@@ -431,3 +431,239 @@ button:disabled { cursor: not-allowed; }
 .ops-notify.is-on { border-color: #b9d8c6; color: var(--ui-green-dark); background: var(--ui-green-soft); }
 .citizen-sheet-scroll .notify-prompt { margin: 12px 0; }
 .admin-ui .notify-prompt { margin-bottom: 14px; }
+
+/* ---------------------------------------------------------------
+   Guided tour for new users (components/Tour.jsx)
+   --------------------------------------------------------------- */
+.tour { position: fixed; inset: 0; z-index: 2300; }
+/* Blocks taps on the app while the tour runs. */
+.tour-shade { position: fixed; inset: 0; background: transparent; }
+.tour-shade.is-full { background: rgba(8, 26, 20, .62); }
+.tour-spot {
+  position: fixed;
+  border-radius: 14px;
+  box-shadow: 0 0 0 9999px rgba(8, 26, 20, .62);
+  pointer-events: none;
+  transition: left .28s ease, top .28s ease, width .28s ease, height .28s ease;
+}
+.tour-spot::after {
+  position: absolute;
+  inset: -4px;
+  border: 2px solid #8fe0b8;
+  border-radius: 17px;
+  content: '';
+  animation: tour-ring 1.6s ease-out infinite;
+}
+@keyframes tour-ring {
+  0% { opacity: .95; transform: scale(1); }
+  100% { opacity: 0; transform: scale(1.06); }
+}
+.tour-card {
+  position: fixed;
+  width: min(360px, calc(100vw - 24px));
+  padding: 16px 16px 14px;
+  border-radius: 18px;
+  color: var(--ui-ink);
+  background: #fff;
+  box-shadow: 0 22px 60px rgba(5, 24, 18, .35);
+  transition: top .28s ease, left .28s ease;
+}
+.tour-card-head { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+.tour-card-icon { display: grid; width: 36px; height: 36px; place-items: center; flex: 0 0 auto; border-radius: 11px; color: #fff; background: var(--ui-green); }
+.tour-count { color: var(--ui-muted); font-size: 12.5px; font-weight: 700; }
+.tour-skip { margin-left: auto; padding: 6px 4px; border: 0; color: #5d7068; background: transparent; font: 700 13px 'DM Sans', sans-serif; cursor: pointer; }
+.tour-skip:hover { color: var(--ui-ink); text-decoration: underline; }
+.tour-card h2 { margin: 0 0 6px; color: var(--ui-ink); font: 800 17px/1.3 Manrope, sans-serif; text-align: left; }
+.tour-card p { margin: 0; color: #455b54; font-size: 14px; line-height: 1.55; text-align: left; }
+.tour-dots { display: flex; flex-wrap: wrap; gap: 5px; margin: 14px 0 12px; }
+.tour-dots i { width: 7px; height: 7px; border-radius: 999px; background: #d8e4dd; }
+.tour-dots i.is-done { background: #9fcbb4; }
+.tour-dots i.is-active { width: 20px; background: var(--ui-green); }
+.tour-actions { display: flex; justify-content: flex-end; gap: 8px; }
+.tour-back, .tour-next {
+  display: inline-flex;
+  min-height: 42px;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 0 16px;
+  border-radius: 11px;
+  font: 800 14px 'DM Sans', sans-serif;
+  cursor: pointer;
+}
+.tour-back { border: 1px solid #cfe0d6; color: var(--ui-green-dark); background: #fff; }
+.tour-back:hover { background: var(--ui-green-soft); }
+.tour-next { min-width: 112px; border: 0; color: #fff; background: var(--ui-green); }
+.tour-next:hover { background: var(--ui-green-dark); }
+@media (prefers-reduced-motion: reduce) {
+  .tour-spot, .tour-card { transition: none; }
+  .tour-spot::after { animation: none; }
+}
+
+/* Starting the tour again */
+.tour-start-card {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  gap: 12px;
+  margin: 0 0 12px;
+  padding: 14px;
+  border: 1px solid #cfe3d7;
+  border-radius: 14px;
+  color: var(--ui-ink);
+  background: linear-gradient(135deg, #f1f8f3, #e7f3ec);
+  text-align: left;
+  cursor: pointer;
+}
+.tour-start-card:hover { border-color: #a8c9b3; }
+.tour-start-icon { display: grid; width: 40px; height: 40px; flex: 0 0 auto; place-items: center; border-radius: 12px; color: #fff; background: var(--ui-green); }
+.tour-start-card > span:nth-child(2) { flex: 1 1 auto; min-width: 0; }
+.tour-start-card strong { display: block; font: 800 15px/1.3 Manrope, sans-serif; }
+.tour-start-card small { display: block; margin-top: 2px; color: #557066; font-size: 12.5px; }
+.tour-start-card > .ui-icon { color: var(--ui-green); }
+.tour-replay-link {
+  padding: 0;
+  border: 0;
+  color: inherit;
+  background: transparent;
+  font: inherit;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+/* ---------------------------------------------------------------
+   Layout fixes from a full audit of every screen (320px to desktop)
+   --------------------------------------------------------------- */
+/* Citizen map on phones: the zoom buttons sat in the bottom corner, hidden
+   under the bottom panel. They now sit at the top right, level with the
+   "show my location" button. The legend keeps a margin on both sides. */
+@media (max-width: 600px) {
+  .citizen-map-shell .leaflet-bottom.leaflet-right {
+    top: calc(72px + env(safe-area-inset-top));
+    right: 2px;
+    bottom: auto;
+  }
+  .citizen-map-shell .map-legend { max-width: calc(100% - 24px); }
+}
+/* My reports: the place and time wrap onto a second line instead of being
+   cut off, so the time is always visible. */
+.my-report-top small { overflow: visible; text-overflow: clip; white-space: normal; line-height: 1.4; }
+/* Terms and Privacy links: a bigger area to tap. */
+.legal-links a { display: inline-block; padding: 8px 2px; }
+/* Sign-up on narrow phones: the name, barangay and mobile fields could not
+   shrink below the inputs' built-in width and stuck out of the card. */
+.signup-details { grid-template-columns: minmax(0, 1fr); }
+.signup-details > *, .signup-row > *, .signup-row label { min-width: 0; }
+.input-group input { min-width: 0; }
+/* Small links and text buttons get a finger-sized tap area. */
+.auth-legal a, .admin-sidebar-legal a, .staff-legal-links a { display: inline-block; padding: 8px 2px; }
+button.forgot-password { min-height: 36px; }
+.legal-hotlines li { padding-top: 4px; padding-bottom: 4px; }
+.legal-hotlines a { min-height: 34px; }
+/* Rescuer map on phones: the zoom buttons sat under the call details card;
+   they now sit at the top right of the map. */
+@media (max-width: 600px) {
+  .rx-map .leaflet-bottom.leaflet-right { top: 0; bottom: auto; }
+}
+/* Admin, Priority rescue: the four filters form two rows on narrow screens
+   instead of squeezing their labels. */
+@media (max-width: 420px) {
+  .priority-review-tools .rx-segment { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .priority-review-tools .rx-segment button { min-width: 0; white-space: nowrap; }
+}
+/* Admin: small links and buttons get a finger-sized tap area. */
+.admin-report-location a { display: inline-block; padding: 6px 4px; }
+.admin-back-button { min-height: 36px; padding: 6px 4px; }
+.chart-table summary { padding: 8px 0; }
+.admin-point-delete { min-width: 34px; min-height: 34px; }
+/* Landing page menu button: its three lines were wider than the button, and
+   the button was smaller than a fingertip. */
+.menu { width: 44px; height: 44px; padding: 11px 0; }
+.menu span { margin: 6px auto; }
+/* Rescuer: an urgent alert with a long place name made the whole screen wider
+   than the phone (its one-line text could not shrink). It now ends with "…". */
+.rx-main > * { min-width: 0; }
+.rx-alert-strip { min-width: 0; }
+/* Citizen Prepare: the Language buttons had a fixed width that did not fit
+   beside the label on small phones, which made every card wider than the
+   screen. They now shrink to fit, and cards never grow past the panel. */
+.prepare-panel { grid-template-columns: minmax(0, 1fr); }
+.language-row .rx-segment { flex: 0 1 220px; width: auto; min-width: 0; }
+.language-row .rx-segment button { min-width: 0; }
+/* Full-screen map: it was both inset from the edges and full width, so it
+   ran 16px off the right side, cutting the zoom buttons. */
+.map-frame.is-fullscreen { width: auto; }
+/* Landing page, "How it works" on tablets: the heading and the three cards
+   shared one row, squeezing the cards to a few words per line. */
+@media (min-width: 721px) and (max-width: 1100px) {
+  .how-it-works { grid-template-columns: minmax(0, 1fr); gap: 36px; }
+  .how-it-works .section-heading p { max-width: 520px; }
+}
+/* Citizen map on tablets and computers (panel on the right): the zoom
+   buttons sat under the panel; they now sit under "show my location". The
+   map key stays clear of the panel. */
+@media (min-width: 601px) {
+  .citizen-map-shell .leaflet-bottom.leaflet-right {
+    top: 140px;
+    right: auto;
+    bottom: auto;
+    left: max(20px, calc((100% - 1280px) / 2));
+  }
+  .citizen-map-shell .leaflet-bottom.leaflet-right .leaflet-control { margin: 0; }
+  .citizen-map-shell .map-legend { max-width: max(150px, calc(100% - 520px)); }
+}
+/* Rescuer map on phones and tablets: the zoom buttons move to the top right,
+   clear of the call details card at the bottom. */
+@media (min-width: 601px) and (max-width: 899px) {
+  .rx-map .leaflet-bottom.leaflet-right { top: 0; bottom: auto; }
+}
+/* Headers on small phones: "Sign out" stays on one line, and the citizen
+   header drops the "/ CITIZEN" label to make room. */
+.ops-signout { white-space: nowrap; }
+@media (max-width: 380px) {
+  .citizen-header .ops-brand i { display: none; }
+  .citizen-header .ops-signout, .admin-ui .ops-signout { padding-right: 10px; padding-left: 10px; }
+}
+/* Citizen map on phones: while the panel is expanded it covers the map, and
+   the zoom buttons would collide with its top edge, so they step aside. */
+@media (max-width: 600px) {
+  .citizen-ui:has(.citizen-sheet.is-expanded) .citizen-map-shell .leaflet-control-zoom { visibility: hidden; }
+}
+/* Landing page footer links: a bigger area to tap. */
+.site-footer nav a { display: inline-block; padding: 10px 4px; }
+/* Rescuer map: the zoom buttons sit at the top left at every size, clear of
+   the call details card (bottom on phones, right side on computers). */
+.rx-map .leaflet-bottom.leaflet-right { top: 0; right: auto; bottom: auto; left: 0; }
+/* Landing page on tablets (721–950px): the links in the top bar are hidden
+   to make room, so the menu button is shown to reach them. */
+@media (min-width: 721px) and (max-width: 950px) {
+  .menu { display: block; }
+  .mobile-nav { display: grid; }
+}
+@media (min-width: 721px) and (max-width: 950px) {
+  .topbar .nav-links { margin-left: auto; margin-right: 12px; }
+}
+
+/* Report limits: shown instead of the report form when a limit is reached. */
+.report-limit { display: grid; justify-items: center; gap: 8px; padding: 8px 4px 4px; text-align: center; }
+.report-limit-icon { display: grid; width: 52px; height: 52px; place-items: center; border-radius: 16px; color: #9a5d0b; background: #fff3d6; }
+.report-limit h3 { margin: 4px 0 0; color: var(--ui-ink); font: 800 18px/1.3 Manrope, sans-serif; }
+.report-limit p { margin: 0; color: #4d615a; font-size: 14px; line-height: 1.55; }
+.report-limit .report-limit-emergency { margin-top: 6px; color: #8e2f2c; font-weight: 700; }
+.report-limit-actions { display: grid; width: 100%; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 8px; margin-top: 10px; }
+.report-limit-sos, .report-limit-call {
+  display: inline-flex;
+  min-height: 48px;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  padding: 0 14px;
+  border-radius: 12px;
+  font: 800 14.5px 'DM Sans', sans-serif;
+  text-decoration: none;
+  cursor: pointer;
+}
+.report-limit-sos { border: 0; color: #fff; background: #c43d3a; }
+.report-limit-sos:hover { background: #a8322f; }
+.report-limit-call { border: 1px solid #f0c6c3; color: #8e2f2c; background: #fff7f6; }
+.report-limit-call:hover { background: #ffeeec; }

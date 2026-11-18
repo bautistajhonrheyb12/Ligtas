@@ -21,7 +21,7 @@ The app needs every migration in `supabase/migrations/`, in order.
 - `evacuation_centers`, `map_points`, `safety_checkins`, `rescuer_locations` tables
 - alert barangay targeting and expiry
 - a private `report-photos` storage bucket
-- a limit of 5 reports per person every 10 minutes
+- a limit on reports per person (now set by `20261119110000_report_limits.sql`)
 - realtime for reports, alerts, centers, map points and rescuer locations
 
 `20261103090000_contacts_and_controls.sql` adds:
@@ -92,6 +92,11 @@ triggers that call the `send-push` function through `pg_net` (which it turns on)
 use. New tables on this project do not give the secret (service role) key access
 automatically, so without it notifications are not sent, reports are not signed
 and creating rescuers fails. Each function gets only what it needs.
+
+`20261119110000_report_limits.sql` tightens the limits on ordinary reports against
+spam: at most 3 waiting for review at once (an admin checking one frees a place),
+3 per 10 minutes and 10 per 24 hours. SOS keeps its own limit and is never blocked.
+The same numbers are in `src/lib/limits.js`, which the report form checks first.
 
 Apply every migration, in order. Screens built for a newer migration than the
 database has fail with a "column does not exist" error, except the last one above.
@@ -302,7 +307,7 @@ stops injected scripts from reading them.
 
 | Limit | Where |
 |---|---|
-| 5 reports and 3 SOS per person per 10 minutes | database |
+| Reports: 3 waiting for review at once, 3 per 10 minutes, 10 per 24 hours (withdrawn reports still count). SOS: 3 per 10 minutes, never blocked by the report limits | database (the report form checks first and explains) |
 | 10 alerts per person per 10 minutes | database |
 | 10 photo uploads per person per 10 minutes, 5 MB each, JPEG/PNG/WebP only | storage |
 | Unknown fields in a request are refused | Supabase API |
@@ -570,6 +575,13 @@ database's calls to the function.
 
 ## Notes
 
+- **Guided tour.** The first time someone reaches their dashboard (after accepting the
+  terms), a short tour highlights each main button and explains it: 11 steps for
+  citizens (English or Filipino), 10 for rescuers, 8 for admins. It can be skipped,
+  and replayed from *Prepare → How to use LIGTAS* (citizens) or the *How to use
+  LIGTAS* link (rescuers: bottom of the screen; admins: the menu). Each phone
+  remembers that it was shown. The text is in `src/lib/tours.js`; keep button
+  names there in step with the screens.
 - **SOS reports skip admin review** so they reach rescuers immediately. They have
   their own limit of 3 per person every 10 minutes.
 - **Deactivating a rescuer** turns the account back into a citizen account. It does not

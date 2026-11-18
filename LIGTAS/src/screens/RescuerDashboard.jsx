@@ -58,6 +58,8 @@ import { CallSheet } from './rescuer/CallSheet.jsx'
 import { privacyUrl, termsUrl } from '../lib/legal.js'
 import { NotificationPrompt, PhoneSettingsDialog } from '../components/PhoneSetup.jsx'
 import { syncPush, usePush } from '../lib/push.js'
+import { Tour } from '../components/Tour.jsx'
+import { TOURS, markTourDone, tourDone } from '../lib/tours.js'
 
 const priorityRank = { Critical: 0, Urgent: 1, Normal: 2 }
 const nextStage = { Assigned: 'En route', 'En route': 'On scene' }
@@ -167,7 +169,7 @@ function CallPhoto({ path }) {
   </button>
 }
 
-export function RescuerDashboard({ onSignOut }) {
+export function RescuerDashboard({ onSignOut, canStartTour = true }) {
   const isOnline = useOnlineStatus()
   const [toasts, pushToast, dismissToast] = useToasts()
   const [activeTab, setActiveTab] = useState('calls')
@@ -215,6 +217,17 @@ export function RescuerDashboard({ onSignOut }) {
   const [isPhoneSettingsOpen, setIsPhoneSettingsOpen] = useState(false)
   const push = usePush()
   useEffect(() => { syncPush('en') }, [])
+  // The guided tour: shown once, after the terms are accepted and the calls
+  // have loaded, and again from How to use LIGTAS.
+  const [isTourOpen, setIsTourOpen] = useState(false)
+  useEffect(() => {
+    if (!canStartTour || reportsLoading || navTarget || isTourOpen || tourDone('rescuer')) return undefined
+    const timer = setTimeout(() => setIsTourOpen(true), 900)
+    return () => clearTimeout(timer)
+  }, [canStartTour, reportsLoading, navTarget])
+  const tourPrepare = {
+    calls: () => { setActiveTab('calls'); setQueueView('open'); setSelectedCallId(null) },
+  }
 
   const loadReports = () => getRescuerIncidentReports()
     .then((data) => { setReports(data.map(placeReport)); setReportsError(''); setLastUpdated(new Date()) })
@@ -623,6 +636,7 @@ export function RescuerDashboard({ onSignOut }) {
         </div>
       </section>}
       <p class="legal-links staff-legal-links">
+        <button type="button" class="tour-replay-link" onClick={() => setIsTourOpen(true)}>How to use LIGTAS</button>
         <a href={termsUrl} target="_blank" rel="noopener">Terms of Use</a>
         <a href={privacyUrl} target="_blank" rel="noopener">Privacy Policy</a>
       </p>
@@ -675,6 +689,7 @@ export function RescuerDashboard({ onSignOut }) {
       onClose={() => setNavTarget(null)}
     />}
     {confirmDialog}
+    {isTourOpen && <Tour steps={TOURS.rescuer} prepare={tourPrepare} onClose={() => { markTourDone('rescuer'); setIsTourOpen(false) }} />}
     <ToastStack toasts={toasts} onDismiss={dismissToast} />
   </main>
 }

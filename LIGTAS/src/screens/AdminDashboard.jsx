@@ -51,6 +51,8 @@ import { ReportsPanel } from './admin/ReportsPanel.jsx'
 import { SecurityPanel } from './admin/SecurityPanel.jsx'
 import { NotificationPrompt, PhoneSettingsDialog } from '../components/PhoneSetup.jsx'
 import { syncPush, usePush } from '../lib/push.js'
+import { Tour } from '../components/Tour.jsx'
+import { TOURS, markTourDone, tourDone } from '../lib/tours.js'
 
 const POINT_TYPES = ['Evac. center', 'Danger zone', 'Closed road', 'Other info']
 // Team locations older than this are treated as not in the field.
@@ -80,7 +82,7 @@ const PAGE_DESCRIPTIONS = {
   security: 'Accounts whose reports failed the location checks.',
 }
 
-export function AdminDashboard({ onSignOut }) {
+export function AdminDashboard({ onSignOut, canStartTour = true }) {
   const [toasts, pushToast, dismissToast] = useToasts()
   const [activeTab, setActiveTab] = useState('dashboard')
   const [isAdminNavOpen, setIsAdminNavOpen] = useState(() => window.matchMedia('(min-width: 901px)').matches)
@@ -89,6 +91,9 @@ export function AdminDashboard({ onSignOut }) {
   const [isPhoneSettingsOpen, setIsPhoneSettingsOpen] = useState(false)
   const push = usePush()
   useEffect(() => { syncPush('en') }, [])
+  // The guided tour: shown once, after the terms are accepted, and again
+  // from How to use LIGTAS in the menu.
+  const [isTourOpen, setIsTourOpen] = useState(false)
   const [notice, setNotice] = useState('')
   const [noticeIsError, setNoticeIsError] = useState(false)
   const showNotice = (message, isError = false) => { setNotice(message); setNoticeIsError(isError) }
@@ -330,6 +335,16 @@ export function AdminDashboard({ onSignOut }) {
     if (window.matchMedia('(max-width: 900px)').matches) setIsAdminNavOpen(false)
   }
 
+  useEffect(() => {
+    if (!canStartTour || reportsLoading || isTourOpen || tourDone('admin')) return undefined
+    const timer = setTimeout(() => setIsTourOpen(true), 900)
+    return () => clearTimeout(timer)
+  }, [canStartTour, reportsLoading])
+  const tourPrepare = {
+    menu: () => setIsAdminNavOpen(true),
+    dashboard: () => selectAdminTab('dashboard'),
+  }
+
   const pendingReports = reports.filter((report) => report.status === 'Pending')
   const sosReports = reports.filter((report) => report.report_type === 'SOS' && report.status === 'Verified' && !report.assigned_to)
   const activeReports = reports.filter((report) => report.status === 'Verified' || report.status === 'Pending')
@@ -403,6 +418,7 @@ export function AdminDashboard({ onSignOut }) {
         </button>)}
       </nav>
       <p class="admin-sidebar-legal">
+        <button type="button" class="tour-replay-link" tabIndex={isAdminNavOpen ? 0 : -1} onClick={() => setIsTourOpen(true)}>How to use LIGTAS</button>
         <a href={termsUrl} target="_blank" rel="noopener" tabIndex={isAdminNavOpen ? 0 : -1}>Terms of Use</a>
         <a href={privacyUrl} target="_blank" rel="noopener" tabIndex={isAdminNavOpen ? 0 : -1}>Privacy Policy</a>
       </p>
@@ -578,6 +594,7 @@ export function AdminDashboard({ onSignOut }) {
       }}
     />}
     {confirmDialog}
+    {isTourOpen && <Tour steps={TOURS.admin} prepare={tourPrepare} onClose={() => { markTourDone('admin'); setIsTourOpen(false) }} />}
     <ToastStack toasts={toasts} onDismiss={dismissToast} />
   </main>
 }

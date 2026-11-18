@@ -62,7 +62,7 @@ export const terms = {
         { list: [
           'A report whose position is outside Santa Maria is not accepted, and neither is a GPS report impossibly far from your last one. Pin the spot on the map instead.',
           'Reports sent from a network outside the Philippines are accepted, but marked for responders.',
-          'You can send up to 5 reports and 3 SOS every 10 minutes, and upload up to 10 report photos every 10 minutes.',
+          'To stop spam, you can have up to 3 reports waiting for review at a time, and send up to 3 reports every 10 minutes and 10 every 24 hours. SOS has its own limit of 3 every 10 minutes and is never blocked by the report limits. You can upload up to 10 report photos every 10 minutes.',
           'If an account gets three warnings in one day, its ordinary reports are paused until an administrator reviews them.',
           'Every report is digitally signed, so responders can tell if it was changed outside the app.',
         ] },
@@ -212,7 +212,7 @@ export const terms = {
         { list: [
           'Hindi tinatanggap ang ulat na ang posisyon ay nasa labas ng Santa Maria, gayundin ang GPS na ulat na imposibleng kalayo mula sa huli mong ulat. I-pin na lang ang lugar sa mapa.',
           'Tinatanggap ang mga ulat mula sa network sa labas ng Pilipinas, pero may marka para sa mga tagatugon.',
-          'Hanggang 5 ulat at 3 SOS kada 10 minuto ang puwede mong ipadala, at hanggang 10 litrato ng ulat kada 10 minuto.',
+          'Para mapigilan ang spam, hanggang 3 ulat ang puwedeng naghihintay ng pagsusuri nang sabay, at hanggang 3 ulat kada 10 minuto at 10 kada 24 na oras ang puwede mong ipadala. May sariling limitasyon ang SOS na 3 kada 10 minuto, at hindi ito kailanman hinaharangan ng mga limitasyon sa ulat. Hanggang 10 litrato ng ulat kada 10 minuto ang puwede mong i-upload.',
           'Kapag tatlong babala ang natanggap ng isang account sa loob ng isang araw, ipinapahinto muna ang mga karaniwang ulat nito hanggang suriin ng administrator.',
           'May digital signature ang bawat ulat, kaya malalaman ng mga tagatugon kung binago ito sa labas ng app.',
         ] },

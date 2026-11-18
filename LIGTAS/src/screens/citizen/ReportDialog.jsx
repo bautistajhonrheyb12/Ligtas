@@ -5,12 +5,17 @@ import { coordinatesLabel, describeLocation } from '../../lib/geocode.js'
 import { queueReport } from '../../lib/offlineQueue.js'
 import { isInsideSantaMaria } from '../../lib/santaMaria.js'
 import { Icon, getCurrentPosition, reportTypeStyle } from '../../lib/ui.jsx'
+import { rescueHotline } from '../../lib/hotlines.js'
 
 const REPORT_TYPES = ['Flooding', 'Blocked road', 'Fallen tree', 'Power outage', 'Landslide', 'Fire', 'Medical', 'Other']
 // Photos are resized before upload, so only reject files too big to process on a phone.
 const MAX_PHOTO_BYTES = 25 * 1024 * 1024
 
-export function ReportDialog({ t, ownerId, hasPhone, onAddPhone, onClose, onDone }) {
+// limit: a report limit already reached (lib/limits.js); the form is replaced
+// by an explanation, with SOS and the hotline for emergencies.
+export function ReportDialog({ t, ownerId, hasPhone, onAddPhone, onClose, onDone, limit: limitNow = null, onSos }) {
+  // Decided when the form opens, so it never changes while a report is being sent.
+  const [limit] = useState(limitNow)
   const [reportType, setReportType] = useState('Flooding')
   const [location, setLocation] = useState('')
   const [position, setPosition] = useState(null)
@@ -162,8 +167,19 @@ export function ReportDialog({ t, ownerId, hasPhone, onAddPhone, onClose, onDone
         <div><span class="ops-eyebrow">{t('reportEyebrow')}</span><h2 id="citizen-report-title">{t('reportTitle')}</h2></div>
         <button type="button" class="alert-modal-close" aria-label={t('close')} disabled={isSubmitting} onClick={onClose}>×</button>
       </div>
+      {limit && <div class="report-limit" role="alert">
+        <span class="report-limit-icon" aria-hidden="true"><Icon name="clock" size={22} /></span>
+        <h3>{t(`limit_${limit}_title`)}</h3>
+        <p>{t(`limit_${limit}_text`)}</p>
+        <p class="report-limit-emergency">{t('limitEmergency')}</p>
+        <div class="report-limit-actions">
+          <button type="button" class="report-limit-sos" onClick={onSos}><Icon name="sos" size={18} /> {t('limitSos')}</button>
+          <a class="report-limit-call" href={`tel:${rescueHotline.number}`}><Icon name="phone" size={17} /> {t('limitCall', { name: rescueHotline.name })}</a>
+        </div>
+      </div>}
+      {!limit && <>
       <p class="incident-report-prompt">{t('reportPrompt')}</p>
-      {!hasPhone && <p class="report-phone-hint"><Icon name="phone" size={15} /><span>{t('phoneHint')}</span><button type="button" onClick={onAddPhone}>{t('addPhone')}</button></p>}
+      {!hasPhone &&<p class="report-phone-hint"><Icon name="phone" size={15} /><span>{t('phoneHint')}</span><button type="button" onClick={onAddPhone}>{t('addPhone')}</button></p>}
       <div class="report-type-grid" role="group" aria-label="Incident type">
         {REPORT_TYPES.map((type) => {
           const style = reportTypeStyle(type)
@@ -240,6 +256,7 @@ export function ReportDialog({ t, ownerId, hasPhone, onAddPhone, onClose, onDone
           {isSubmitting ? t('submitting') : t('submitReport')}
         </button>
       </form>
+      </>}
     </section>
   </div>
 }

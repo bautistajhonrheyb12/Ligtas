@@ -24,7 +24,7 @@ const profileDraft = (profile) => ({
   barangay: profile?.barangay ?? '',
 })
 
-export function PreparePanel({ t, lang, setLang, profile, onSaveProfile, priority }) {
+export function PreparePanel({ t, lang, setLang, profile, onSaveProfile, priority, onStartTour }) {
   const [packed, setPacked] = useState(readChecklist)
   const [hazard, setHazard] = useState('flood')
   const [phase, setPhase] = useState('before')
@@ -69,6 +69,11 @@ export function PreparePanel({ t, lang, setLang, profile, onSaveProfile, priorit
   }
 
   return <div class="citizen-panel prepare-panel">
+    {onStartTour && <button type="button" class="tour-start-card" onClick={onStartTour}>
+      <span class="tour-start-icon" aria-hidden="true"><Icon name="info" size={20} /></span>
+      <span><strong>{t('tourTitle')}</strong><small>{t('tourHint')}</small></span>
+      <Icon name="arrow" size={18} />
+    </button>}
     <section class="prepare-card">
       <h2><Icon name="phone" size={18} /> {t('hotlinesTitle')}</h2>
       <p class="prepare-note">{t('hotlinesNote')}</p>
