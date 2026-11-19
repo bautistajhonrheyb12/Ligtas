@@ -7,30 +7,53 @@ export const mapCenter = [14.842, 120.985]
 export const mapTileUrl = 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png'
 export const mapAttribution = '&copy; OpenStreetMap contributors'
 
-// Every map shows Santa Maria, Bulacan only: map images are loaded only around
-// the town, and everything outside the municipal border is covered with a
-// plain background, so neighbouring towns do not show at all. Panning stops a
-// short way past the border. (Turn-by-turn navigation uses its own map with the
-// surrounding roads, since a route or a rescuer can be outside the town.)
+// Every map is Santa Maria, Bulacan and nothing else: it opens with the whole
+// town filling the map, cannot be zoomed out past it or dragged away from it,
+// map images are loaded only around the town, and everything outside the
+// municipal border is covered with a plain background. (Turn-by-turn
+// navigation uses its own map with the surrounding roads, since a route or a
+// rescuer can be outside the town.)
 const areaBounds = L.latLngBounds(santaMariaBoundary)
 // Just enough margin that no map image is missing along the border.
 const tileBounds = areaBounds.pad(0.02)
 export const OUTSIDE_COLOR = '#eef2ef'
-// Room around the border so the town can be framed beside panels and headers.
-const viewBounds = areaBounds.pad(0.3)
+// Space left around the town, in pixels.
+export const AREA_EDGE = 8
 const worldRing = [[-89, -179], [-89, 179], [89, 179], [89, -179]]
 
-// People can zoom out a little past the whole municipality, no further.
-function limitZoomToArea(map) {
-  const size = map.getSize()
-  if (!size.x || !size.y) return
-  map.setMinZoom(Math.max(10, map.getBoundsZoom(areaBounds, false) - 0.75))
+// The view that shows the whole town as large as it fits, leaving room for
+// anything drawn over the map (a header, a side panel, a bottom panel).
+function wholeTownView(map, padding = {}) {
+  const options = { paddingTopLeft: [AREA_EDGE, AREA_EDGE], paddingBottomRight: [AREA_EDGE, AREA_EDGE], ...padding }
+  // The old limit must not hold the calculation back.
+  map.setMinZoom(0)
+  const { center, zoom } = map._getBoundsCenterZoom(areaBounds, options)
+  const middle = map.project(center, zoom)
+  const half = map.getSize().divideBy(2)
+  const screen = L.latLngBounds(map.unproject(middle.subtract(half), zoom), map.unproject(middle.add(half), zoom))
+  return { center, zoom, screen }
 }
 
-// Fits the whole municipality in view. Padding keeps it clear of anything
+// People cannot zoom out past the whole town, or drag it out of view. The
+// small allowance lets a selected call be shown beside a panel near the border.
+function limitToArea(map) {
+  const size = map.getSize()
+  if (!size.x || !size.y) return null
+  const view = wholeTownView(map, map.ligtasPadding)
+  map.setMinZoom(view.zoom)
+  map.setMaxBounds(view.screen.extend(areaBounds).pad(0.05))
+  return view
+}
+
+// Shows the whole town, filling the map. Padding keeps it clear of anything
 // drawn over the map, such as a header or a side panel.
 export function frameArea(map, padding = {}) {
-  map.fitBounds(areaBounds, { paddingTopLeft: [24, 24], paddingBottomRight: [24, 24], ...padding, animate: false })
+  map.ligtasPadding = padding
+  const view = limitToArea(map)
+  if (view) map.setView(view.center, view.zoom, { animate: false })
+  // A map still hidden (no size yet) opens on the town centre; it is fitted
+  // once it has a size (watchMapSize).
+  else if (!map._loaded) map.setView(areaBounds.getCenter(), 13, { animate: false })
 }
 
 // Without a centre, the map opens on the whole municipality. A map can put its
@@ -46,10 +69,9 @@ export function createLigtasMap(container, center = null, zoom = 13, { zoomPosit
     dragging: true,
     touchZoom: true,
     boxZoom: true,
-    maxBounds: viewBounds,
     maxBoundsViscosity: 1,
-    // Quarter steps let the zoomed-out view fit the municipality snugly on any screen.
-    zoomSnap: 0.25,
+    // Small steps let the whole town fill the map snugly on any screen.
+    zoomSnap: 0.1,
   })
   if (center) map.setView(center, zoom)
   else frameArea(map)
@@ -60,14 +82,12 @@ export function createLigtasMap(container, center = null, zoom = 13, { zoomPosit
   const maskPane = map.createPane('areaMask')
   maskPane.style.zIndex = '250'
   maskPane.style.pointerEvents = 'none'
-  // Everything outside the border is covered completely.
+  // Everything outside the border is covered completely, with no border line:
+  // the town's own edge is the edge of the map.
   L.polygon([worldRing, santaMariaBoundary], { pane: 'areaMask', interactive: false, stroke: false, fillColor: OUTSIDE_COLOR, fillOpacity: 1 }).addTo(map)
-  // A soft white edge under the dashed border line keeps the edge crisp.
-  L.polygon(santaMariaBoundary, { pane: 'areaMask', interactive: false, fill: false, color: '#ffffff', weight: 7, opacity: 0.9 }).addTo(map)
-  L.polygon(santaMariaBoundary, { pane: 'areaMask', interactive: false, fill: false, color: '#27745b', weight: 2.5, opacity: 0.9, dashArray: '7 6' }).addTo(map)
   // Sits below the vector overlay pane so pulse rings render behind hazard markers.
   map.createPane('hazardPulse').style.zIndex = '350'
-  limitZoomToArea(map)
+  if (center) limitToArea(map)
   return map
 }
 
@@ -80,7 +100,7 @@ export function removeLigtasMap(map) {
 export function watchMapSize(map, container) {
   const observer = new ResizeObserver(() => {
     map.invalidateSize()
-    limitZoomToArea(map)
+    limitToArea(map)
   })
   observer.observe(container)
   return () => observer.disconnect()

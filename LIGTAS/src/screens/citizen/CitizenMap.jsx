@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'preact/hooks'
 import L from 'leaflet'
 import { Icon } from '../../lib/ui.jsx'
 import {
+  AREA_EDGE,
   createLigtasMap,
   drawEvacuationCenters,
   drawMapPoints,
@@ -17,16 +18,19 @@ function overlayPadding(container) {
   const box = container.getBoundingClientRect()
   const header = document.querySelector('.citizen-ui > .citizen-header')?.getBoundingClientRect()
   const sheet = document.querySelector('.citizen-ui .citizen-sheet')?.getBoundingClientRect()
-  let top = 24
-  let right = 24
-  let bottom = 24
-  if (header?.height) top = Math.max(top, header.bottom - box.top + 16)
+  const legend = container.parentElement?.querySelector('.map-legend')?.getBoundingClientRect()
+  let top = AREA_EDGE
+  let right = AREA_EDGE
+  let bottom = AREA_EDGE
+  if (header?.height) top = Math.max(top, header.bottom - box.top + AREA_EDGE)
   if (sheet?.width && sheet.height) {
     // A side panel on wide screens, a bottom sheet on phones.
-    if (sheet.left > box.left + box.width / 2) right = Math.max(right, box.right - sheet.left + 16)
-    else bottom = Math.max(bottom, box.bottom - sheet.top + 16)
+    if (sheet.left > box.left + box.width / 2) right = Math.max(right, box.right - sheet.left + AREA_EDGE)
+    else bottom = Math.max(bottom, box.bottom - sheet.top + AREA_EDGE)
   }
-  return { paddingTopLeft: [24, top], paddingBottomRight: [right, bottom] }
+  // The map key along the bottom.
+  if (legend?.height) bottom = Math.max(bottom, box.bottom - legend.top + AREA_EDGE)
+  return { paddingTopLeft: [AREA_EDGE, top], paddingBottomRight: [right, bottom] }
 }
 
 export function CitizenMap({ points, centers, userPosition, focusTarget, locationError, isLocating, onLocate, t }) {
