@@ -534,17 +534,15 @@ button:disabled { cursor: not-allowed; }
 /* ---------------------------------------------------------------
    Layout fixes from a full audit of every screen (320px to desktop)
    --------------------------------------------------------------- */
-/* Citizen map on phones: the zoom buttons sat in the bottom corner, hidden
-   under the bottom panel. They now sit at the top right, level with the
-   "show my location" button. The legend keeps a margin on both sides. */
+/* Citizen map on phones: the zoom buttons sit at the top right, level with
+   the "show my location" button, clear of the bottom panel. The legend keeps
+   a margin on both sides. */
 @media (max-width: 600px) {
-  .citizen-map-shell .leaflet-bottom.leaflet-right {
-    top: calc(72px + env(safe-area-inset-top));
-    right: 2px;
-    bottom: auto;
-  }
+  .citizen-map-shell .leaflet-top.leaflet-right { top: calc(62px + env(safe-area-inset-top)); }
   .citizen-map-shell .map-legend { max-width: calc(100% - 24px); }
 }
+/* The citizen map shows its map credit in the map key. */
+.map-legend .map-credit { flex-basis: 100%; color: #7b8c85; font-size: 10.5px; }
 /* My reports: the place and time wrap onto a second line instead of being
    cut off, so the time is always visible. */
 .my-report-top small { overflow: visible; text-overflow: clip; white-space: normal; line-height: 1.4; }
@@ -560,11 +558,6 @@ button:disabled { cursor: not-allowed; }
 button.forgot-password { min-height: 36px; }
 .legal-hotlines li { padding-top: 4px; padding-bottom: 4px; }
 .legal-hotlines a { min-height: 34px; }
-/* Rescuer map on phones: the zoom buttons sat under the call details card;
-   they now sit at the top right of the map. */
-@media (max-width: 600px) {
-  .rx-map .leaflet-bottom.leaflet-right { top: 0; bottom: auto; }
-}
 /* Admin, Priority rescue: the four filters form two rows on narrow screens
    instead of squeezing their labels. */
 @media (max-width: 420px) {
@@ -603,19 +596,8 @@ button.forgot-password { min-height: 36px; }
    buttons sat under the panel; they now sit under "show my location". The
    map key stays clear of the panel. */
 @media (min-width: 601px) {
-  .citizen-map-shell .leaflet-bottom.leaflet-right {
-    top: 140px;
-    right: auto;
-    bottom: auto;
-    left: max(20px, calc((100% - 1280px) / 2));
-  }
-  .citizen-map-shell .leaflet-bottom.leaflet-right .leaflet-control { margin: 0; }
+  .citizen-map-shell .leaflet-top.leaflet-right { top: 130px; right: auto; left: max(20px, calc((100% - 1280px) / 2)); }
   .citizen-map-shell .map-legend { max-width: max(150px, calc(100% - 520px)); }
-}
-/* Rescuer map on phones and tablets: the zoom buttons move to the top right,
-   clear of the call details card at the bottom. */
-@media (min-width: 601px) and (max-width: 899px) {
-  .rx-map .leaflet-bottom.leaflet-right { top: 0; bottom: auto; }
 }
 /* Headers on small phones: "Sign out" stays on one line, and the citizen
    header drops the "/ CITIZEN" label to make room. */
@@ -631,9 +613,6 @@ button.forgot-password { min-height: 36px; }
 }
 /* Landing page footer links: a bigger area to tap. */
 .site-footer nav a { display: inline-block; padding: 10px 4px; }
-/* Rescuer map: the zoom buttons sit at the top left at every size, clear of
-   the call details card (bottom on phones, right side on computers). */
-.rx-map .leaflet-bottom.leaflet-right { top: 0; right: auto; bottom: auto; left: 0; }
 /* Landing page on tablets (721–950px): the links in the top bar are hidden
    to make room, so the menu button is shown to reach them. */
 @media (min-width: 721px) and (max-width: 950px) {

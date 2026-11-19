@@ -40,7 +40,9 @@ export function CitizenMap({ points, centers, userPosition, focusTarget, locatio
   useEffect(() => {
     if (!mapRef.current) return undefined
     const container = mapRef.current
-    const map = createLigtasMap(container)
+    // Zoom buttons at the top (the bottom is covered by the panel); the map
+    // credit is shown in the map key below.
+    const map = createLigtasMap(container, null, 13, { zoomPosition: 'topright', attribution: false })
     frameArea(map, overlayPadding(container))
     mapInstanceRef.current = map
     layerRef.current = L.layerGroup().addTo(map)
@@ -108,6 +110,7 @@ export function CitizenMap({ points, centers, userPosition, focusTarget, locatio
       <span><i class="legend-yellow" /> {t('legendClosed')}</span>
       <span><i class="legend-green" /> {t('legendCenter')}</span>
       {userPosition && <span><i class="legend-blue" /> {t('legendYou')}</span>}
+      <small class="map-credit">© OpenStreetMap contributors</small>
     </div>
   </div>
 }

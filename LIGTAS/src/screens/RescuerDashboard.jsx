@@ -86,7 +86,8 @@ function RescuerSituationMap({ reports, points, centers, myPosition, isFullscree
 
   useEffect(() => {
     if (!mapRef.current) return undefined
-    const map = createLigtasMap(mapRef.current)
+    // Zoom buttons at the top left, clear of the call details card.
+    const map = createLigtasMap(mapRef.current, null, 13, { zoomPosition: 'topleft' })
     mapInstanceRef.current = map
     layerRef.current = L.layerGroup().addTo(map)
     // Kept apart so frequent location updates don't redraw every marker.
