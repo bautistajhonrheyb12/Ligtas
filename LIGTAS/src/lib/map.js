@@ -10,13 +10,19 @@ export const mapAttribution = '&copy; OpenStreetMap contributors'
 // Every map is Santa Maria, Bulacan and nothing else: it opens with the whole
 // town filling the map, cannot be zoomed out past it or dragged away from it,
 // map images are loaded only around the town, and everything outside the
-// municipal border is covered with a plain background. (Turn-by-turn
+// municipal border (lib/santaMaria.js) is covered with a plain background,
+// with one thin line marking the edge. (Turn-by-turn
 // navigation uses its own map with the surrounding roads, since a route or a
 // rescuer can be outside the town.)
 const areaBounds = L.latLngBounds(santaMariaBoundary)
 // Just enough margin that no map image is missing along the border.
 const tileBounds = areaBounds.pad(0.02)
 export const OUTSIDE_COLOR = '#eef2ef'
+// The town's edge: one thin LIGTAS-green line, soft enough not to compete
+// with the markers.
+const EDGE_COLOR = '#27745b'
+// Closest zoom: single houses (the most the map images offer).
+const MAX_ZOOM = 19
 // Space left around the town, in pixels.
 export const AREA_EDGE = 8
 const worldRing = [[-89, -179], [-89, 179], [89, 179], [89, -179]]
@@ -70,21 +76,26 @@ export function createLigtasMap(container, center = null, zoom = 13, { zoomPosit
     touchZoom: true,
     boxZoom: true,
     maxBoundsViscosity: 1,
-    // Small steps let the whole town fill the map snugly on any screen.
+    // Small steps let the whole town fill the map snugly on any screen. The
+    // farthest-out zoom is set by limitToArea: the whole town, no further.
     zoomSnap: 0.1,
+    maxZoom: MAX_ZOOM,
   })
   if (center) map.setView(center, zoom)
   else frameArea(map)
 
-  L.tileLayer(mapTileUrl, { attribution: mapAttribution, bounds: tileBounds }).addTo(map)
+  L.tileLayer(mapTileUrl, { attribution: mapAttribution, bounds: tileBounds, maxZoom: MAX_ZOOM }).addTo(map)
   L.control.zoom({ position: zoomPosition }).addTo(map)
   // Between the tiles and the markers, and never catches clicks.
   const maskPane = map.createPane('areaMask')
   maskPane.style.zIndex = '250'
   maskPane.style.pointerEvents = 'none'
-  // Everything outside the border is covered completely, with no border line:
-  // the town's own edge is the edge of the map.
-  L.polygon([worldRing, santaMariaBoundary], { pane: 'areaMask', interactive: false, stroke: false, fillColor: OUTSIDE_COLOR, fillOpacity: 1 }).addTo(map)
+  // Everything outside the border is covered completely. The cover's own
+  // outline, in the same plain colour, also hides the border line and the
+  // neighbouring towns' edges that the map images draw along the boundary.
+  L.polygon([worldRing, santaMariaBoundary], { pane: 'areaMask', interactive: false, color: OUTSIDE_COLOR, weight: 6, opacity: 1, fillColor: OUTSIDE_COLOR, fillOpacity: 1 }).addTo(map)
+  // Then one clean, thin line marks the town's edge.
+  L.polygon(santaMariaBoundary, { pane: 'areaMask', interactive: false, fill: false, color: EDGE_COLOR, weight: 1.5, opacity: 0.55 }).addTo(map)
   // Sits below the vector overlay pane so pulse rings render behind hazard markers.
   map.createPane('hazardPulse').style.zIndex = '350'
   if (center) limitToArea(map)

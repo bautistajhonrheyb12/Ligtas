@@ -716,3 +716,8 @@ button.forgot-password { min-height: 36px; }
 .family-status-head span .ui-icon { color: var(--ui-green); }
 .family-status-head button { min-height: 36px; padding: 0 10px; border: 0; border-radius: 10px; color: var(--ui-green-dark); background: var(--ui-green-soft); font: 800 13px 'DM Sans', sans-serif; cursor: pointer; }
 .family-status-empty { margin: 0; color: #5d7068; font-size: 13px; line-height: 1.5; }
+
+/* Pin maps: a tap outside Santa Maria explains why no pin appeared. */
+.pin-picker-caption .pin-outside, .admin-pin-field small.pin-outside { display: inline-flex; align-items: center; gap: 4px; color: #a2453f; font-weight: 800; }
+/* The map credit keeps its normal weight inside the bold form label. */
+.admin-pin-field .leaflet-control-attribution { font-weight: 400; }

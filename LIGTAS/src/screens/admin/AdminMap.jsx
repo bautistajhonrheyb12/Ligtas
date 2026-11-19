@@ -6,7 +6,6 @@ import {
   drawMapPoints,
   drawReports,
   escapeHtml,
-  fitToContent,
   removeLigtasMap,
   watchMapSize,
 } from '../../lib/map.js'
@@ -42,18 +41,16 @@ export function AdminOperationsMap({
   const layerRef = useRef(null)
   const onMapClickRef = useRef(onMapClick)
   const addingPointRef = useRef(addingPoint)
-  const fittedCountRef = useRef(0)
-  const userMovedRef = useRef(false)
   onMapClickRef.current = onMapClick
   addingPointRef.current = addingPoint
 
   useEffect(() => {
     if (!mapRef.current) return undefined
+    // Opens on the whole town, where every point, center and report is.
     const map = createLigtasMap(mapRef.current)
     map.on('click', (event) => {
       if (addingPointRef.current) onMapClickRef.current?.(event.latlng.lat, event.latlng.lng)
     })
-    map.on('dragstart', () => { userMovedRef.current = true })
     mapInstanceRef.current = map
     layerRef.current = L.layerGroup().addTo(map)
     const stopWatching = watchMapSize(map, mapRef.current)
@@ -74,15 +71,6 @@ export function AdminOperationsMap({
     drawEvacuationCenters(layer, centers)
     drawReports(layer, reports)
     drawTeams(layer, teams)
-    const coordinates = [
-      ...points,
-      ...centers.filter((center) => center.latitude != null),
-      ...reports.filter((report) => report.latitude != null),
-    ].map((item) => [item.latitude, item.longitude])
-    if (!userMovedRef.current && coordinates.length > fittedCountRef.current) {
-      fitToContent(map, coordinates)
-      fittedCountRef.current = coordinates.length
-    }
   }, [points, centers, reports, teams])
 
   // Leaflet adds its own classes to this element (including the one that clips the

@@ -26,6 +26,14 @@ export function CenterForm({ center, initialPosition = null, onClose, onSaved })
     : initialPosition)
   const [isSaving, setIsSaving] = useState(false)
   const [error, setError] = useState('')
+  // Set for a few seconds after a tap outside Santa Maria on the pin map.
+  const [pinOutside, setPinOutside] = useState(0)
+
+  useEffect(() => {
+    if (!pinOutside) return undefined
+    const timer = setTimeout(() => setPinOutside(0), 4000)
+    return () => clearTimeout(timer)
+  }, [pinOutside])
 
   const submit = async (event) => {
     event.preventDefault()
@@ -67,8 +75,10 @@ export function CenterForm({ center, initialPosition = null, onClose, onSaved })
       </div>
       <label class="check-row"><input type="checkbox" name="isOpen" defaultChecked={center?.is_open ?? true} /> Open and accepting evacuees</label>
       <div class="admin-pin-field">
-        <span>Map location <small>{position ? `${position.latitude.toFixed(5)}, ${position.longitude.toFixed(5)}` : 'Tap the map to place the center'}</small></span>
-        <PinPicker position={position} onChange={setPosition} />
+        <span>Map location {pinOutside
+          ? <small class="pin-outside" role="status">That spot is outside Santa Maria. Tap inside the town.</small>
+          : <small>{position ? `${position.latitude.toFixed(5)}, ${position.longitude.toFixed(5)}` : 'Tap the map to place the center'}</small>}</span>
+        <PinPicker position={position} onChange={(next) => { setPinOutside(0); setPosition(next) }} onOutside={() => setPinOutside((count) => count + 1)} />
       </div>
       {error && <p class="form-error" role="alert" key={error}>{error}</p>}
       <div class="alert-form-actions">

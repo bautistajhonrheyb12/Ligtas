@@ -28,6 +28,14 @@ export function ReportDialog({ t, ownerId, hasPhone, onAddPhone, onClose, onDone
   const [notes, setNotes] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState('')
+  // Set for a few seconds after a tap outside Santa Maria on the pin map.
+  const [pinOutside, setPinOutside] = useState(0)
+
+  useEffect(() => {
+    if (!pinOutside) return undefined
+    const timer = setTimeout(() => setPinOutside(0), 4000)
+    return () => clearTimeout(timer)
+  }, [pinOutside])
 
   // The address of the pin, looked up whenever the pin is placed or moved.
   // It fills the location field unless the person has typed their own text,
@@ -217,9 +225,11 @@ export function ReportDialog({ t, ownerId, hasPhone, onAddPhone, onClose, onDone
             : <><Icon name="pin" size={14} /> <span>{t('addressSuggest', { address: lookup.label })}</span> <button type="button" onClick={useSuggestedAddress}>{t('addressUse')}</button></>)}
         </p>}
         <div class="pin-picker-wrap">
-          <PinPicker position={position} onChange={(next) => setPosition({ ...next, source: 'pin' })} />
+          <PinPicker position={position} onChange={(next) => { setPinOutside(0); setPosition({ ...next, source: 'pin' }) }} onOutside={() => setPinOutside((count) => count + 1)} />
           <div class="pin-picker-caption">
-            {position
+            {pinOutside
+              ? <span class="pin-outside" role="status"><Icon name="alert" size={14} /> {t('pinOutside')}</span>
+              : position
               ? <><span class="pin-attached"><Icon name="check" size={14} /> {position.source === 'gps' ? t('locationAttached') : t('pinAttached')}</span><button type="button" onClick={() => setPosition(null)}>{t('removePin')}</button></>
               : <span>{t('pinOnMap')}</span>}
           </div>

@@ -233,7 +233,7 @@ export function AdminDashboard({ onSignOut, canStartTour = true }) {
 
   const handleMapClick = (lat, lng) => {
     if (!isInsideSantaMaria(lat, lng)) {
-      showNotice('That spot is outside Santa Maria. Tap a place inside the dashed border.', true)
+      showNotice('That spot is outside Santa Maria. Tap a place inside the town.', true)
       return
     }
     const position = { latitude: lat, longitude: lng }

@@ -502,7 +502,6 @@ button.google-button .btn-spinner { margin: 0; color: #27745b; }
 }
 .two-step-help { margin: 14px 0 0; color: var(--ui-muted); font-size: 12px; line-height: 1.45; }
 
-/* Matches the faded area outside Santa Maria, where no map tiles load. */
 /* Maps: while tiles load, show the same beige as the map instead of white. */
 .leaflet-container, .real-map .leaflet-container { background: #f2efe9; }
 /* At in-between zoom levels, tiles leave hairline white seams; blending the
