@@ -137,6 +137,11 @@ export function Logo({ small = false }) {
   </div>
 }
 
+// The top of the sign-in, password and two-step cards: the mark and the name.
+export function AuthBrand() {
+  return <div class="auth-brand"><Logo small /><span>LIGTAS</span></div>
+}
+
 // Straight-line distance in kilometres (haversine).
 export function distanceKm(from, to) {
   const rad = (value) => value * Math.PI / 180

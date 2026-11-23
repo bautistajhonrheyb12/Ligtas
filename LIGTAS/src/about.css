@@ -31,7 +31,6 @@
 }
 .about-hero p { margin: 0 auto; color: #4d615a; font-size: 16.5px; line-height: 1.7; }
 .about-hero b { color: var(--ui-ink); }
-.about-hero .about-name-note { margin-top: 14px; color: var(--ui-muted); font-size: 14px; }
 
 .about-section { padding: 48px 0; }
 .about-section-heading { max-width: 640px; margin: 0 auto 30px; text-align: center; }
@@ -79,13 +78,41 @@
 .about-safeguards h3 .ui-icon { color: var(--ui-green); }
 .about-safeguards p { margin: 0; color: #4d615a; font-size: 14px; line-height: 1.6; }
 
-/* Emergency hotlines (cards styled in citizen.css, shared with the Prepare tab) */
-.about-hotlines { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; max-width: 900px; margin: 0 auto; }
-.about-hotlines .hotline { padding: 12px 14px; }
-.about-hotlines .hotline-copy strong { font-size: 14px; }
-.about-hotlines .hotline-copy small { font-size: 12px; }
-/* An odd last card sits centered under the two columns. */
-.about-hotlines .hotline:last-child:nth-child(odd) { grid-column: 1 / -1; justify-self: center; width: calc(50% - 5px); }
+/* Why LIGTAS: each problem, and what LIGTAS does about it */
+.about-problems { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+.about-problem {
+  display: grid;
+  align-content: start;
+  gap: 10px;
+  padding: 24px;
+  border: 1px solid var(--ui-border);
+  border-radius: 18px;
+  background: #fff;
+  box-shadow: 0 8px 24px rgba(28, 58, 45, .045);
+}
+.about-problem h3 { margin: 6px 0 0; color: var(--ui-ink); font: 700 18px/1.25 Manrope, sans-serif; }
+.about-problem p { margin: 0; color: #4d615a; font-size: 14px; line-height: 1.6; }
+.about-problem .about-answer {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin-top: 4px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  color: var(--ui-green-dark);
+  background: var(--ui-green-soft);
+  font-weight: 600;
+}
+.about-answer .ui-icon { flex: 0 0 auto; margin-top: 3px; }
+
+/* How LIGTAS helps residents: before, during and after */
+.about-stages { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; margin: 0; padding: 0; list-style: none; }
+.about-stage { position: relative; padding: 24px; border-top: 3px solid var(--ui-green); border-radius: 4px 4px 18px 18px; background: #f7faf8; }
+.about-stage-number { color: var(--ui-green); font: 800 13px/1 Manrope, sans-serif; letter-spacing: .08em; }
+.about-stage h3 { margin: 10px 0 14px; color: var(--ui-ink); font: 700 18px/1.25 Manrope, sans-serif; }
+.about-stage ul { display: grid; gap: 10px; margin: 0; padding: 0; list-style: none; }
+.about-stage li { display: flex; align-items: flex-start; gap: 8px; color: #4d615a; font-size: 14px; line-height: 1.5; }
+.about-stage li .ui-icon { flex: 0 0 auto; margin-top: 4px; color: var(--ui-green); }
 
 /* The team */
 .about-team { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 18px; }
@@ -154,9 +181,7 @@
 .site-footer a:hover { color: var(--ui-green); }
 
 @media (max-width: 900px) {
-  .about-audiences { grid-template-columns: 1fr; }
-  .about-hotlines { grid-template-columns: 1fr; }
-  .about-hotlines .hotline:last-child:nth-child(odd) { width: auto; justify-self: stretch; }
+  .about-audiences, .about-stages { grid-template-columns: 1fr; }
   .about-team { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 @media (max-width: 600px) {
@@ -165,7 +190,8 @@
   .about-hero p { font-size: 15px; }
   .about-section { padding: 32px 0; }
   .about-trust { padding: 32px 18px; border-radius: 18px; }
-  .about-safeguards { grid-template-columns: 1fr; }
+  .about-safeguards, .about-problems { grid-template-columns: 1fr; }
+  .about-problem, .about-stage { padding: 20px; }
   .about-team { gap: 12px; }
   .about-person { padding: 10px 10px 14px; border-radius: 16px; }
   .about-person h3 { font-size: 15px; }

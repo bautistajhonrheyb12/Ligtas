@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'preact/hooks'
 import { startTwoStepSetup, verifyTwoStepCode } from '../lib/supabase.js'
+import { AuthBrand } from '../lib/ui.jsx'
 
 // Shown to admins after their password. The first time, it links an
 // authenticator app; every sign-in after that asks for the app's code.
@@ -78,9 +79,9 @@ export function TwoStepScreen({ mode, onVerified, onCancel }) {
   return <section class="login-page">
     <div class="login-overlay">
       <div class="login-card two-step-card">
-        <h1>LIGTAS</h1>
-        <h2>{isEnroll ? 'Set up two-step sign-in' : 'Two-step sign-in'}</h2>
-        <p class="role-description">
+        <AuthBrand />
+        <h2 class="auth-title">{isEnroll ? 'Set up two-step sign-in' : 'Two-step sign-in'}</h2>
+        <p class="auth-tagline">
           {isEnroll
             ? 'Admin accounts need a code from an authenticator app as well as the password, so a stolen password alone cannot get in.'
             : 'Open your authenticator app and enter the code shown for LIGTAS.'}
@@ -112,7 +113,7 @@ export function TwoStepScreen({ mode, onVerified, onCancel }) {
             ? 'Keep this phone safe. If you lose it, the Supabase project owner can reset two-step sign-in for your account.'
             : 'Lost your phone? Ask the Supabase project owner to reset two-step sign-in for your account.'}
         </p>
-        <div class="bottom-buttons"><button type="button" class="back-role" onClick={onCancel}>Cancel and sign out</button></div>
+        <nav class="auth-switch" aria-label="Leave"><button type="button" onClick={onCancel}>Cancel and sign out</button></nav>
       </div>
     </div>
   </section>

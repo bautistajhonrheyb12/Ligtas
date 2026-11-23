@@ -109,7 +109,7 @@
 
 /* Tactile press feedback on the main interactive surfaces. */
 :is(.primary, .nav-cta, .login-button, .add-alert-button, .alert-cancel-button, .admin-publish-button,
-  .admin-send-alert, .secondary-action, .ops-signout, .back-role, .report-type, .citizen-sheet-peek button,
+  .admin-send-alert, .secondary-action, .profile-button, .report-type, .citizen-sheet-peek button,
   .admin-report-actions button, .admin-point-options button, .admin-report-filters button,
   .map-fullscreen-btn, .citizen-map-fullscreen, .admin-severity, .footer-controls button):active:not(:disabled) {
   scale: .96;
@@ -607,23 +607,6 @@ span.capacity-chip.capacity-chip--critical::before { animation: ligtas-siren 1.8
 .login-card > :nth-child(6) { animation-delay: .24s; }
 .login-card > :nth-child(7) { animation-delay: .28s; }
 .login-card > :nth-child(n + 8) { animation-delay: .32s; }
-.login-logo { position: relative; }
-
-.role-circle {
-  --role: #27745b;
-  --role-2: #3f9a76;
-  position: relative;
-  border: 0;
-  background: linear-gradient(145deg, var(--role-2), var(--role));
-  box-shadow: 0 10px 22px color-mix(in srgb, var(--role) 28%, transparent);
-}
-.role-circle--rescuer { --role: #c0622a; --role-2: #e0894a; }
-.role-circle--admin { --role: #2f6f9f; --role-2: #4f97c6; }
-
-/* app.css still carried dark-theme colors here (white text on cream). */
-.restricted-box { border-left: 4px solid #e0a43a; }
-.restricted-box strong { display: inline-block; color: #8a5a0b; animation: ligtas-shake .5s .6s ease both; }
-.restricted-box p { color: #6f5420; }
 
 .input-group { transition: border-color .2s ease, box-shadow .2s ease, background-color .2s ease; }
 .input-group:focus-within { background: #fff; }
@@ -632,7 +615,6 @@ span.capacity-chip.capacity-chip--critical::before { animation: ligtas-siren 1.8
 .eye-button img { transition: scale .2s var(--ease-spring), opacity .2s ease; }
 .eye-button:hover img { scale: 1.12; }
 .field-reveal { animation: ligtas-rise .35s var(--ease-out) both; }
-.back-role,
 .signup-link,
 .forgot-password { transition: background-color .18s ease, color .18s ease, border-color .18s ease, scale .12s ease; }
 

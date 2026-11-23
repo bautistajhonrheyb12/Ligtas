@@ -18,8 +18,8 @@ export const TOURS = {
       icon: 'shield',
       title: { en: 'Welcome to LIGTAS', tl: 'Maligayang pagdating sa LIGTAS' },
       body: {
-        en: 'Here is a quick tour of the main buttons. It takes about a minute. You can skip it and watch it again anytime from Prepare.',
-        tl: 'Narito ang mabilis na paglilibot sa mga pangunahing button. Mga isang minuto lang ito. Puwede mo itong laktawan at panoorin ulit anumang oras mula sa Maghanda.',
+        en: 'Here is a quick tour of the main buttons. It takes about a minute. You can skip it and watch it again anytime from your profile.',
+        tl: 'Narito ang mabilis na paglilibot sa mga pangunahing button. Mga isang minuto lang ito. Puwede mo itong laktawan at panoorin ulit anumang oras mula sa profile mo.',
       },
     },
     {
@@ -89,8 +89,8 @@ export const TOURS = {
       icon: 'bellRing',
       title: { en: 'Alerts even when LIGTAS is closed', tl: 'Alerto kahit nakasara ang LIGTAS' },
       body: {
-        en: 'Tap Turn on so warnings and updates on your reports reach your phone. You can change this later in Prepare → This phone.',
-        tl: 'Pindutin ang Buksan para dumating sa telepono mo ang mga babala at update sa mga ulat mo. Mababago ito sa Maghanda → Ang teleponong ito.',
+        en: 'Tap Turn on so warnings and updates on your reports reach your phone. You can change this later in your profile → Notifications.',
+        tl: 'Pindutin ang Buksan para dumating sa telepono mo ang mga babala at update sa mga ulat mo. Mababago ito sa profile mo → Mga notification.',
       },
     },
     {
@@ -99,8 +99,17 @@ export const TOURS = {
       icon: 'grid',
       title: { en: 'The tabs', tl: 'Ang mga tab' },
       body: {
-        en: 'Map: this home screen. Alerts: warnings from MDRRMO. My reports: what happened to the reports you sent. Prepare: hotlines, your family, a go-bag checklist, safety tips, notifications and your details.',
-        tl: 'Mapa: ang home screen na ito. Alerto: mga babala mula sa MDRRMO. Aking ulat: ang nangyari sa mga ulat na ipinadala mo. Maghanda: mga hotline, ang pamilya mo, go-bag checklist, payo sa kaligtasan, notifications at ang detalye mo.',
+        en: 'Map: this home screen. Alerts: warnings from MDRRMO. My reports: what happened to the reports you sent. Prepare: hotlines, your family, priority rescue, a go-bag checklist and safety tips.',
+        tl: 'Mapa: ang home screen na ito. Alerto: mga babala mula sa MDRRMO. Aking ulat: ang nangyari sa mga ulat na ipinadala mo. Maghanda: mga hotline, ang pamilya mo, priority rescue, go-bag checklist at payo sa kaligtasan.',
+      },
+    },
+    {
+      target: '.citizen-header .profile-button',
+      icon: 'user',
+      title: { en: 'Your profile', tl: 'Ang profile mo' },
+      body: {
+        en: 'Your details, password, notifications, language and help. Sign out from here too.',
+        tl: 'Ang detalye mo, password, notifications, wika at tulong. Dito ka rin magsa-sign out.',
       },
     },
     {
@@ -116,8 +125,8 @@ export const TOURS = {
       icon: 'check',
       title: { en: "You're ready", tl: 'Handa ka na' },
       body: {
-        en: `Watch this tour again anytime from Prepare → How to use LIGTAS. In an emergency, press SOS or call ${hotline}.`,
-        tl: `Mapapanood ulit ang paglilibot na ito mula sa Maghanda → Paano gamitin ang LIGTAS. Sa emergency, pindutin ang SOS o tumawag sa ${hotlineTl}.`,
+        en: `Watch this tour again anytime from your profile → How to use LIGTAS. In an emergency, press SOS or call ${hotline}.`,
+        tl: `Mapapanood ulit ang paglilibot na ito mula sa profile mo → Paano gamitin ang LIGTAS. Sa emergency, pindutin ang SOS o tumawag sa ${hotlineTl}.`,
       },
     },
   ],
@@ -126,7 +135,7 @@ export const TOURS = {
     {
       icon: 'shield',
       title: 'Welcome, rescue team',
-      body: 'A quick tour of your screen. You can watch it again from How to use LIGTAS, at the bottom of the screen.',
+      body: 'A quick tour of your screen. You can watch it again from your profile, the round button at the top right.',
     },
     {
       target: '.rx-duty',
@@ -177,15 +186,15 @@ export const TOURS = {
       body: 'Warnings from operations. You can also publish an alert about the area you are in.',
     },
     {
-      target: '.rx-notify-btn',
-      icon: 'bellRing',
-      title: 'Notifications',
-      body: 'Turn them on so new SOS calls and calls assigned to you reach your phone even when LIGTAS is closed.',
+      target: '.rx-header .profile-button',
+      icon: 'user',
+      title: 'Your profile',
+      body: 'Turn on notifications here, so new SOS calls and calls assigned to you reach your phone even when LIGTAS is closed. Your password, this tour and Sign out are here too.',
     },
     {
       icon: 'check',
       title: "You're ready",
-      body: 'Watch this again anytime from How to use LIGTAS, at the bottom of the screen.',
+      body: 'Watch this again anytime from your profile → How to use LIGTAS.',
     },
   ],
 
@@ -193,7 +202,7 @@ export const TOURS = {
     {
       icon: 'shield',
       title: 'Welcome to LIGTAS operations',
-      body: 'A quick tour of the admin screen. You can watch it again from How to use LIGTAS in the menu.',
+      body: 'A quick tour of the admin screen. You can watch it again from your profile, at the top right.',
     },
     {
       target: '#admin-navigation',
@@ -232,15 +241,15 @@ export const TOURS = {
       body: 'Reports, SOS calls, rescue teams, danger zones and evacuation centers on one map.',
     },
     {
-      target: '.ops-notify',
-      icon: 'bellRing',
-      title: 'Notifications',
-      body: 'Get SOS calls and new reports on this device even when LIGTAS is closed.',
+      target: '.ops-header .profile-button',
+      icon: 'user',
+      title: 'Your profile',
+      body: 'Turn on notifications here to get SOS calls and new reports on this device even when LIGTAS is closed. Your password, this tour and Sign out are here too.',
     },
     {
       icon: 'check',
       title: "You're ready",
-      body: 'Watch this again anytime from How to use LIGTAS in the menu.',
+      body: 'Watch this again anytime from your profile → How to use LIGTAS.',
     },
   ],
 }

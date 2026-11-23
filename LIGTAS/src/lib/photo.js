@@ -34,3 +34,23 @@ export async function compressPhoto(file) {
   if (!blob || (blob.size >= file.size && ACCEPTED_TYPES.includes(file.type))) return file
   return new File([blob], file.name.replace(/\.[^.]+$/, '') + '.jpg', { type: 'image/jpeg' })
 }
+
+// A profile photo: the middle square of the picture, 320 px, as a small JPEG
+// (about 30 KB), so it loads instantly and can be kept on the phone.
+const AVATAR_SIDE = 320
+
+export async function squarePhoto(file) {
+  const image = await loadImage(file)
+  const side = Math.min(image.naturalWidth, image.naturalHeight)
+  if (!side) throw new Error('This photo could not be read. Choose another one.')
+  const canvas = document.createElement('canvas')
+  canvas.width = AVATAR_SIDE
+  canvas.height = AVATAR_SIDE
+  const context = canvas.getContext('2d')
+  context.fillStyle = '#ffffff'
+  context.fillRect(0, 0, AVATAR_SIDE, AVATAR_SIDE)
+  context.drawImage(image, (image.naturalWidth - side) / 2, (image.naturalHeight - side) / 2, side, side, 0, 0, AVATAR_SIDE, AVATAR_SIDE)
+  const blob = await new Promise((resolve) => canvas.toBlob(resolve, 'image/jpeg', 0.85))
+  if (!blob) throw new Error('This photo could not be prepared. Choose another one.')
+  return new File([blob], 'photo.jpg', { type: 'image/jpeg' })
+}

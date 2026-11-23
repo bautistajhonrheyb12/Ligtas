@@ -1,6 +1,6 @@
 import { useState } from 'preact/hooks'
 import { updatePassword } from '../lib/supabase.js'
-import { PasswordChecklist, passwordProblem } from '../lib/ui.jsx'
+import { AuthBrand, PasswordChecklist, passwordProblem } from '../lib/ui.jsx'
 
 // Shown after someone opens the password reset link from their email.
 export function ResetPasswordScreen({ onDone, onCancel }) {
@@ -36,9 +36,9 @@ export function ResetPasswordScreen({ onDone, onCancel }) {
   return <section class="login-page">
     <div class="login-overlay">
       <div class="login-card">
-        <h1>LIGTAS</h1>
-        <h2>{isSaved ? 'Password changed' : 'Set a new password'}</h2>
-        <p class="role-description">{isSaved ? 'Your new password is saved. Use it the next time you sign in.' : 'Choose a new password for your account.'}</p>
+        <AuthBrand />
+        <h2 class="auth-title">{isSaved ? 'Password changed' : 'Set a new password'}</h2>
+        <p class="auth-tagline">{isSaved ? 'Your new password is saved. Use it the next time you sign in.' : 'Choose a new password for your account.'}</p>
 
         {isSaved
           ? <button type="button" class="login-button" onClick={onDone}>Continue →</button>
@@ -68,7 +68,7 @@ export function ResetPasswordScreen({ onDone, onCancel }) {
             </button>
           </form>}
 
-        {!isSaved && <div class="bottom-buttons"><button type="button" class="back-role" onClick={onCancel}>Cancel and sign out</button></div>}
+        {!isSaved && <nav class="auth-switch" aria-label="Leave"><button type="button" onClick={onCancel}>Cancel and sign out</button></nav>}
       </div>
     </div>
   </section>

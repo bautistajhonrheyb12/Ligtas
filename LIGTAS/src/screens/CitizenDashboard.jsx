@@ -12,7 +12,6 @@ import {
   saveCheckin,
   submitIncidentReport,
   subscribeToTable,
-  updateMyProfile,
   withdrawIncidentReport,
 } from '../lib/supabase.js'
 import { useLanguage } from '../lib/i18n.js'
@@ -57,6 +56,7 @@ import { SosDialog } from './citizen/SosDialog.jsx'
 import { NotificationPrompt } from '../components/PhoneSetup.jsx'
 import { FamilyStatus } from './citizen/Family.jsx'
 import { Tour } from '../components/Tour.jsx'
+import { ProfileButton, ProfilePage } from '../components/Profile.jsx'
 import { TOURS, markTourDone, tourDone } from '../lib/tours.js'
 import { syncPush } from '../lib/push.js'
 
@@ -116,6 +116,8 @@ export function CitizenDashboard({ onSignOut }) {
   useEffect(() => { syncPush(lang) }, [lang])
   const [focusTarget, setFocusTarget] = useState(null)
   const [dialog, setDialog] = useState(null)
+  // The profile page and the part of it shown first ('main', 'personal'...).
+  const [profileView, setProfileView] = useState(null)
   // The evacuation center being navigated to, if any.
   const [navTarget, setNavTarget] = useState(null)
   // Travel time by road to each open center (null: no safe road route),
@@ -129,10 +131,10 @@ export function CitizenDashboard({ onSignOut }) {
   const [isTourOpen, setIsTourOpen] = useState(false)
   const isReadyForTour = Boolean(profile) && !needsTermsAcceptance(profile) && profile.priority_answered_at !== null
   useEffect(() => {
-    if (!isReadyForTour || dialog || navTarget || isTourOpen || tourDone('citizen')) return undefined
+    if (!isReadyForTour || dialog || navTarget || profileView || isTourOpen || tourDone('citizen')) return undefined
     const timer = setTimeout(() => setIsTourOpen(true), 900)
     return () => clearTimeout(timer)
-  }, [isReadyForTour, dialog, navTarget])
+  }, [isReadyForTour, dialog, navTarget, profileView])
   const tourPrepare = {
     map: () => { setIsMapFullscreen(false); setActiveTab('home'); setIsSheetExpanded(false) },
     home: () => { setIsMapFullscreen(false); setActiveTab('home'); setIsSheetExpanded(true) },
@@ -366,16 +368,6 @@ export function CitizenDashboard({ onSignOut }) {
     }
   }
 
-  const saveProfile = async (details) => {
-    await updateMyProfile(details)
-    setProfile((current) => ({
-      ...current,
-      display_name: details.displayName.trim() || null,
-      barangay: details.barangay.trim() || null,
-      phone: details.phone || null,
-    }))
-  }
-
   const withdrawReport = async (report) => {
     try {
       await withdrawIncidentReport(report.id)
@@ -414,7 +406,7 @@ export function CitizenDashboard({ onSignOut }) {
         >
           <Icon name={isMapFullscreen ? 'collapse' : 'expand'} size={18} />
         </button>
-        <button type="button" class="ops-signout" onClick={onSignOut}>{t('signOut')}</button>
+        <ProfileButton role="citizen" lang={lang} name={profile?.display_name} photoPath={profile?.avatar_path} onClick={() => setProfileView('main')} />
       </div>
     </header>
     <div class="map-section">
@@ -556,7 +548,9 @@ export function CitizenDashboard({ onSignOut }) {
             <button type="button" role="tab" aria-selected={alertFilter === 'all'} class={alertFilter === 'all' ? 'is-active' : ''} onClick={() => setAlertFilter('all')}>{t('filterAll')} <b>{areaAlerts.length}</b></button>
             <button type="button" role="tab" aria-selected={alertFilter === 'warnings'} class={alertFilter === 'warnings' ? 'is-active' : ''} onClick={() => setAlertFilter('warnings')}>{t('filterWarnings')} <b>{warningAlerts.length}</b></button>
           </div>
-          <p class="section-hint">{profile?.barangay ? t('alertsForArea', { barangay: profile.barangay }) : t('setBarangayHint')}</p>
+          <p class="section-hint">{profile?.barangay
+            ? t('alertsForArea', { barangay: profile.barangay })
+            : <>{t('setBarangayHint')} <button type="button" class="inline-link" onClick={() => setProfileView('personal')}>{t('setBarangay')}</button></>}</p>
           {alertsError && <p class="admin-notice" role="alert">{alertsError}</p>}
           {alertsLoading && <LoadingCards label={t('loadingAlerts')} />}
           <div class="alerts-list">
@@ -577,12 +571,8 @@ export function CitizenDashboard({ onSignOut }) {
 
         {activeTab === 'prepare' && <PreparePanel
           t={t}
-          lang={lang}
-          setLang={setLang}
-          onStartTour={() => setIsTourOpen(true)}
           family={{ family, onChanged: loadFamily, onToast: pushToast }}
           profile={profile}
-          onSaveProfile={saveProfile}
           priority={{
             members: priorityMembers,
             onReload: loadPriority,
@@ -623,7 +613,7 @@ export function CitizenDashboard({ onSignOut }) {
       onSignOut={onSignOut}
       onToast={pushToast}
     />}
-    {dialog === 'report' && <ReportDialog t={t} ownerId={myId} limit={reportLimitReached(myReports, queuedReports)} onSos={() => setDialog('sos')} hasPhone={Boolean(profile?.phone)} onAddPhone={() => { setDialog(null); selectTab('prepare') }} onClose={() => setDialog(null)} onDone={(result) => {
+    {dialog === 'report' && <ReportDialog t={t} ownerId={myId} limit={reportLimitReached(myReports, queuedReports)} onSos={() => setDialog('sos')} hasPhone={Boolean(profile?.phone)} onAddPhone={() => { setDialog(null); setProfileView('personal') }} onClose={() => setDialog(null)} onDone={(result) => {
       setDialog(null)
       setQueuedReports(getQueuedReports(myId))
       pushToast(result === 'queued' ? t('reportQueued') : t('reportSent'), result === 'queued' ? 'info' : 'success')
@@ -643,6 +633,17 @@ export function CitizenDashboard({ onSignOut }) {
       loadMyReports()
       loadFamily()
     }} />}
+    {profileView && <ProfilePage
+      role="citizen"
+      lang={lang}
+      setLang={setLang}
+      profile={profile}
+      initialView={profileView}
+      onProfileSaved={updateProfile}
+      onClose={() => setProfileView(null)}
+      onSignOut={onSignOut}
+      onStartTour={() => setIsTourOpen(true)}
+    />}
     {isTourOpen && <Tour
       steps={TOURS.citizen}
       lang={lang}

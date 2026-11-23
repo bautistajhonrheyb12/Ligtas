@@ -3,16 +3,13 @@ import { Icon } from '../lib/ui.jsx'
 import { promptInstall, useInstallMode } from '../lib/install.js'
 import { disablePush, enablePush, sendTestPush, usePush } from '../lib/push.js'
 
-// "This phone": installing LIGTAS and turning on notifications that arrive
-// even when it is closed. Citizens see it in English or Filipino; staff
-// screens are in English.
+// Installing LIGTAS and turning on notifications that arrive even when it is
+// closed (shown in the profile, and as a prompt on each dashboard). Citizens
+// see it in English or Filipino; staff screens are in English.
 
 const TEXT = {
   en: {
-    installTitle: 'Install LIGTAS',
-    installText: 'Open it from your home screen like an app: full screen, and it works without signal.',
     installButton: 'Install app',
-    installed: 'Installed on this phone.',
     stepsTitle: 'Add LIGTAS to your home screen',
     iosSteps: [
       ['share', 'Tap the Share button at the bottom of Safari (at the top on iPad).'],
@@ -49,10 +46,7 @@ const TEXT = {
     },
   },
   tl: {
-    installTitle: 'I-install ang LIGTAS',
-    installText: 'Buksan ito mula sa home screen na parang app: buong screen, at gumagana kahit walang signal.',
     installButton: 'I-install',
-    installed: 'Naka-install na sa teleponong ito.',
     stepsTitle: 'Idagdag ang LIGTAS sa home screen',
     iosSteps: [
       ['share', 'Pindutin ang Share sa ibaba ng Safari (sa itaas kung iPad).'],
@@ -117,8 +111,9 @@ export function InstallSteps({ mode, lang, onClose }) {
   </div>
 }
 
-// One tap where the browser allows it, otherwise the steps.
-function useInstall(lang) {
+// One tap where the browser allows it, otherwise the steps. mode is 'none'
+// where installing does not apply, and 'installed' once it is.
+export function useInstall(lang) {
   const mode = useInstallMode()
   const [showSteps, setShowSteps] = useState(false)
   const install = () => {
@@ -138,8 +133,8 @@ export function InstallButton({ lang = 'en', class: className = '', label }) {
   </>
 }
 
-// The card on the settings screens: notifications, then installing.
-export function PhoneSettings({ role, lang = 'en' }) {
+// Notifications on this phone: turn on or off, and send a test.
+export function NotificationSettings({ role, lang = 'en' }) {
   const t = text(lang)
   const push = usePush()
   const install = useInstall(lang)
@@ -191,14 +186,6 @@ export function PhoneSettings({ role, lang = 'en' }) {
         {note.text && <p class={`phone-note${note.isError ? ' is-error' : ''}`} role={note.isError ? 'alert' : 'status'}>{note.text}</p>}
       </div>
     </div>
-    {install.mode !== 'none' && status !== 'install-first' && <div class="phone-row">
-      <span class="phone-row-icon" aria-hidden="true"><Icon name="phoneApp" size={20} /></span>
-      <div class="phone-row-text">
-        <strong>{t.installTitle}</strong>
-        <p>{install.mode === 'installed' ? t.installed : t.installText}</p>
-        {install.canInstall && <div class="phone-row-actions"><button type="button" class="phone-secondary" onClick={install.install}><Icon name="download" size={16} /> {t.installButton}</button></div>}
-      </div>
-    </div>}
     {install.steps}
   </div>
 }
@@ -259,25 +246,5 @@ export function NotificationPrompt({ role, lang = 'en' }) {
       <button type="button" class="phone-quiet" onClick={later}>{t.later}</button>
     </div>
     {install.steps}
-  </div>
-}
-
-// For rescuers and admins: the same settings in a window, opened from the header.
-export function PhoneSettingsDialog({ role, onClose }) {
-  const closeRef = useRef(null)
-  useEffect(() => {
-    closeRef.current?.focus()
-    const onKey = (event) => { if (event.key === 'Escape') onClose() }
-    window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
-  }, [])
-  return <div class="alert-modal-backdrop phone-backdrop" onClick={(event) => { if (event.target === event.currentTarget) onClose() }}>
-    <section class="alert-modal phone-dialog" role="dialog" aria-modal="true" aria-labelledby="phone-dialog-title">
-      <div class="alert-modal-heading">
-        <h2 id="phone-dialog-title">This phone</h2>
-        <button type="button" class="alert-modal-close" ref={closeRef} onClick={onClose} aria-label="Close">×</button>
-      </div>
-      <PhoneSettings role={role} lang="en" />
-    </section>
   </div>
 }

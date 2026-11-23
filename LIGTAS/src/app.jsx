@@ -36,6 +36,7 @@ import './navigation.css'
 import './priority.css'
 import './legal.css'
 import './enhance.css'
+import './account.css'
 
 // Each dashboard (and the map library) downloads only when that role signs in,
 // which keeps the first page light on slow mobile connections.

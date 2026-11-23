@@ -330,7 +330,7 @@ button:disabled { cursor: not-allowed; }
 }
 
 .alert-modal-backdrop.phone-backdrop { z-index: 2400; }
-.install-steps, .phone-dialog { width: min(100%, 440px); text-align: left; }
+.install-steps { width: min(100%, 440px); text-align: left; }
 .install-steps ol { display: grid; gap: 12px; margin: 0; padding: 0; list-style: none; counter-reset: step; }
 .install-steps li { display: grid; grid-template-columns: 38px 1fr; align-items: center; gap: 12px; color: #34504a; font-size: 14.5px; line-height: 1.45; }
 .install-step-icon { display: grid; width: 38px; height: 38px; place-items: center; border-radius: 11px; color: var(--ui-green-dark); background: var(--ui-green-soft); }
@@ -414,21 +414,7 @@ button:disabled { cursor: not-allowed; }
   .notify-prompt-icon .ui-icon { animation: none; }
 }
 
-/* Header buttons that open the notification settings (rescuer and admin). */
-.rx-notify-btn.is-on { border-color: #b9d8c6; color: var(--ui-green-dark); background: var(--ui-green-soft); }
-.ops-notify {
-  display: grid;
-  width: 38px;
-  height: 38px;
-  place-items: center;
-  border: 1px solid #d5e2d9;
-  border-radius: 9px;
-  color: #3e6652;
-  background: #fff;
-  cursor: pointer;
-}
-.ops-notify:hover { border-color: #a8c9b3; background: #f2f7f3; }
-.ops-notify.is-on { border-color: #b9d8c6; color: var(--ui-green-dark); background: var(--ui-green-soft); }
+/* The notification prompt's spacing on each dashboard. */
 .citizen-sheet-scroll .notify-prompt { margin: 12px 0; }
 .admin-ui .notify-prompt { margin-bottom: 14px; }
 
@@ -500,37 +486,6 @@ button:disabled { cursor: not-allowed; }
   .tour-spot::after { animation: none; }
 }
 
-/* Starting the tour again */
-.tour-start-card {
-  display: flex;
-  width: 100%;
-  align-items: center;
-  gap: 12px;
-  margin: 0 0 12px;
-  padding: 14px;
-  border: 1px solid #cfe3d7;
-  border-radius: 14px;
-  color: var(--ui-ink);
-  background: linear-gradient(135deg, #f1f8f3, #e7f3ec);
-  text-align: left;
-  cursor: pointer;
-}
-.tour-start-card:hover { border-color: #a8c9b3; }
-.tour-start-icon { display: grid; width: 40px; height: 40px; flex: 0 0 auto; place-items: center; border-radius: 12px; color: #fff; background: var(--ui-green); }
-.tour-start-card > span:nth-child(2) { flex: 1 1 auto; min-width: 0; }
-.tour-start-card strong { display: block; font: 800 15px/1.3 Manrope, sans-serif; }
-.tour-start-card small { display: block; margin-top: 2px; color: #557066; font-size: 12.5px; }
-.tour-start-card > .ui-icon { color: var(--ui-green); }
-.tour-replay-link {
-  padding: 0;
-  border: 0;
-  color: inherit;
-  background: transparent;
-  font: inherit;
-  text-decoration: underline;
-  cursor: pointer;
-}
-
 /* ---------------------------------------------------------------
    Layout fixes from a full audit of every screen (320px to desktop)
    --------------------------------------------------------------- */
@@ -547,14 +502,13 @@ button:disabled { cursor: not-allowed; }
    cut off, so the time is always visible. */
 .my-report-top small { overflow: visible; text-overflow: clip; white-space: normal; line-height: 1.4; }
 /* Terms and Privacy links: a bigger area to tap. */
-.legal-links a { display: inline-block; padding: 8px 2px; }
 /* Sign-up on narrow phones: the name, barangay and mobile fields could not
    shrink below the inputs' built-in width and stuck out of the card. */
 .signup-details { grid-template-columns: minmax(0, 1fr); }
 .signup-details > *, .signup-row > *, .signup-row label { min-width: 0; }
 .input-group input { min-width: 0; }
 /* Small links and text buttons get a finger-sized tap area. */
-.auth-legal a, .admin-sidebar-legal a, .staff-legal-links a { display: inline-block; padding: 8px 2px; }
+.auth-legal a { display: inline-block; padding: 8px 2px; }
 button.forgot-password { min-height: 36px; }
 .legal-hotlines li { padding-top: 4px; padding-bottom: 4px; }
 .legal-hotlines a { min-height: 34px; }
@@ -581,8 +535,6 @@ button.forgot-password { min-height: 36px; }
    beside the label on small phones, which made every card wider than the
    screen. They now shrink to fit, and cards never grow past the panel. */
 .prepare-panel { grid-template-columns: minmax(0, 1fr); }
-.language-row .rx-segment { flex: 0 1 220px; width: auto; min-width: 0; }
-.language-row .rx-segment button { min-width: 0; }
 /* Full-screen map: it was both inset from the edges and full width, so it
    ran 16px off the right side, cutting the zoom buttons. */
 .map-frame.is-fullscreen { width: auto; }
@@ -599,12 +551,10 @@ button.forgot-password { min-height: 36px; }
   .citizen-map-shell .leaflet-top.leaflet-right { top: 130px; right: auto; left: max(20px, calc((100% - 1280px) / 2)); }
   .citizen-map-shell .map-legend { max-width: max(150px, calc(100% - 520px)); }
 }
-/* Headers on small phones: "Sign out" stays on one line, and the citizen
-   header drops the "/ CITIZEN" label to make room. */
-.ops-signout { white-space: nowrap; }
+/* Headers on small phones: the citizen header drops the "/ CITIZEN" label
+   to make room. */
 @media (max-width: 380px) {
   .citizen-header .ops-brand i { display: none; }
-  .citizen-header .ops-signout, .admin-ui .ops-signout { padding-right: 10px; padding-left: 10px; }
 }
 /* Citizen map on phones: while the panel is expanded it covers the map, and
    the zoom buttons would collide with its top edge, so they step aside. */

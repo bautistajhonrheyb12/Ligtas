@@ -705,8 +705,6 @@ p.sos-offline { color: #8e2f2c; font-weight: 700; }
 .profile-form input:user-invalid { border-color: #e2a19c; }
 .profile-form .form-error { margin: 0; }
 .profile-form .secondary-action { display: inline-flex; width: fit-content; min-height: 44px; align-items: center; gap: 6px; padding: 0 20px; }
-.language-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; color: #425a4e; font-size: 13px; font-weight: 800; }
-.language-row .rx-segment { width: 220px; }
 
 /* Report actions, withdraw and phone hint */
 .my-report-actions { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; }

@@ -135,124 +135,12 @@ h1 { font: 700 clamp(45px, 5vw, 76px)/1.05 Manrope, sans-serif; letter-spacing: 
 
 }
 
-.login-logo{
-
-    width:120px;
-    height:120px;
-
-    margin:auto;
-
-    border-radius:50%;
-
-    background:#27495c;
-
-    display:flex;
-    justify-content:center;
-    align-items:center;
-
-    font-weight:bold;
-    color:white;
-
-    margin-bottom:18px;
-
-}
-
-.login-card h1{
-
-    margin:0;
-
-    color:white;
-
-    font-size:38px;
-
-    letter-spacing:8px;
-
-}
-
-.login-subtitle{
-
-    margin-top:15px;
-
-    color:#dde8ee;
-
-    line-height:1.4;
-
-    font-size:15px;
-
-    margin-bottom:30px;
-
-}
-
-.role-circle{
-
-    width:74px;
-    height:74px;
-
-    margin:auto;
-
-    border-radius:50%;
-
-    background:#19384b;
-
-    display:flex;
-    align-items:center;
-    justify-content:center;
-
-    color:white;
-    font-weight:bold;
-
-}
-
 .login-card h2{
 
     margin-top:18px;
     margin-bottom:8px;
 
     color:white;
-
-}
-
-.role-description{
-
-    color:#d7e2e7;
-
-    font-size:14px;
-
-    line-height:1.5;
-
-    margin-bottom:25px;
-
-}
-
-.restricted-box{
-
-    margin-bottom:22px;
-
-    padding:15px;
-
-    border-radius:14px;
-
-    background:rgba(255,194,40,.12);
-
-    border:1px solid rgba(255,194,40,.45);
-
-}
-
-.restricted-box strong{
-
-    color:#ffd54f;
-
-}
-
-.restricted-box p{
-
-    margin-top:8px;
-
-    color:white;
-
-    font-size:13px;
-
-    line-height:1.4;
 
 }
 
@@ -466,40 +354,6 @@ h1 { font: 700 clamp(45px, 5vw, 76px)/1.05 Manrope, sans-serif; letter-spacing: 
 
 }
 
-.bottom-buttons{
-
-    margin-top:25px;
-
-    display:flex;
-
-    gap:12px;
-
-}
-
-.back-role{
-
-    flex:1;
-
-    border:none;
-
-    border-radius:12px;
-
-    padding:12px;
-
-    background:#2d5164;
-
-    color:white;
-
-    cursor:pointer;
-
-}
-
-.back-role:hover{
-
-    background:#3c6980;
-
-}
-
 .admin-ui { padding-bottom: 28px; }
 .admin-overview-content { display: grid; gap: 14px; }
 .admin-overview-map .ops-map-frame { height: 330px; min-height: 260px; }
@@ -600,8 +454,6 @@ h1 { font: 700 clamp(45px, 5vw, 76px)/1.05 Manrope, sans-serif; letter-spacing: 
   .admin-ui .ops-brand { gap: 7px; font-size: 11px; }
   .admin-ui .ops-brand .logo-slot { width: 32px; height: 32px; }
   .admin-ui .ops-user { gap: 8px; }
-  .admin-ui .ops-user-name { display: none; }
-  .admin-ui .ops-signout { padding: 7px 9px; font-size: 10px; }
   .admin-ui .ops-heading { padding: 17px 0 13px; }
   .admin-ui .ops-heading h1 { font-size: 22px; }
   .admin-ui .ops-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin-bottom: 10px; }
@@ -657,22 +509,6 @@ h1 { font: 700 clamp(45px, 5vw, 76px)/1.05 Manrope, sans-serif; letter-spacing: 
       align-items: stretch;
     }
   }
-
-.login-logo img{
-
-    width:90px;
-    height:90px;
-    object-fit:contain;
-
-}
-
-.role-circle img{
-
-    width:42px;
-    height:42px;
-    object-fit:contain;
-
-}
 
 .input-icon img{
 
@@ -1408,18 +1244,6 @@ h1 { font: 700 clamp(45px, 5vw, 76px)/1.05 Manrope, sans-serif; letter-spacing: 
   box-shadow: 0 0 0 4px rgba(143, 204, 167, .13);
 }
 
-.ops-user-name { color: #bdd0d2; }
-
-.ops-signout {
-  padding: 8px 12px;
-  border: 1px solid rgba(214, 232, 230, .25);
-  border-radius: 7px;
-  color: #eaf4f4;
-  background: rgba(255, 255, 255, .06);
-  font-size: 12px;
-  font-weight: 700;
-}
-
 .ops-heading {
   display: flex;
   justify-content: space-between;
@@ -1610,8 +1434,6 @@ h1 { font: 700 clamp(45px, 5vw, 76px)/1.05 Manrope, sans-serif; letter-spacing: 
   .ops-brand { gap: 7px; font-size: 11px; }
   .ops-brand .logo-slot { width: 32px; height: 32px; }
   .ops-user { gap: 9px; }
-  .ops-user-name { display: none; }
-  .ops-signout { padding: 7px 9px; font-size: 10px; }
   .ops-heading { padding: 17px 0 13px; }
   .ops-heading h1 { font-size: 22px; }
   .ops-eyebrow { font-size: 9px; }
@@ -1680,7 +1502,6 @@ h1 { font: 700 clamp(45px, 5vw, 76px)/1.05 Manrope, sans-serif; letter-spacing: 
     .citizen-header { height: 52px; }
     .citizen-header .ops-brand { font-size: 10px; }
     .citizen-header .ops-brand .logo-slot { width: 30px; height: 30px; }
-    .citizen-header .ops-signout { font-size: 10px; }
     .citizen-ui .footer-controls { position: fixed; z-index: 80; right: 10px; bottom: calc(8px + env(safe-area-inset-bottom)); left: 10px; width: auto; justify-content: space-between; gap: 1px; margin: 0; }
     .citizen-ui .footer-controls button { min-width: 0; flex: 1; padding: 9px 6px; font-size: 11px; }
     .citizen-ui { padding-bottom: calc(78px + env(safe-area-inset-bottom)); }
@@ -1922,10 +1743,6 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
   background: #fff;
   box-shadow: 0 20px 60px rgba(28, 58, 45, .1);
 }
-.login-logo { width: 76px; height: 76px; margin: 0 auto 10px; }
-.login-card h1 { color: var(--ui-ink); font-size: 26px; letter-spacing: .08em; }
-.login-subtitle, .role-description { color: var(--ui-muted); }
-.role-circle { border-color: #d8e9dc; background: #f1f7f2; }
 .login-card h2 { color: var(--ui-ink); }
 .login-card label { color: #3d554b; }
 .input-group { min-height: 48px; border: 1px solid #dbe5de; border-radius: 10px; background: #fbfcfb; }
@@ -1943,9 +1760,6 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .login-divider, .signup-text { color: var(--ui-muted); }
 .login-divider span { background: var(--ui-border); }
 .signup-link { color: var(--ui-green); }
-.back-role { border: 1px solid var(--ui-border); color: #49665a; background: #f8faf8; }
-.back-role:hover { background: var(--ui-green-soft); }
-.restricted-box { border: 1px solid #f0d7a8; border-radius: 12px; background: #fff8e9; color: #735720; }
 .form-error { border-radius: 10px; }
 .form-notice { border-radius: 10px; }
 
@@ -1959,18 +1773,8 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .ops-brand { color: var(--ui-ink); }
 .ops-brand .logo-slot { width: 38px; height: 38px; }
 .ops-brand i { color: #8a9c92; }
-.ops-user-name { color: #64766e; }
 .ops-updated { color: #567267; }
 .ops-updated i { background: #4d9a70; box-shadow: 0 0 0 4px #4d9a7018; }
-.ops-signout {
-  min-height: 38px;
-  padding: 8px 14px;
-  border: 1px solid #d5e2d9;
-  border-radius: 9px;
-  color: #3e6652;
-  background: #fff;
-}
-.ops-signout:hover { border-color: #a8c9b3; background: #f2f7f3; }
 .ops-heading { padding: 30px 0 20px; }
 .ops-eyebrow { color: #628873; letter-spacing: .1em; }
 .ops-heading h1 { color: var(--ui-ink); font-size: clamp(24px, 3vw, 32px); }
@@ -2339,14 +2143,8 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .admin-ui .ops-header {
   border-color: #e1e8e9;
 }
-.admin-ui .ops-brand,
-.admin-ui .ops-user-name { color: #253f47; }
+.admin-ui .ops-brand { color: #253f47; }
 .admin-ui .ops-brand i { color: #71878c; }
-.admin-ui .ops-signout {
-  border-color: #d6e0e2;
-  color: #3d555c;
-  background: #fff;
-}
 .admin-ui .ops-heading {
   align-items: center;
   padding: 28px 0 20px;

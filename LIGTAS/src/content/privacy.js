@@ -30,7 +30,8 @@ export const privacy = {
       ] },
       { id: 'collect', title: 'Information we collect', blocks: [
         { collected: [
-          ['Account details', 'Email address, password (stored scrambled by our sign-in provider, so no one can read it), name, mobile number and home barangay.', 'When you sign up, or edit Prepare → My details.', 'To sign you in, let responders call you back, and show alerts for your barangay.'],
+          ['Account details', 'Email address, password (stored scrambled by our sign-in provider, so no one can read it), name, mobile number and home barangay.', 'When you sign up, or edit Profile → Personal information.', 'To sign you in, let responders call you back, and show alerts for your barangay.'],
+          ['Profile photo (optional)', 'A photo you choose, cut to a small square.', 'Only if you add one in Profile → Profile photo. Without one, your initials are shown.', 'To show on your profile and on the button that opens it.'],
           ['Google sign-in', 'Your name and email address from your Google account.', 'Only if you choose Continue with Google.', 'To create your account and sign you in.'],
           ['Reports and SOS', 'Type, description, location (GPS or a pinned spot, with its address, and how accurate the GPS was), photo, number of people affected, whether vulnerable people are present, and time. Your name and number are copied onto each report.', 'When you send one.', 'To verify and respond to it, and to keep a record of the incident.'],
           ['Live location after an SOS', 'Your phone\'s latest position and how accurate it is.', 'After you send an SOS, while LIGTAS stays open: when you move and about once a minute, until the SOS is resolved, 6 hours pass, or you tap Stop.', 'So rescuers find you even if you move.'],
@@ -79,7 +80,7 @@ export const privacy = {
       ] },
       { id: 'see', title: 'Who can see your information', blocks: [
         { who: [
-          ['You', 'Your profile, your reports and their status, your check-in, and your priority entries and proofs.'],
+          ['You', 'Your profile and its photo (no one else can see your photo), your reports and their status, your check-in, and your priority entries and proofs.'],
           ['Rescuers', 'Every SOS and every verified report, with the reporter\'s name, mobile number, location, address, notes and photo; the priority categories on those calls; and safety check-ins.'],
           ['Administrators', 'Everything rescuers see, plus all reports, profiles, priority entries and proofs, security records and the activity log.'],
           ['Your family (only if you join one)', 'Your name, barangay and safety check-in, and whether you sent an SOS in the last 24 hours and how the response is going. Never your location, reports or phone number. Anyone can leave the family at any time.'],
@@ -119,7 +120,7 @@ export const privacy = {
           'Reports written without a connection wait on your phone, and are sent when you are back online.',
           'Your language, go-bag checklist and the map images you have viewed stay on your phone for offline use.',
           'Signing in keeps a session key on your phone. LIGTAS uses no advertising or tracking cookies, and no analytics.',
-          'If you turn on notifications, your browser keeps a notification subscription for LIGTAS, so alerts reach you while it is closed. Turn them off in Prepare → This phone; signing out also stops them.',
+          'If you turn on notifications, your browser keeps a notification subscription for LIGTAS, so alerts reach you while it is closed. Turn them off in Profile → Notifications; signing out also stops them.',
           'Notifications can appear on your lock screen. They show the type and place of a report or the text of an alert, never your name or number.',
         ] },
       ] },
@@ -127,6 +128,7 @@ export const privacy = {
         { retention: [
           ['Account and profile', 'Until your account is deleted.'],
           ['Reports, SOS and photos', 'Until your account is deleted. They are kept as records of incidents that help later response and planning.'],
+          ['Profile photo', 'Until you remove or replace it, or your account is deleted.'],
           ['Priority entries and proofs', 'Until you remove them, withdraw consent, or your account is deleted.'],
           ['Safety check-ins', 'Only your latest check-in is kept.'],
           ['Rescuer locations', 'Only the latest position, removed when the rescuer stops sharing.'],
@@ -163,7 +165,7 @@ export const privacy = {
           ['Damages', 'if you are harmed by inaccurate or unlawfully processed information.'],
           ['Complain', 'to the {npc} if you believe your rights were violated.'],
         ] },
-        { p: '**In the app**, you can change your name, number and barangay in Prepare → My details, withdraw a report still waiting for review, and remove priority entries or withdraw consent in Prepare → Priority rescue.' },
+        { p: '**In the app**, you can change your name, number and barangay in Profile → Personal information, withdraw a report still waiting for review, and remove priority entries or withdraw consent in Prepare → Priority rescue.' },
         { p: '**For anything else**, such as a copy of your information or deleting your account, email {email}. We may ask you to confirm your identity first. We will act without undue delay, and tell you if we need more time. These requests are free.' },
       ] },
       { id: 'children', title: 'Children', blocks: [
@@ -198,7 +200,8 @@ export const privacy = {
       ] },
       { id: 'collect', title: 'Impormasyong kinokolekta namin', blocks: [
         { collected: [
-          ['Detalye ng account', 'Email address, password (naka-scramble sa sign-in provider namin, kaya walang makakabasa nito), pangalan, numero ng mobile at barangay.', 'Kapag nag-sign up ka, o binago mo ang Maghanda → Aking detalye.', 'Para ma-sign in ka, matawagan ka ng mga tagatugon, at maipakita ang mga babala para sa barangay mo.'],
+          ['Detalye ng account', 'Email address, password (naka-scramble sa sign-in provider namin, kaya walang makakabasa nito), pangalan, numero ng mobile at barangay.', 'Kapag nag-sign up ka, o binago mo ang Profile → Personal na impormasyon.', 'Para ma-sign in ka, matawagan ka ng mga tagatugon, at maipakita ang mga babala para sa barangay mo.'],
+          ['Larawan sa profile (hindi kailangan)', 'Larawang pinili mo, ginawang maliit na parisukat.', 'Kung maglalagay ka lang sa Profile → Larawan sa profile. Kung wala, initials mo ang makikita.', 'Para makita sa profile mo at sa button na nagbubukas nito.'],
           ['Google sign-in', 'Ang pangalan at email address mo mula sa Google account mo.', 'Kung pipiliin mo lang ang Continue with Google.', 'Para magawa ang account mo at ma-sign in ka.'],
           ['Mga ulat at SOS', 'Uri, paglalarawan, lokasyon (GPS o naka-pin na lugar, kasama ang address nito, at kung gaano katumpak ang GPS), litrato, bilang ng apektado, kung may bulnerableng tao, at oras. Kinokopya sa bawat ulat ang pangalan at numero mo.', 'Kapag nagpadala ka.', 'Para masuri at matugunan ito, at maitala ang insidente.'],
           ['Live na lokasyon pagkatapos ng SOS', 'Ang pinakahuling posisyon ng telepono mo at kung gaano ito katumpak.', 'Pagkatapos mong magpadala ng SOS, habang bukas ang LIGTAS: kapag lumipat ka at mga isang beses kada minuto, hanggang malutas ang SOS, lumipas ang 6 na oras, o pindutin mo ang Itigil.', 'Para mahanap ka ng mga rescuer kahit lumipat ka.'],
@@ -247,7 +250,7 @@ export const privacy = {
       ] },
       { id: 'see', title: 'Sino ang nakakakita ng impormasyon mo', blocks: [
         { who: [
-          ['Ikaw', 'Ang profile mo, ang mga ulat mo at ang status ng mga ito, ang check-in mo, at ang mga priority entry at patunay mo.'],
+          ['Ikaw', 'Ang profile mo at ang larawan nito (walang ibang nakakakita ng larawan mo), ang mga ulat mo at ang status ng mga ito, ang check-in mo, at ang mga priority entry at patunay mo.'],
           ['Mga rescuer', 'Bawat SOS at bawat beripikadong ulat, kasama ang pangalan, numero, lokasyon, address, tala at litrato ng nag-ulat; ang mga kategorya ng priority sa mga tawag na iyon; at mga safety check-in.'],
           ['Mga administrator', 'Lahat ng nakikita ng mga rescuer, pati ang lahat ng ulat, profile, priority entry at patunay, rekord pangseguridad, at talaan ng aktibidad.'],
           ['Ang pamilya mo (kung sumali ka lang)', 'Ang pangalan, barangay at safety check-in mo, at kung nagpadala ka ng SOS sa nakaraang 24 na oras at kumusta ang pagtugon. Hindi kailanman ang lokasyon, mga ulat o numero ng telepono mo. Puwedeng umalis sa pamilya ang sinuman anumang oras.'],
@@ -287,7 +290,7 @@ export const privacy = {
           'Ang mga ulat na isinulat nang walang koneksyon ay naghihintay sa telepono mo, at ipinapadala kapag may koneksyon na.',
           'Nananatili sa telepono mo ang wika, go-bag checklist at mga larawan ng mapang natingnan mo, para magamit offline.',
           'Nag-iiwan ng session key sa telepono mo ang pag-sign in. Walang advertising o tracking cookie at walang analytics ang LIGTAS.',
-          'Kapag binuksan mo ang notifications, nag-iingat ang browser mo ng notification subscription para sa LIGTAS, para maabot ka ng mga alerto kahit nakasara ito. Maisasara ito sa Maghanda → Ang teleponong ito; tumitigil din ito kapag nag-sign out ka.',
+          'Kapag binuksan mo ang notifications, nag-iingat ang browser mo ng notification subscription para sa LIGTAS, para maabot ka ng mga alerto kahit nakasara ito. Maisasara ito sa Profile → Mga notification; tumitigil din ito kapag nag-sign out ka.',
           'Puwedeng lumabas ang mga notification sa lock screen mo. Ipinapakita nito ang uri at lugar ng ulat o ang teksto ng alerto, pero hindi kailanman ang pangalan o numero mo.',
         ] },
       ] },
@@ -295,6 +298,7 @@ export const privacy = {
         { retention: [
           ['Account at profile', 'Hanggang mabura ang account mo.'],
           ['Mga ulat, SOS at litrato', 'Hanggang mabura ang account mo. Iniingatan ang mga ito bilang tala ng mga insidente na nakakatulong sa mga susunod na pagtugon at pagpaplano.'],
+          ['Larawan sa profile', 'Hanggang alisin o palitan mo ito, o mabura ang account mo.'],
           ['Mga priority entry at patunay', 'Hanggang tanggalin mo, bawiin mo ang pahintulot, o mabura ang account mo.'],
           ['Mga safety check-in', 'Ang pinakahuling check-in mo lang ang iniingatan.'],
           ['Lokasyon ng rescuer', 'Ang pinakahuling posisyon lang, binubura kapag tumigil sa pagbabahagi ang rescuer.'],
@@ -331,7 +335,7 @@ export const privacy = {
           ['Danyos', 'kung napinsala ka ng mali o labag sa batas na pagproseso ng impormasyon.'],
           ['Magreklamo', 'sa {npc} kung naniniwala kang nalabag ang mga karapatan mo.'],
         ] },
-        { p: '**Sa app**, mababago mo ang pangalan, numero at barangay mo sa Maghanda → Aking detalye, mababawi ang ulat na hinihintay pa ang pagsusuri, at matatanggal ang mga priority entry o mababawi ang pahintulot sa Maghanda → Priority rescue.' },
+        { p: '**Sa app**, mababago mo ang pangalan, numero at barangay mo sa Profile → Personal na impormasyon, mababawi ang ulat na hinihintay pa ang pagsusuri, at matatanggal ang mga priority entry o mababawi ang pahintulot sa Maghanda → Priority rescue.' },
         { p: '**Para sa iba pa**, gaya ng kopya ng impormasyon mo o pagbura ng account mo, mag-email sa {email}. Puwede naming hilingin na kumpirmahin mo muna ang pagkakakilanlan mo. Kikilos kami nang walang hindi makatwirang pagkaantala, at sasabihan ka namin kung kailangan namin ng mas mahabang panahon. Libre ang mga kahilingang ito.' },
       ] },
       { id: 'children', title: 'Mga bata', blocks: [

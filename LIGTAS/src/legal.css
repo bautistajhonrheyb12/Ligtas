@@ -239,23 +239,15 @@
   .legal-keypoints, .legal-row, .legal-who div, .legal-providers li, .legal-hotlines li { break-inside: avoid; }
 }
 
-/* Sign-up checkbox and links elsewhere */
+/* Sign-up checkbox */
 form label.terms-check { display: flex; align-items: flex-start; gap: 10px; margin: 4px 0 12px; color: inherit; font-size: 13px; font-weight: 600; letter-spacing: 0; line-height: 1.5; text-transform: none; cursor: pointer; }
 form label.terms-check input { flex: 0 0 auto; width: 18px; height: 18px; min-height: 0; margin: 1px 0 0; padding: 0; accent-color: var(--ui-green); }
 .terms-check a { color: inherit; font-weight: 800; text-decoration: underline; }
-.legal-links { display: flex; flex-wrap: wrap; gap: 6px 16px; margin: 0; font-size: 12.5px; }
-.legal-links a { color: var(--ui-green-dark); font-weight: 700; }
-.staff-legal-links { justify-content: center; padding: 20px 0 8px; }
 
 /* Log-in and sign-up screens */
 .auth-legal { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px 20px; margin: 18px 0 0; font-size: 12.5px; }
 .auth-legal a { color: inherit; font-weight: 700; text-decoration: underline; text-underline-offset: 3px; opacity: .85; }
 .auth-legal a:hover { opacity: 1; }
-
-/* Admin sidebar */
-.admin-sidebar-legal { display: flex; flex-wrap: wrap; gap: 4px 14px; margin: auto 0 10px; padding: 0 16px; font-size: 12px; }
-.admin-sidebar-legal a { color: rgba(255, 255, 255, .78); font-weight: 700; text-decoration: none; }
-.admin-sidebar-legal a:hover { color: #fff; text-decoration: underline; }
 
 /* The acceptance screen reuses the full-screen layout of the priority
    question (.app-gate in priority.css). */

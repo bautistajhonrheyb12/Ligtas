@@ -41,7 +41,7 @@ export const terms = {
       ] },
       { id: 'account', title: 'Your account', blocks: [
         { list: [
-          'Use your real name and a mobile number you answer, and keep them up to date in Prepare → My details. Responders call this number about your reports and SOS.',
+          'Use your real name and a mobile number you answer, and keep them up to date in Profile → Personal information. Responders call this number about your reports and SOS.',
           'Keep your password secret and do not let others use your account. You are responsible for what is done with it. If you think someone else has used it, change your password and tell us at {email}.',
           'One person, one account.',
           'If you sign in with Google, Google\'s terms also apply to that sign-in.',
@@ -191,7 +191,7 @@ export const terms = {
       ] },
       { id: 'account', title: 'Ang account mo', blocks: [
         { list: [
-          'Gamitin ang totoo mong pangalan at numerong sinasagot mo, at panatilihing updated ang mga ito sa Maghanda → Aking detalye. Tinatawagan ng mga tagatugon ang numerong ito tungkol sa mga ulat at SOS mo.',
+          'Gamitin ang totoo mong pangalan at numerong sinasagot mo, at panatilihing updated ang mga ito sa Profile → Personal na impormasyon. Tinatawagan ng mga tagatugon ang numerong ito tungkol sa mga ulat at SOS mo.',
           'Ilihim ang password mo at huwag ipagamit sa iba ang account mo. Ikaw ang mananagot sa anumang ginawa gamit ito. Kung sa tingin mo ay may ibang gumamit nito, palitan ang password mo at sabihan kami sa {email}.',
           'Isang tao, isang account.',
           'Kung nag-sign in ka gamit ang Google, umiiral din ang mga tuntunin ng Google sa sign-in na iyon.',

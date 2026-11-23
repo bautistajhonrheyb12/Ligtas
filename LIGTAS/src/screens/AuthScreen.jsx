@@ -2,7 +2,7 @@ import { useState } from 'preact/hooks'
 import { PhoneInput } from '../components/PhoneInput.jsx'
 import { isValidMobile } from '../lib/phone.js'
 import { sendPasswordReset, signInWithGoogle } from '../lib/supabase.js'
-import { Icon, Logo, PasswordChecklist, passwordProblem } from '../lib/ui.jsx'
+import { AuthBrand, Icon, Logo, PasswordChecklist, passwordProblem } from '../lib/ui.jsx'
 import { LEGAL_VERSION, privacyUrl, termsUrl } from '../lib/legal.js'
 
 const roles = [
@@ -10,6 +10,14 @@ const roles = [
   { id: 'rescuer', name: 'Rescuer', description: 'Coordinate operations, manage reports, and assist communities.', icon: 'rescue' },
   { id: 'admin', name: 'Admin', description: 'Coordinate alerts, review reports, and manage community safety information.', icon: 'admin' },
 ]
+
+// One short line under the title: what the citizen gets, or who may sign in
+// to a staff account.
+const TAGLINES = {
+  citizen: { login: 'Hazards, alerts and help for Santa Maria, Bulacan.', signup: 'Free for residents of Santa Maria, Bulacan.' },
+  rescuer: { login: 'For rescue teams. Accounts are created by the administrator.' },
+  admin: { login: 'For authorized staff. You will also need a code from your authenticator app.' },
+}
 
 function RoleIcon({ type }) {
   return <span class="role-icon-placeholder"><img src={`/roles/${type}.png`} alt={`${type} icon`} onError={(event) => { event.currentTarget.style.display = 'none' }} /></span>
@@ -206,57 +214,14 @@ export function AuthScreen({
 
 <div class="login-overlay">
 
-<div class="login-card">
+<div class={`login-card login-card--${selectedRole.id}`}>
 
-<h1>LIGTAS</h1>
-
-<p class="login-subtitle">
-
-Localized Informative Geographic
-Tagging & Safety Mapping System
-
+<AuthBrand />
+<h2 class="auth-title">{mode === 'signup' ? 'Create your account' : `${selectedRole.name} sign in`}</h2>
+<p class={`auth-tagline${selectedRole.id !== 'citizen' ? ' is-restricted' : ''}`}>
+  {selectedRole.id !== 'citizen' && <Icon name="shield" size={15} />}
+  {TAGLINES[selectedRole.id][mode] ?? TAGLINES[selectedRole.id].login}
 </p>
-
-<div class={`role-circle role-circle--${selectedRole.id}`}>
-
-<img
-    src={`/roles/${selectedRole.id}.png`}
-    alt=""
-/>
-
-</div>
-<h2>{selectedRole.name}</h2>
-
-<p class="role-description">
-
-{selectedRole.id === "citizen" &&
-"View disaster zones, evacuation centers, and stay informed during emergencies."}
-
-{selectedRole.id === "rescuer" &&
-"Coordinate rescue operations and emergency response."}
-
-{selectedRole.id === "admin" &&
-"Manage the entire LIGTAS platform."}
-
-</p>
-
-{selectedRole.id !== "citizen" && (
-
-<div class="restricted-box">
-
-<strong>⚠ Restricted Access</strong>
-
-<p>
-
-{selectedRole.id === "rescuer"
-? "Rescuer accounts are created by the Super Administrator."
-: "Only authorized personnel may access this portal. A code from your authenticator app is also required."}
-
-</p>
-
-</div>
-
-)}
 
 <form onSubmit={handleSubmit}>
 
@@ -416,7 +381,7 @@ onInput={(e) => setConfirmPassword(e.currentTarget.value)}
 
 {mode === 'login' && <button type="button" class="forgot-password" onClick={resetPassword} disabled={isSendingReset}>
 
-{isSendingReset ? 'Sending reset link…' : 'Forgot Password?'}
+{isSendingReset ? 'Sending reset link…' : 'Forgot password?'}
 
 </button>}
 
@@ -427,7 +392,7 @@ disabled={isSubmitting}
 >
 
 {isSubmitting && <span class="btn-spinner" aria-hidden="true" />}
-{isSubmitting ? 'Please wait…' : mode === 'signup' ? 'Create account →' : 'LOG IN'}
+{isSubmitting ? 'Please wait…' : mode === 'signup' ? 'Create account' : 'Log in'}
 
 </button>
 
@@ -469,7 +434,7 @@ class="signup-link"
 onClick={() => { setError(''); setNotice(''); onModeChange(mode === 'signup' ? 'login' : 'signup') }}
 >
 
-{mode === 'signup' ? 'Log In' : 'Sign Up'}
+{mode === 'signup' ? 'Log in' : 'Sign up'}
 
 </button>
 
@@ -479,32 +444,16 @@ onClick={() => { setError(''); setNotice(''); onModeChange(mode === 'signup' ? '
 
 )}
 
-<div class="bottom-buttons">
+<nav class="auth-switch" aria-label="Leave sign-in">
+  <button type="button" onClick={onBack}><Icon name="back" size={15} /> Change role</button>
+  <button type="button" onClick={onClose}>Back to home</button>
+</nav>
 
-<button
-class="back-role"
-onClick={onBack}
->
-
-Change Role
-
-</button>
-
-<button
-class="back-role"
-onClick={onClose}
->
-
-Back Home
-
-</button>
-
-</div>
-
-<p class="auth-legal">
+{/* Sign-up links them in the agreement box above. */}
+{mode === 'login' && <p class="auth-legal">
   <a href={termsUrl} target="_blank" rel="noopener">Terms of Use</a>
   <a href={privacyUrl} target="_blank" rel="noopener">Privacy Policy</a>
-</p>
+</p>}
 
 </div>
 

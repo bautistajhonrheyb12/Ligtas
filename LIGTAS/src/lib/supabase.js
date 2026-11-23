@@ -134,6 +134,7 @@ async function withOfflineCache(key, load) {
 // what those columns drive (the priority question, accepting the terms) is
 // simply not asked.
 const PROFILE_COLUMNS = [
+  'role, display_name, barangay, phone, priority_answered_at, priority_consent_at, terms_version, avatar_path',
   'role, display_name, barangay, phone, priority_answered_at, priority_consent_at, terms_version',
   'role, display_name, barangay, phone, priority_answered_at, priority_consent_at',
   'role, display_name, barangay, phone',
@@ -223,6 +224,73 @@ export async function updateMyProfile({ displayName, barangay, phone }) {
     throw new Error(/profiles_phone_check/.test(error.message)
       ? 'Enter the 10 digits after +63, for example 917 123 4567.'
       : `Could not save your details: ${error.message}`)
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Profile photos (optional; initials are shown without one)
+// ---------------------------------------------------------------------------
+// Kept private to their owner. The photo in use is also kept on the phone,
+// so it shows at once and without signal.
+const AVATAR_BUCKET = 'avatars'
+
+function blobToDataUrl(blob) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onload = () => resolve(reader.result)
+    reader.onerror = () => reject(reader.error)
+    reader.readAsDataURL(blob)
+  })
+}
+
+// The picture for a profile's avatar_path, or null (show initials).
+export async function getAvatarUrl(path) {
+  if (!path) return null
+  const saved = readCache('avatar')?.data
+  if (saved?.path === path) return saved.url
+  if (isOffline()) return null
+  const { data, error } = await requireClient().storage.from(AVATAR_BUCKET).download(path)
+  if (error || !data) return null
+  const url = await blobToDataUrl(data)
+  writeCache('avatar', { path, url })
+  return url
+}
+
+// Saves a photo (already made square by lib/photo.js) as the profile photo,
+// and removes the one it replaces.
+export async function saveAvatar(file, oldPath = null) {
+  if (isOffline()) throw new Error('Connect to the internet to change your photo.')
+  const client = requireClient()
+  const userId = await currentUserId()
+  const path = `${userId}/${crypto.randomUUID()}.jpg`
+  const { error: uploadError } = await client.storage.from(AVATAR_BUCKET).upload(path, file, { contentType: 'image/jpeg' })
+  if (uploadError) {
+    await failIfSessionEnded(uploadError)
+    throw new Error(/row-level security/i.test(uploadError.message)
+      ? 'Too many photo changes in a short time. Wait 10 minutes, then try again.'
+      : `Could not upload the photo: ${uploadError.message}`)
+  }
+  const { error } = await client.from('profiles').update({ avatar_path: path }).eq('id', userId)
+  if (error) {
+    await client.storage.from(AVATAR_BUCKET).remove([path]).catch(() => {})
+    throw new Error(`Could not save the photo: ${error.message}`)
+  }
+  if (oldPath) await client.storage.from(AVATAR_BUCKET).remove([oldPath]).catch(() => {})
+  writeCache('avatar', { path, url: await blobToDataUrl(file) })
+  return path
+}
+
+// Back to initials: the profile forgets the photo and the file is deleted.
+export async function removeAvatar(path) {
+  if (isOffline()) throw new Error('Connect to the internet to remove your photo.')
+  const client = requireClient()
+  const { error } = await client.from('profiles').update({ avatar_path: null }).eq('id', await currentUserId())
+  if (error) throw new Error(`Could not remove the photo: ${error.message}`)
+  if (path) await client.storage.from(AVATAR_BUCKET).remove([path]).catch(() => {})
+  try {
+    localStorage.removeItem(CACHE_PREFIX + 'avatar')
+  } catch {
+    // Nothing was kept.
   }
 }
 
@@ -363,6 +431,67 @@ export async function updatePassword(password) {
 
   if (error) {
     throw new Error(`Could not change your password: ${error.message}`)
+  }
+}
+
+// The signed-in account as shown on the profile: read from the sign-in saved
+// on this phone, so it also shows without signal.
+export function getMyAccount() {
+  let user = null
+  try {
+    user = JSON.parse(localStorage.getItem(requireClient().auth.storageKey))?.user ?? null
+  } catch {
+    user = null
+  }
+  if (!user) return null
+  const providers = user.app_metadata?.providers ?? [user.app_metadata?.provider].filter(Boolean)
+  return {
+    email: user.email ?? '',
+    createdAt: user.created_at ?? null,
+    // Accounts made with Google have no LIGTAS password.
+    hasPassword: providers.includes('email') || providers.length === 0,
+    usesGoogle: providers.includes('google'),
+  }
+}
+
+// Changes the password once the current one is confirmed. The check is a
+// separate sign-in that is never saved and is ended straight away, so this
+// phone's own sign-in (and its notifications) are not touched.
+export async function changePassword(currentPassword, newPassword, { signOutOthers = false } = {}) {
+  const client = requireClient()
+  const email = getMyAccount()?.email
+  if (!email) throw new Error('Your session has ended. Sign in again to continue.')
+  if (isOffline()) throw new Error('Connect to the internet to change your password.')
+
+  const checker = createClient(supabaseUrl, supabasePublishableKey, {
+    auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false, storageKey: 'ligtas-password-check' },
+  })
+  const { error: checkError } = await checker.auth.signInWithPassword({ email, password: currentPassword })
+  if (checkError) {
+    if (isNetworkError(checkError)) throw new Error('Connect to the internet to change your password.')
+    throw new Error(/invalid login credentials/i.test(checkError.message)
+      ? 'Your current password is not right.'
+      : `Could not check your current password: ${checkError.message}`)
+  }
+  await checker.auth.signOut({ scope: 'local' }).catch(() => {})
+
+  const { error } = await client.auth.updateUser({ password: newPassword })
+  if (error) {
+    if (error.code === 'same_password' || /different from the old/i.test(error.message)) throw new Error('Choose a password different from your current one.')
+    if (error.code === 'reauthentication_needed') throw new Error('For your security, sign out and sign in again, then change your password.')
+    throw new Error(`Could not change your password: ${error.message}`)
+  }
+  if (signOutOthers) await signOutOtherDevices()
+}
+
+// Ends every other sign-in of this account (a lost phone, a shared computer).
+// This phone stays signed in.
+export async function signOutOtherDevices() {
+  const { error } = await requireClient().auth.signOut({ scope: 'others' })
+  if (error) {
+    throw new Error(isNetworkError(error)
+      ? 'Connect to the internet to sign out your other devices.'
+      : `Could not sign out your other devices: ${error.message}`)
   }
 }
 

@@ -103,8 +103,13 @@ and `family_members` tables, the functions to start, join, leave and manage a
 family, and a trigger that tells the family about safety check-ins. After running
 it, deploy `send-push` again (section 14), since it now also notifies families.
 
+`20261123090000_profile_photos.sql` adds optional profile photos: the private
+`avatars` bucket (JPEG only, up to 512 KB; only the owner can see, add or remove
+their photo, at most 10 changes in 10 minutes) and `profiles.avatar_path`. Until
+it is run, the profile simply shows initials and no photo option.
+
 Apply every migration, in order. Screens built for a newer migration than the
-database has fail with a "column does not exist" error, except the last one above.
+database has fail with a "column does not exist" error, except the last two above.
 
 Apply each migration with either option:
 
@@ -147,7 +152,7 @@ While the consent screen is in *Testing*, only the Google accounts listed under
 Google accounts become citizen accounts. If a rescuer or admin signs in with Google
 (for example because Google uses the same email), the app signs them straight out:
 staff must use their email and password. Google does not share a phone number, so
-the report form reminds these citizens to add one under *Prepare → My details*.
+the report form reminds these citizens to add one under *Profile → Personal information*.
 
 ## 4. Create-rescuer function
 
@@ -462,8 +467,8 @@ sharing.
 ## 13. Terms of Use and Privacy Policy
 
 The pages live at `/#terms` and `/#privacy`, in English and Filipino. They are
-linked in the top menu, the site footer, the log-in and sign-up screens,
-*Prepare → My details*, the admin sidebar and the rescuer screen, and open
+linked in the top menu, the site footer, the log-in and sign-up screens and
+every profile (*Privacy and security*), and open
 whether or not someone is signed in. Each page has key points, a contents list,
 an English/Filipino switch and a print or save-as-PDF button.
 
@@ -510,9 +515,8 @@ reviewed by a lawyer before a wide public launch.
 
 Alerts and report updates reach phones **even when LIGTAS is closed**, through
 standard Web Push (the same system websites use for notifications). People turn
-them on with the banner on their dashboard, under *Prepare → This phone*
-(citizens), or with the bell in the header (rescuers and admins). *Send a test*
-checks a phone.
+them on with the banner on their dashboard, or under *Profile → Notifications*
+(every role). *Send a test* checks a phone.
 
 | Who | Gets a notification for |
 |---|---|
@@ -568,8 +572,8 @@ If the project moves to a different Supabase project, change the address in
   Screen and opened from there. The app explains this and shows the steps.
 - *Computers:* Chrome, Edge, Firefox and Safari, while the browser is running.
 
-**Install button.** The landing page, the phone menu and *This phone* show
-*Install app*. Chrome and Edge install with one tap; on iPhone and on other
+**Install button.** The landing page and its phone menu show *Install app*, and
+the profile has an *Install LIGTAS* row until the app is installed. Chrome and Edge install with one tap; on iPhone and on other
 Android browsers it shows the steps (Share → Add to Home Screen, or the browser
 menu → Install app).
 
@@ -619,12 +623,20 @@ LIGTAS keeps working when a phone has no data connection:
 
 ## Notes
 
+- **Profile.** The round button with the person's initials, at the top right of
+  every dashboard, opens their profile (`src/components/Profile.jsx`): personal
+  information (citizens: name, mobile number and barangay; staff: name), an
+  optional photo (initials are shown without one), password, notifications, language (citizens), installing the app, signing out other
+  devices, the Terms and Privacy Policy, the tour, and Sign out. Changing the
+  password asks for the current one first; it is checked with a separate sign-in
+  that is never saved and is ended at once, so the phone's own sign-in and its
+  notifications are untouched. Google accounts have no LIGTAS password to change.
+
 - **Guided tour.** The first time someone reaches their dashboard (after accepting the
-  terms), a short tour highlights each main button and explains it: 11 steps for
+  terms), a short tour highlights each main button and explains it: 12 steps for
   citizens (English or Filipino), 10 for rescuers, 8 for admins. It can be skipped,
-  and replayed from *Prepare → How to use LIGTAS* (citizens) or the *How to use
-  LIGTAS* link (rescuers: bottom of the screen; admins: the menu). Each phone
-  remembers that it was shown. The text is in `src/lib/tours.js`; keep button
+  and replayed from *Profile → How to use LIGTAS*. Each phone remembers that it
+  was shown. The text is in `src/lib/tours.js`; keep button
   names there in step with the screens.
 - **SOS reports skip admin review** so they reach rescuers immediately. They have
   their own limit of 3 per person every 10 minutes.

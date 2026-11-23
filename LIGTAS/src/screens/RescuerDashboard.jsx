@@ -6,6 +6,7 @@ import {
   getAlerts,
   getEvacuationCenters,
   getMapPoints,
+  getMyProfile,
   getReportPhotoUrl,
   getRescuerIncidentReports,
   getStaffProfiles,
@@ -55,9 +56,9 @@ import { PriorityTags, hasPriority } from '../components/PriorityTags.jsx'
 import { useConfirm } from '../components/ConfirmDialog.jsx'
 import { placeReport } from '../lib/callLocation.js'
 import { CallSheet } from './rescuer/CallSheet.jsx'
-import { privacyUrl, termsUrl } from '../lib/legal.js'
-import { NotificationPrompt, PhoneSettingsDialog } from '../components/PhoneSetup.jsx'
-import { syncPush, usePush } from '../lib/push.js'
+import { NotificationPrompt } from '../components/PhoneSetup.jsx'
+import { ProfileButton, ProfilePage } from '../components/Profile.jsx'
+import { syncPush } from '../lib/push.js'
 import { Tour } from '../components/Tour.jsx'
 import { TOURS, markTourDone, tourDone } from '../lib/tours.js'
 
@@ -214,18 +215,30 @@ export function RescuerDashboard({ onSignOut, canStartTour = true }) {
   const lastSharedRef = useRef(0)
   const rescuerNavRef = useTabIndicator(activeTab)
   useWakeLock(isSharingLocation)
-  // Notifications for this phone: settings window, and keeping them linked to this sign-in.
-  const [isPhoneSettingsOpen, setIsPhoneSettingsOpen] = useState(false)
-  const push = usePush()
+  // Keeps this phone's notifications (if turned on) linked to this sign-in.
   useEffect(() => { syncPush('en') }, [])
+  // The profile (name, password, notifications, help, sign out).
+  const [isProfileOpen, setIsProfileOpen] = useState(false)
+  const [profileName, setProfileName] = useState('')
+  const [avatarPath, setAvatarPath] = useState(null)
+  useEffect(() => {
+    getMyProfile().then((profile) => {
+      setProfileName(profile.display_name ?? '')
+      setAvatarPath(profile.avatar_path ?? null)
+    }).catch(() => {})
+  }, [])
+  const profileSaved = (changes) => {
+    if ('display_name' in changes) setProfileName(changes.display_name ?? '')
+    if ('avatar_path' in changes) setAvatarPath(changes.avatar_path)
+  }
   // The guided tour: shown once, after the terms are accepted and the calls
-  // have loaded, and again from How to use LIGTAS.
+  // have loaded, and again from the profile's How to use LIGTAS.
   const [isTourOpen, setIsTourOpen] = useState(false)
   useEffect(() => {
-    if (!canStartTour || reportsLoading || navTarget || isTourOpen || tourDone('rescuer')) return undefined
+    if (!canStartTour || reportsLoading || navTarget || isProfileOpen || isTourOpen || tourDone('rescuer')) return undefined
     const timer = setTimeout(() => setIsTourOpen(true), 900)
     return () => clearTimeout(timer)
-  }, [canStartTour, reportsLoading, navTarget])
+  }, [canStartTour, reportsLoading, navTarget, isProfileOpen])
   const tourPrepare = {
     calls: () => { setActiveTab('calls'); setQueueView('open'); setSelectedCallId(null) },
   }
@@ -488,18 +501,23 @@ export function RescuerDashboard({ onSignOut, canStartTour = true }) {
         <button type="button" class={`rx-duty${isSharingLocation ? ' is-sharing' : ''}`} aria-pressed={isSharingLocation} onClick={toggleLocationSharing} title={isSharingLocation ? 'Stop sharing your location' : 'Share your location with operations'}>
           <i /> {isSharingLocation ? 'Sharing location' : 'Share location'}
         </button>
-        <button type="button" class={`rx-icon-btn rx-notify-btn${push.status === 'on' ? ' is-on' : ''}`} onClick={() => setIsPhoneSettingsOpen(true)} aria-label={push.status === 'on' ? 'Notifications are on. Open settings' : 'Notifications. Open settings'} title="Notifications"><Icon name={push.status === 'on' ? 'bellRing' : 'bell'} /></button>
-        <button type="button" class="rx-icon-btn" onClick={signOut} aria-label="Sign out" title="Sign out"><Icon name="logout" /></button>
+        <ProfileButton role="rescuer" name={profileName || myName} photoPath={avatarPath} onClick={() => setIsProfileOpen(true)} />
       </div>
     </header>
-    {isPhoneSettingsOpen && <PhoneSettingsDialog role="rescuer" onClose={() => setIsPhoneSettingsOpen(false)} />}
+    {isProfileOpen && <ProfilePage
+      role="rescuer"
+      onProfileSaved={profileSaved}
+      onClose={() => setIsProfileOpen(false)}
+      onSignOut={signOut}
+      onStartTour={() => setIsTourOpen(true)}
+    />}
 
     <div class="rx-main" id="rescuer-home">
       <OfflineBanner isOnline={isOnline} label="You are offline. Calls shown may be out of date." />
       {activeTab === 'calls' && <NotificationPrompt role="rescuer" />}
 
       {activeTab === 'calls' && <section class={`rx-hero${unclaimedCount === 0 && !reportsLoading ? ' is-clear' : ''}`} aria-live="polite">
-        <span class="rx-hero-greeting">{greeting}{myName ? `, ${myName}` : ', rescue team'}</span>
+        <span class="rx-hero-greeting">{greeting}{(profileName || myName) ? `, ${profileName || myName}` : ', rescue team'}</span>
         <div class="rx-hero-count">
           <strong>{reportsLoading ? '–' : <CountUp value={unclaimedCount} />}</strong>
           <span>{reportsLoading ? 'Checking calls…' : unclaimedCount === 0 ? 'All clear. No calls waiting.' : unclaimedCount === 1 ? 'call needs a team' : 'calls need a team'}</span>
@@ -636,11 +654,6 @@ export function RescuerDashboard({ onSignOut, canStartTour = true }) {
           </div>}
         </div>
       </section>}
-      <p class="legal-links staff-legal-links">
-        <button type="button" class="tour-replay-link" onClick={() => setIsTourOpen(true)}>How to use LIGTAS</button>
-        <a href={termsUrl} target="_blank" rel="noopener">Terms of Use</a>
-        <a href={privacyUrl} target="_blank" rel="noopener">Privacy Policy</a>
-      </p>
     </div>
 
     {resolvingReport && <div class="alert-modal-backdrop" onClick={(event) => { if (event.target === event.currentTarget && !updatingReportId) setResolvingReport(null) }}>

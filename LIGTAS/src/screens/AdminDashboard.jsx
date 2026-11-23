@@ -46,11 +46,11 @@ import { PriorityPanel } from './admin/PriorityPanel.jsx'
 import { useConfirm } from '../components/ConfirmDialog.jsx'
 import { rejectQuestion } from './admin/reportDecisions.js'
 import { placeReport } from '../lib/callLocation.js'
-import { privacyUrl, termsUrl } from '../lib/legal.js'
 import { ReportsPanel } from './admin/ReportsPanel.jsx'
 import { SecurityPanel } from './admin/SecurityPanel.jsx'
-import { NotificationPrompt, PhoneSettingsDialog } from '../components/PhoneSetup.jsx'
-import { syncPush, usePush } from '../lib/push.js'
+import { NotificationPrompt } from '../components/PhoneSetup.jsx'
+import { ProfileButton, ProfilePage } from '../components/Profile.jsx'
+import { syncPush } from '../lib/push.js'
 import { Tour } from '../components/Tour.jsx'
 import { TOURS, markTourDone, tourDone } from '../lib/tours.js'
 
@@ -87,12 +87,12 @@ export function AdminDashboard({ onSignOut, canStartTour = true }) {
   const [activeTab, setActiveTab] = useState('dashboard')
   const [isAdminNavOpen, setIsAdminNavOpen] = useState(() => window.matchMedia('(min-width: 901px)').matches)
   const [isMapFullscreen, setIsMapFullscreen] = useState(false)
-  // Notifications for this device: settings window, and keeping them linked to this sign-in.
-  const [isPhoneSettingsOpen, setIsPhoneSettingsOpen] = useState(false)
-  const push = usePush()
+  // Keeps this device's notifications (if turned on) linked to this sign-in.
   useEffect(() => { syncPush('en') }, [])
+  // The profile (name, password, notifications, help, sign out).
+  const [isProfileOpen, setIsProfileOpen] = useState(false)
   // The guided tour: shown once, after the terms are accepted, and again
-  // from How to use LIGTAS in the menu.
+  // from the profile's How to use LIGTAS.
   const [isTourOpen, setIsTourOpen] = useState(false)
   const [notice, setNotice] = useState('')
   const [noticeIsError, setNoticeIsError] = useState(false)
@@ -116,6 +116,7 @@ export function AdminDashboard({ onSignOut, canStartTour = true }) {
   const [eventsLoading, setEventsLoading] = useState(true)
   const [checkins, setCheckins] = useState([])
   const [myName, setMyName] = useState('')
+  const [avatarPath, setAvatarPath] = useState(null)
   const [security, setSecurity] = useState({ flags: [], people: [] })
   const [securityLoading, setSecurityLoading] = useState(true)
   const [securityError, setSecurityError] = useState('')
@@ -175,7 +176,10 @@ export function AdminDashboard({ onSignOut, canStartTour = true }) {
   })
 
   useEffect(() => {
-    getMyProfile().then((profile) => setMyName(profile.display_name ?? '')).catch(() => {})
+    getMyProfile().then((profile) => {
+      setMyName(profile.display_name ?? '')
+      setAvatarPath(profile.avatar_path ?? null)
+    }).catch(() => {})
     loadReports()
     loadAlerts()
     loadPoints()
@@ -336,10 +340,10 @@ export function AdminDashboard({ onSignOut, canStartTour = true }) {
   }
 
   useEffect(() => {
-    if (!canStartTour || reportsLoading || isTourOpen || tourDone('admin')) return undefined
+    if (!canStartTour || reportsLoading || isProfileOpen || isTourOpen || tourDone('admin')) return undefined
     const timer = setTimeout(() => setIsTourOpen(true), 900)
     return () => clearTimeout(timer)
-  }, [canStartTour, reportsLoading])
+  }, [canStartTour, reportsLoading, isProfileOpen])
   const tourPrepare = {
     menu: () => setIsAdminNavOpen(true),
     dashboard: () => selectAdminTab('dashboard'),
@@ -391,12 +395,19 @@ export function AdminDashboard({ onSignOut, canStartTour = true }) {
       </button>
       <a class="ops-brand" href="#admin-home" aria-label="LIGTAS admin dashboard"><Logo small /><span>LIGTAS <i>/</i> ADMIN</span></a>
       <div class="ops-user">
-        <span class="ops-user-name">{myName || 'Santa Maria operations'}</span>
-        <button type="button" class={`ops-notify${push.status === 'on' ? ' is-on' : ''}`} onClick={() => setIsPhoneSettingsOpen(true)} aria-label={push.status === 'on' ? 'Notifications are on. Open settings' : 'Notifications. Open settings'} title="Notifications"><Icon name={push.status === 'on' ? 'bellRing' : 'bell'} size={18} /></button>
-        <button type="button" class="ops-signout" onClick={onSignOut}>Sign out</button>
+        <ProfileButton role="admin" name={myName} photoPath={avatarPath} showName onClick={() => setIsProfileOpen(true)} />
       </div>
     </header>
-    {isPhoneSettingsOpen && <PhoneSettingsDialog role="admin" onClose={() => setIsPhoneSettingsOpen(false)} />}
+    {isProfileOpen && <ProfilePage
+      role="admin"
+      onProfileSaved={(changes) => {
+        if ('display_name' in changes) setMyName(changes.display_name ?? '')
+        if ('avatar_path' in changes) setAvatarPath(changes.avatar_path)
+      }}
+      onClose={() => setIsProfileOpen(false)}
+      onSignOut={onSignOut}
+      onStartTour={() => setIsTourOpen(true)}
+    />}
 
     {isAdminNavOpen && <button type="button" class="admin-nav-backdrop" aria-label="Close admin navigation" onClick={() => setIsAdminNavOpen(false)} />}
     <aside class="admin-sidebar" id="admin-navigation" aria-label="Admin navigation" aria-hidden={!isAdminNavOpen}>
@@ -417,11 +428,6 @@ export function AdminDashboard({ onSignOut, canStartTour = true }) {
           {item.count > 0 && <span class="admin-sidebar-count">{item.count}</span>}
         </button>)}
       </nav>
-      <p class="admin-sidebar-legal">
-        <button type="button" class="tour-replay-link" tabIndex={isAdminNavOpen ? 0 : -1} onClick={() => setIsTourOpen(true)}>How to use LIGTAS</button>
-        <a href={termsUrl} target="_blank" rel="noopener" tabIndex={isAdminNavOpen ? 0 : -1}>Terms of Use</a>
-        <a href={privacyUrl} target="_blank" rel="noopener" tabIndex={isAdminNavOpen ? 0 : -1}>Privacy Policy</a>
-      </p>
       <div class="admin-sidebar-location" aria-label="Service area">
         <span class="admin-sidebar-location-icon" aria-hidden="true"><Icon name="pin" size={16} /></span>
         <div><small>Service area</small><strong>Santa Maria, Bulacan</strong></div>
