@@ -9,37 +9,76 @@ import {
   drawUserPosition,
   frameArea,
   removeLigtasMap,
+  setAreaPadding,
   watchMapSize,
 } from '../../lib/map.js'
+
+// The map key slides between its two places in this time (account for it
+// before measuring where the key ended up).
+const LEGEND_MOVE_MS = 280
+
+// Where an element sits in the page once any slide-in animation has finished:
+// offsets ignore transforms, so the header and panel are measured at rest even
+// while they are still sliding into place.
+function restingBox(element) {
+  if (!element) return null
+  let top = 0
+  let left = 0
+  for (let node = element; node; node = node.offsetParent) {
+    top += node.offsetTop
+    left += node.offsetLeft
+  }
+  const width = element.offsetWidth
+  const height = element.offsetHeight
+  return { top, left, width, height, bottom: top + height, right: left + width }
+}
 
 // Room for the header and the information panel drawn over the map, so the
 // municipality is framed in the part of the map people can actually see.
 function overlayPadding(container) {
-  const box = container.getBoundingClientRect()
-  const header = document.querySelector('.citizen-ui > .citizen-header')?.getBoundingClientRect()
-  const sheet = document.querySelector('.citizen-ui .citizen-sheet')?.getBoundingClientRect()
-  const legend = container.parentElement?.querySelector('.map-legend')?.getBoundingClientRect()
+  const box = restingBox(container)
+  const header = restingBox(document.querySelector('.citizen-ui > .citizen-header'))
+  const sheet = restingBox(document.querySelector('.citizen-ui .citizen-sheet'))
+  const legend = restingBox(container.parentElement?.querySelector('.map-legend'))
   let top = AREA_EDGE
   let right = AREA_EDGE
   let bottom = AREA_EDGE
   if (header?.height) top = Math.max(top, header.bottom - box.top + AREA_EDGE)
-  if (sheet?.width && sheet.height) {
-    // A side panel on wide screens, a bottom sheet on phones.
-    if (sheet.left > box.left + box.width / 2) right = Math.max(right, box.right - sheet.left + AREA_EDGE)
-    else bottom = Math.max(bottom, box.bottom - sheet.top + AREA_EDGE)
-  }
   // The map key along the bottom.
-  if (legend?.height) bottom = Math.max(bottom, box.bottom - legend.top + AREA_EDGE)
+  const keyBottom = legend?.height ? box.bottom - legend.top + AREA_EDGE : AREA_EDGE
+  bottom = Math.max(bottom, keyBottom)
+  if (sheet?.width && sheet.height) {
+    // A bottom sheet spans the width of a phone; on wider screens the panel
+    // stands at the side (on tablets it can be more than half the width).
+    if (sheet.width >= box.width - 40) bottom = Math.max(bottom, box.bottom - sheet.top + AREA_EDGE)
+    else right = Math.max(right, box.right - sheet.left + AREA_EDGE)
+  }
+  // Never squeeze the town into a sliver: with too little room beside the
+  // panel, it is framed as if the panel were not there.
+  if (box.width - AREA_EDGE - right < 180 || box.height - top - bottom < 180) {
+    right = AREA_EDGE
+    bottom = keyBottom
+  }
   return { paddingTopLeft: [AREA_EDGE, top], paddingBottomRight: [right, bottom] }
 }
 
-export function CitizenMap({ points, centers, userPosition, focusTarget, locationError, isLocating, onLocate, t }) {
+// Fits the town to the space left between the header, the panel and the map
+// key. While someone is zoomed in on a street, their view is kept and only
+// the zoom-out limit follows the new space.
+function refit(map, container) {
+  const padding = overlayPadding(container)
+  if (map.getZoom() <= map.getMinZoom() + 0.01) frameArea(map, padding)
+  else setAreaPadding(map, padding)
+}
+
+export function CitizenMap({ points, centers, userPosition, focusTarget, locationError, isLocating, onLocate, isFullscreen = false, t }) {
   const mapRef = useRef(null)
   const mapInstanceRef = useRef(null)
   const layerRef = useRef(null)
   const userLayerRef = useRef(null)
   const hasShownUserRef = useRef(false)
   const userMovedRef = useRef(false)
+  const wasFullscreenRef = useRef(isFullscreen)
 
   useEffect(() => {
     if (!mapRef.current) return undefined
@@ -52,14 +91,10 @@ export function CitizenMap({ points, centers, userPosition, focusTarget, locatio
     layerRef.current = L.layerGroup().addTo(map)
     // Kept apart so frequent location updates don't redraw every marker.
     userLayerRef.current = L.layerGroup().addTo(map)
-    // Keep the town framed when the window changes size, until the person
-    // moves the map themselves.
     map.on('dragstart', () => { userMovedRef.current = true })
-    const reframe = () => { if (!userMovedRef.current) frameArea(map, overlayPadding(container)) }
-    window.addEventListener('resize', reframe)
-    const stopWatching = watchMapSize(map, container)
+    // Keep the town framed whenever the map's space changes size.
+    const stopWatching = watchMapSize(map, container, () => refit(map, container))
     return () => {
-      window.removeEventListener('resize', reframe)
       stopWatching()
       layerRef.current = null
       userLayerRef.current = null
@@ -67,6 +102,17 @@ export function CitizenMap({ points, centers, userPosition, focusTarget, locatio
       removeLigtasMap(map)
     }
   }, [])
+
+  // Full screen hides the panel and drops the map key to the bottom edge (and
+  // back): once the key has moved, the town is fitted to the new space.
+  useEffect(() => {
+    if (wasFullscreenRef.current === isFullscreen) return undefined
+    wasFullscreenRef.current = isFullscreen
+    const timer = setTimeout(() => {
+      if (mapInstanceRef.current && mapRef.current) refit(mapInstanceRef.current, mapRef.current)
+    }, LEGEND_MOVE_MS + 40)
+    return () => clearTimeout(timer)
+  }, [isFullscreen])
 
   useEffect(() => {
     const map = mapInstanceRef.current
@@ -98,7 +144,7 @@ export function CitizenMap({ points, centers, userPosition, focusTarget, locatio
     }
   }, [focusTarget])
 
-  return <div class="real-map-shell citizen-map-shell">
+  return <div class={`real-map-shell citizen-map-shell${isFullscreen ? ' is-fullscreen' : ''}`}>
     <div class="real-map" ref={mapRef} />
     <button
       type="button"

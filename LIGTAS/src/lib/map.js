@@ -42,24 +42,44 @@ function wholeTownView(map, padding = {}) {
 
 // People cannot zoom out past the whole town, or drag it out of view. The
 // small allowance lets a selected call be shown beside a panel near the border.
+function applyLimits(map, view) {
+  map.setMinZoom(view.zoom)
+  map.setMaxBounds(view.screen.extend(areaBounds).pad(0.05))
+}
+
 function limitToArea(map) {
   const size = map.getSize()
   if (!size.x || !size.y) return null
   const view = wholeTownView(map, map.ligtasPadding)
-  map.setMinZoom(view.zoom)
-  map.setMaxBounds(view.screen.extend(areaBounds).pad(0.05))
+  applyLimits(map, view)
   return view
+}
+
+// Updates the room kept for things drawn over the map (and with it how far
+// out people can zoom) without moving the map.
+export function setAreaPadding(map, padding = {}) {
+  map.ligtasPadding = padding
+  limitToArea(map)
 }
 
 // Shows the whole town, filling the map. Padding keeps it clear of anything
 // drawn over the map, such as a header or a side panel.
 export function frameArea(map, padding = {}) {
   map.ligtasPadding = padding
-  const view = limitToArea(map)
-  if (view) map.setView(view.center, view.zoom, { animate: false })
-  // A map still hidden (no size yet) opens on the town centre; it is fitted
-  // once it has a size (watchMapSize).
-  else if (!map._loaded) map.setView(areaBounds.getCenter(), 13, { animate: false })
+  const size = map.getSize()
+  if (!size.x || !size.y) {
+    // A map still hidden (no size yet) opens on the town centre; it is fitted
+    // once it has a size (watchMapSize).
+    if (!map._loaded) map.setView(areaBounds.getCenter(), 13, { animate: false })
+    return
+  }
+  // The old limits come off first. Leaflet slides the map back inside new
+  // limits with a short animation, which could finish after the view below
+  // is set and undo it (leaving the town off-centre).
+  map.setMaxBounds(null)
+  const view = wholeTownView(map, padding)
+  map.setView(view.center, view.zoom, { animate: false })
+  applyLimits(map, view)
 }
 
 // Without a centre, the map opens on the whole municipality. A map can put its
@@ -107,11 +127,13 @@ export function removeLigtasMap(map) {
   map.remove()
 }
 
-// Keeps Leaflet in sync when its container changes size (sidebar toggles, fullscreen).
-export function watchMapSize(map, container) {
+// Keeps Leaflet in sync when its container changes size (sidebar toggles,
+// fullscreen, a phone's address bar). onResize can then frame the town again.
+export function watchMapSize(map, container, onResize = null) {
   const observer = new ResizeObserver(() => {
     map.invalidateSize()
     limitToArea(map)
+    onResize?.()
   })
   observer.observe(container)
   return () => observer.disconnect()

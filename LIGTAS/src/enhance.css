@@ -496,6 +496,20 @@ button:disabled { cursor: not-allowed; }
   .citizen-map-shell .leaflet-top.leaflet-right { top: calc(62px + env(safe-area-inset-top)); }
   .citizen-map-shell .map-legend { max-width: calc(100% - 24px); }
 }
+/* The citizen map already fills the screen, so full screen keeps exactly that
+   area (it was inset 16px but full-height, so its bottom and right edges hung
+   off the screen on computers). */
+.citizen-ui .map-frame.is-fullscreen { inset: 0; width: auto; height: auto; border-radius: 0; }
+/* Full-screen map: with no panel below it, the map key slides down to the
+   bottom edge, and back up above the panel when full screen ends. */
+.citizen-map-shell .map-legend { transition: bottom .28s var(--ease-out, ease), max-width .28s ease; }
+.citizen-map-shell.is-fullscreen .map-legend { bottom: calc(12px + env(safe-area-inset-bottom)); }
+@media (min-width: 601px) {
+  .citizen-map-shell.is-fullscreen .map-legend { bottom: 18px; max-width: calc(100% - 40px); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .citizen-map-shell .map-legend { transition: none; }
+}
 /* The citizen map shows its map credit in the map key. */
 .map-legend .map-credit { flex-basis: 100%; color: #7b8c85; font-size: 10.5px; }
 /* My reports: the place and time wrap onto a second line instead of being

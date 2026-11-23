@@ -411,7 +411,7 @@ export function CitizenDashboard({ onSignOut }) {
     </header>
     <div class="map-section">
       <div class={`map-frame${isMapFullscreen ? ' is-fullscreen' : ''}`}>
-        <CitizenMap points={points} centers={centers} userPosition={isOutsideArea ? null : userPosition} focusTarget={focusTarget} locationError={livePosition.error} isLocating={isLocating} onLocate={locateMe} t={t} />
+        <CitizenMap points={points} centers={centers} userPosition={isOutsideArea ? null : userPosition} focusTarget={focusTarget} locationError={livePosition.error} isLocating={isLocating} onLocate={locateMe} isFullscreen={isMapFullscreen} t={t} />
       </div>
     </div>
 
