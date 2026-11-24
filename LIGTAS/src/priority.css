@@ -106,7 +106,7 @@
   border-radius: 20px;
   background: #fff;
   box-shadow: var(--ui-shadow);
-  animation: ligtas-rise .35s var(--ease-out) both;
+  animation: ligtas-rise .35s var(--ease-out) backwards;
 }
 .app-gate-card h2 { margin: 0; font: 800 22px/1.25 Manrope, sans-serif; }
 .priority-eyebrow { color: var(--ui-green); font-size: 11.5px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; }
@@ -338,7 +338,7 @@
   border-left: 4px solid #d9a63b;
   border-radius: 14px;
   background: #fff;
-  animation: ligtas-rise .35s var(--ease-out) both;
+  animation: ligtas-rise .35s var(--ease-out) backwards;
 }
 .priority-review-card.is-verified { border-left-color: var(--ui-green); }
 .priority-review-card.is-rejected { border-left-color: #c94f4e; }

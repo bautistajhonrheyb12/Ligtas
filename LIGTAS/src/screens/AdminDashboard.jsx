@@ -29,10 +29,12 @@ import {
   Logo,
   ToastStack,
   capacityLevel,
+  isCurrentAlert,
   playAlertChime,
   reportTypeStyle,
   timeAgo,
   toAlertView,
+  useAlertClock,
   useRefreshOnReturn,
   useToasts,
 } from '../lib/ui.jsx'
@@ -102,7 +104,10 @@ export function AdminDashboard({ onSignOut, canStartTour = true }) {
   const [reportsLoading, setReportsLoading] = useState(true)
   const [reportFilter, setReportFilter] = useState('All')
   const [updatingReportId, setUpdatingReportId] = useState(null)
-  const [alerts, setAlerts] = useState([])
+  const [allAlerts, setAlerts] = useState([])
+  // Only alerts that have not ended; an alert disappears at its end time.
+  const alertClock = useAlertClock(allAlerts)
+  const alerts = allAlerts.filter((alert) => isCurrentAlert(alert, alertClock))
   const [alertsLoading, setAlertsLoading] = useState(true)
   const [alertsError, setAlertsError] = useState('')
   const [isAlertFormOpen, setIsAlertFormOpen] = useState(false)

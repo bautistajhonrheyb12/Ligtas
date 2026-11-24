@@ -196,7 +196,7 @@ button:disabled { cursor: not-allowed; }
   border-radius: 18px;
   background: #fff;
   box-shadow: 0 16px 40px rgba(20, 40, 30, .28);
-  animation: ligtas-rise .25s var(--ease-out) both;
+  animation: ligtas-rise .25s var(--ease-out) backwards;
 }
 .rx-call-sheet.is-critical { border-color: #f1c4c0; }
 .rx-sheet-head { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 10px; }
@@ -685,3 +685,46 @@ button.forgot-password { min-height: 36px; }
 .pin-picker-caption .pin-outside, .admin-pin-field small.pin-outside { display: inline-flex; align-items: center; gap: 4px; color: #a2453f; font-weight: 800; }
 /* The map credit keeps its normal weight inside the bold form label. */
 .admin-pin-field .leaflet-control-attribution { font-weight: 400; }
+
+/* ---------------------------------------------------------------
+   Staff maps full screen (admin dashboard, admin Map page, rescuer)
+   --------------------------------------------------------------- */
+/* Fills the screen above the admin header and side menu (1200), whatever
+   height the page gives the map normally; the page behind is dimmed. */
+body .ops-map-frame.is-fullscreen {
+  position: fixed;
+  inset: 16px;
+  z-index: 1250;
+  width: auto;
+  height: auto;
+  min-height: 0;
+  max-height: none;
+  box-shadow: 0 0 0 100vmax rgba(14, 33, 38, .55), 0 24px 60px rgba(0, 0, 0, .3);
+}
+body .ops-map-frame.is-fullscreen .real-map { flex: 1 1 auto; height: auto; min-height: 0; }
+@media (max-width: 900px) {
+  /* Phones and tablets: edge to edge, clear of the notch. */
+  body .ops-map-frame.is-fullscreen { inset: 0; border-radius: 0; padding-top: env(safe-area-inset-top); }
+}
+body.has-fullscreen-map { overflow: hidden; }
+/* The exit button says what it does. */
+.map-fullscreen-btn.is-active,
+.admin-ui .map-fullscreen-btn.is-active { display: inline-flex; width: auto; flex: 0 0 auto; align-items: center; gap: 6px; padding: 0 12px; }
+.admin-ui .map-fullscreen-btn.is-active .map-fullscreen-icon { transform: none; }
+.map-fullscreen-label { font-size: 12.5px; font-weight: 800; white-space: nowrap; }
+.map-fullscreen-icon { display: inline-flex; }
+
+/* ---------------------------------------------------------------
+   Detected location (report form and maps)
+   --------------------------------------------------------------- */
+/* "Use my location": finding, found, only approximate, or failed. */
+.locate-status { display: flex; align-items: flex-start; gap: 7px; margin: -4px 0 0; padding: 8px 10px; border-radius: 10px; font-size: 12.5px; font-weight: 600; line-height: 1.45; }
+.locate-status .ui-icon, .locate-status .btn-spinner { flex: 0 0 auto; margin: 2px 0 0; }
+.locate-status .btn-spinner { width: 13px; height: 13px; color: var(--ui-green); }
+.locate-status.is-finding { color: var(--ui-muted); background: #f3f6f4; }
+.locate-status.is-found { color: #2f6148; background: var(--ui-green-soft); }
+.locate-status.is-rough { color: #7a5210; background: #fff6e2; }
+.locate-status.is-failed { color: #8e2f2c; background: #fdeeed; }
+/* A rough fix: a hollow marker with no pulse, instead of a town-sized circle. */
+.user-marker.is-approximate span { border: 3px solid #2f78b7; background: rgba(255, 255, 255, .85); box-shadow: 0 0 0 4px rgba(47, 120, 183, .18), 0 2px 8px rgba(47, 120, 183, .35); }
+.user-marker.is-approximate span::after { display: none; }

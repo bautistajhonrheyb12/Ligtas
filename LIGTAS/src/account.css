@@ -162,11 +162,11 @@ body.has-profile-open { overflow: hidden; }
   color: var(--ui-ink);
   background: var(--ui-canvas);
   box-shadow: -18px 0 50px rgba(20, 45, 35, .18);
-  animation: profile-in .28s var(--ease-out, ease) both;
+  animation: profile-in .28s var(--ease-out, ease) backwards;
 }
 @keyframes profile-in {
   from { translate: 40px 0; opacity: 0; }
-  to { translate: 0 0; opacity: 1; }
+  to { translate: none; opacity: 1; }
 }
 @media (max-width: 600px) {
   .profile-page { width: 100%; box-shadow: none; }

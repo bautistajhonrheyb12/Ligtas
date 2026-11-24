@@ -8,9 +8,10 @@ import {
   drawMapPoints,
   drawUserPosition,
   frameArea,
+  refitArea,
   removeLigtasMap,
-  setAreaPadding,
   watchMapSize,
+  zoomForAccuracy,
 } from '../../lib/map.js'
 
 // The map key slides between its two places in this time (account for it
@@ -65,10 +66,8 @@ function overlayPadding(container) {
 // Fits the town to the space left between the header, the panel and the map
 // key. While someone is zoomed in on a street, their view is kept and only
 // the zoom-out limit follows the new space.
-function refit(map, container) {
-  const padding = overlayPadding(container)
-  if (map.getZoom() <= map.getMinZoom() + 0.01) frameArea(map, padding)
-  else setAreaPadding(map, padding)
+function refit(map, container, wholeTown) {
+  refitArea(map, overlayPadding(container), wholeTown)
 }
 
 export function CitizenMap({ points, centers, userPosition, focusTarget, locationError, isLocating, onLocate, isFullscreen = false, t }) {
@@ -93,7 +92,7 @@ export function CitizenMap({ points, centers, userPosition, focusTarget, locatio
     userLayerRef.current = L.layerGroup().addTo(map)
     map.on('dragstart', () => { userMovedRef.current = true })
     // Keep the town framed whenever the map's space changes size.
-    const stopWatching = watchMapSize(map, container, () => refit(map, container))
+    const stopWatching = watchMapSize(map, container, (wholeTown) => refit(map, container, wholeTown))
     return () => {
       stopWatching()
       layerRef.current = null
@@ -140,7 +139,7 @@ export function CitizenMap({ points, centers, userPosition, focusTarget, locatio
 
   useEffect(() => {
     if (focusTarget && mapInstanceRef.current) {
-      mapInstanceRef.current.setView([focusTarget.latitude, focusTarget.longitude], 16)
+      mapInstanceRef.current.setView([focusTarget.latitude, focusTarget.longitude], zoomForAccuracy(focusTarget.accuracy))
     }
   }, [focusTarget])
 

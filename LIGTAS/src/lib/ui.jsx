@@ -6,6 +6,8 @@ export function toAlertView(alert) {
   return {
     id: alert.id,
     type: alert.alert_type,
+    // What an "Other" alert is about, such as "Chemical spill".
+    typeOther: alert.alert_type_other ?? null,
     severity: `${alert.severity} Severity`,
     title: alert.title,
     description: alert.message,
@@ -17,6 +19,60 @@ export function toAlertView(alert) {
     targetRoles: alert.target_roles ?? [],
     accent,
   }
+}
+
+// The alert types the database accepts; "Other" comes with what it is about.
+export const ALERT_TYPES = ['Flood', 'Severe weather', 'Landslide', 'Road closure', 'Other']
+const ALERT_TYPES_TL = { Flood: 'Baha', 'Severe weather': 'Masamang panahon', Landslide: 'Pagguho ng lupa', 'Road closure': 'Saradong daan', Other: 'Iba pa' }
+
+// What an alert is about, as shown on cards: "Flood", or for "Other" what the
+// sender wrote (such as "Chemical spill").
+export function alertTypeLabel(alert, lang = 'en') {
+  if (alert.type === 'Other' && alert.typeOther) return alert.typeOther
+  return lang === 'tl' ? ALERT_TYPES_TL[alert.type] ?? alert.type : alert.type
+}
+
+// Still showing: no end time, or one that has not passed. Lists filter with
+// this (and useMinuteClock), so an alert disappears as soon as it ends.
+export function isCurrentAlert(alert, now = Date.now()) {
+  return !alert.expiresAt || Date.parse(alert.expiresAt) > now
+}
+
+export function useMinuteClock() {
+  const [now, setNow] = useState(Date.now)
+  useEffect(() => {
+    const timer = setInterval(() => setNow(Date.now()), 30000)
+    return () => clearInterval(timer)
+  }, [])
+  return now
+}
+
+// The current time for filtering alerts: it also moves forward the moment the
+// next alert ends, so that alert disappears right on time.
+export function useAlertClock(alerts) {
+  const now = useMinuteClock()
+  const [tick, setTick] = useState(0)
+  const soonest = alerts.reduce((next, alert) => {
+    const end = alert.expiresAt ? Date.parse(alert.expiresAt) : Infinity
+    return end > Date.now() && end < next ? end : next
+  }, Infinity)
+  useEffect(() => {
+    if (!Number.isFinite(soonest)) return undefined
+    // Timers cannot wait longer than about 24 days; a day is plenty here.
+    const timer = setTimeout(() => setTick((value) => value + 1), Math.min(soonest - Date.now() + 250, 86400000))
+    return () => clearTimeout(timer)
+  }, [soonest, tick])
+  return Math.max(now, tick ? Date.now() : 0)
+}
+
+// When an alert ends, in words: "Ends today, 4:30 PM (in 3 h)".
+export function alertEndText(expiresAt, now = Date.now()) {
+  const end = new Date(expiresAt)
+  const minutes = Math.max(0, Math.round((end.getTime() - now) / 60000))
+  const left = minutes < 60 ? `${minutes} min` : minutes < 48 * 60 ? `${Math.round(minutes / 60)} h` : `${Math.round(minutes / 1440)} days`
+  const sameDay = end.toDateString() === new Date(now).toDateString()
+  const when = end.toLocaleString([], sameDay ? { hour: 'numeric', minute: '2-digit' } : { weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })
+  return `${sameDay ? `today, ${when}` : when} (in ${left})`
 }
 
 // The icon for an alert, by what it is about.
@@ -319,6 +375,43 @@ export function useOnlineStatus() {
     }
   }, [])
   return isOnline
+}
+
+// While a staff map is full screen: Escape closes it (unless a dialog is open
+// on top), and the page behind stops scrolling.
+export function useFullscreenMap(isFullscreen, onExit) {
+  const onExitRef = useRef(onExit)
+  onExitRef.current = onExit
+  useEffect(() => {
+    if (!isFullscreen) return undefined
+    // Caught first and stopped, so Escape only closes the map (the admin menu
+    // also closes on Escape).
+    const onKey = (event) => {
+      if (event.key !== 'Escape' || document.querySelector('.alert-modal-backdrop, .profile-backdrop')) return
+      event.stopPropagation()
+      onExitRef.current()
+    }
+    document.body.classList.add('has-fullscreen-map')
+    window.addEventListener('keydown', onKey, true)
+    return () => {
+      document.body.classList.remove('has-fullscreen-map')
+      window.removeEventListener('keydown', onKey, true)
+    }
+  }, [isFullscreen])
+}
+
+// The button that opens a map full screen, and closes it with a clear label.
+export function MapFullscreenButton({ isFullscreen, onToggle }) {
+  return <button
+    type="button"
+    class={`map-fullscreen-btn${isFullscreen ? ' is-active' : ''}`}
+    onClick={onToggle}
+    aria-label={isFullscreen ? 'Exit full screen map' : 'Open full screen map'}
+    title={isFullscreen ? 'Exit full screen (Esc)' : 'Open full screen map'}
+  >
+    <span class="map-fullscreen-icon" aria-hidden="true"><Icon name={isFullscreen ? 'collapse' : 'expand'} size={18} /></span>
+    {isFullscreen && <span class="map-fullscreen-label">Exit full screen</span>}
+  </button>
 }
 
 // Phones pause apps in the background, and the live connection with them, so

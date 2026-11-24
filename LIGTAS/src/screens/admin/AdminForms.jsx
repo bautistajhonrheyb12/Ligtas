@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'preact/hooks'
 import { addMapPoint, saveEvacuationCenter } from '../../lib/supabase.js'
 import { PinPicker } from '../../components/PinPicker.jsx'
+import { Portal } from '../../components/Portal.jsx'
 
 function Modal({ title, eyebrow, onClose, children, wide = false }) {
   useEffect(() => {
@@ -9,7 +10,7 @@ function Modal({ title, eyebrow, onClose, children, wide = false }) {
     return () => window.removeEventListener('keydown', closeOnEscape)
   }, [])
 
-  return <div class="alert-modal-backdrop" onClick={(event) => { if (event.target === event.currentTarget) onClose() }}>
+  return <Portal><div class="alert-modal-backdrop" onClick={(event) => { if (event.target === event.currentTarget) onClose() }}>
     <section class={`alert-modal${wide ? ' admin-modal-wide' : ''}`} role="dialog" aria-modal="true" aria-labelledby="admin-modal-title">
       <div class="alert-modal-heading">
         <div><span class="ops-eyebrow">{eyebrow}</span><h2 id="admin-modal-title">{title}</h2></div>
@@ -17,7 +18,7 @@ function Modal({ title, eyebrow, onClose, children, wide = false }) {
       </div>
       {children}
     </section>
-  </div>
+  </div></Portal>
 }
 
 export function CenterForm({ center, initialPosition = null, onClose, onSaved }) {

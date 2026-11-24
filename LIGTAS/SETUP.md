@@ -108,8 +108,16 @@ it, deploy `send-push` again (section 14), since it now also notifies families.
 their photo, at most 10 changes in 10 minutes) and `profiles.avatar_path`. Until
 it is run, the profile simply shows initials and no photo option.
 
+`20261125090000_alert_types_and_expiry.sql` adds `alerts.alert_type_other`: an
+alert of type *Other* must say what it is (such as "Chemical spill"), and that is
+shown on every screen and in notifications instead of "Other". It also limits an
+alert's end time to 30 days ahead (the app's custom end time uses the same limit).
+Older alerts are not affected. After running it, deploy `send-push` again
+(section 14) so notifications name the alert type. Until it is run, every type
+except *Other* can still be sent.
+
 Apply every migration, in order. Screens built for a newer migration than the
-database has fail with a "column does not exist" error, except the last two above.
+database has fail with a "column does not exist" error, except the last three above.
 
 Apply each migration with either option:
 

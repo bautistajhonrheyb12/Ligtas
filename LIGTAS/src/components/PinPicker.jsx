@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'preact/hooks'
 import L from 'leaflet'
-import { createLigtasMap, removeLigtasMap, watchMapSize } from '../lib/map.js'
+import { createLigtasMap, isRoughFix, removeLigtasMap, watchMapSize, zoomForAccuracy } from '../lib/map.js'
 import { isInsideSantaMaria } from '../lib/santaMaria.js'
 
 // Small map for choosing a location: tap to place the pin, drag to fine-tune.
@@ -10,6 +10,7 @@ export function PinPicker({ position, onChange, onOutside }) {
   const mapRef = useRef(null)
   const mapInstanceRef = useRef(null)
   const markerRef = useRef(null)
+  const circleRef = useRef(null)
   const onChangeRef = useRef(onChange)
   const onOutsideRef = useRef(onOutside)
   onChangeRef.current = onChange
@@ -26,6 +27,7 @@ export function PinPicker({ position, onChange, onOutside }) {
     return () => {
       stopWatching()
       markerRef.current = null
+      circleRef.current = null
       mapInstanceRef.current = null
       removeLigtasMap(map)
     }
@@ -34,12 +36,18 @@ export function PinPicker({ position, onChange, onOutside }) {
   useEffect(() => {
     const map = mapInstanceRef.current
     if (!map) return
+    circleRef.current?.remove()
+    circleRef.current = null
     if (!position) {
       markerRef.current?.remove()
       markerRef.current = null
       return
     }
     const latLng = [position.latitude, position.longitude]
+    const isGps = position.source === 'gps' && position.accuracy
+    if (isGps && !isRoughFix(position.accuracy)) {
+      circleRef.current = L.circle(latLng, { radius: position.accuracy, color: '#2f78b7', weight: 1, opacity: 0.5, fillColor: '#2f78b7', fillOpacity: 0.06, interactive: false }).addTo(map)
+    }
     if (markerRef.current) {
       markerRef.current.setLatLng(latLng)
     } else {
@@ -57,7 +65,8 @@ export function PinPicker({ position, onChange, onOutside }) {
         }
       })
     }
-    map.setView(latLng, Math.max(map.getZoom(), 16))
+    // A rough GPS fix is not zoomed down to one street.
+    map.setView(latLng, isGps ? zoomForAccuracy(position.accuracy) : Math.max(map.getZoom(), 16))
   }, [position])
 
   return <div class="pin-picker" ref={mapRef} />

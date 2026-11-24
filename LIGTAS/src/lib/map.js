@@ -62,6 +62,18 @@ export function setAreaPadding(map, padding = {}) {
   limitToArea(map)
 }
 
+// True while the map shows the whole town (zoomed out as far as it goes).
+export function showsWholeTown(map) {
+  return Boolean(map._loaded) && map.getZoom() <= map.getMinZoom() + 0.01
+}
+
+// After the map's space changes (a resize, full screen): shows the whole town
+// again if it was showing it, otherwise keeps the view someone zoomed into.
+export function refitArea(map, padding = map.ligtasPadding ?? {}, wholeTown = showsWholeTown(map)) {
+  if (wholeTown) frameArea(map, padding)
+  else setAreaPadding(map, padding)
+}
+
 // Shows the whole town, filling the map. Padding keeps it clear of anything
 // drawn over the map, such as a header or a side panel.
 export function frameArea(map, padding = {}) {
@@ -128,12 +140,15 @@ export function removeLigtasMap(map) {
 }
 
 // Keeps Leaflet in sync when its container changes size (sidebar toggles,
-// fullscreen, a phone's address bar). onResize can then frame the town again.
+// fullscreen, a phone's address bar). onResize can then frame the town again;
+// it is told whether the whole town was showing before the size changed (the
+// zoom limits move with the size, so that cannot be asked afterwards).
 export function watchMapSize(map, container, onResize = null) {
   const observer = new ResizeObserver(() => {
+    const wholeTown = showsWholeTown(map)
     map.invalidateSize()
     limitToArea(map)
-    onResize?.()
+    onResize?.(wholeTown)
   })
   observer.observe(container)
   return () => observer.disconnect()
@@ -199,20 +214,38 @@ export function drawEvacuationCenters(layer, centers, { onSelect } = {}) {
   })
 }
 
+// A phone's GPS is usually right to within tens of metres. Without a GPS fix
+// (indoors, location set to battery saving, or a computer) it can be off by
+// hundreds of metres or kilometres; a circle that size covers much of the
+// town and looks like a loading ring. So the circle is only drawn for a fix
+// close enough to help, and a rough one shows as a hollow marker instead.
+export const PRECISE_FIX_M = 150
+export const isRoughFix = (accuracy) => Number(accuracy) > PRECISE_FIX_M
+
+// How far to zoom in on a position, by how sure it is.
+export function zoomForAccuracy(accuracy) {
+  if (!accuracy || accuracy <= PRECISE_FIX_M) return 16
+  if (accuracy <= 600) return 15
+  if (accuracy <= 2000) return 14
+  return 13
+}
+
 export function drawUserPosition(layer, position) {
   if (!position) return
-  if (position.accuracy) {
+  const rough = isRoughFix(position.accuracy)
+  if (position.accuracy && !rough) {
     L.circle([position.latitude, position.longitude], {
       radius: position.accuracy,
       color: '#2f78b7',
       weight: 1,
+      opacity: 0.5,
       fillColor: '#2f78b7',
-      fillOpacity: 0.08,
+      fillOpacity: 0.06,
       interactive: false,
     }).addTo(layer)
   }
   L.marker([position.latitude, position.longitude], {
-    icon: L.divIcon({ className: 'user-marker', html: '<span></span>', iconSize: [22, 22] }),
+    icon: L.divIcon({ className: rough ? 'user-marker is-approximate' : 'user-marker', html: '<span></span>', iconSize: [22, 22] }),
     interactive: false,
     keyboard: false,
   }).addTo(layer)

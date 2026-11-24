@@ -106,7 +106,7 @@
     linear-gradient(135deg, #b4552a, #d9773a 55%, #e9a14e);
   box-shadow: 0 14px 30px rgba(192, 98, 42, .25);
   transition: background .4s ease, box-shadow .4s ease;
-  animation: ligtas-rise .5s var(--ease-out) both;
+  animation: ligtas-rise .5s var(--ease-out) backwards;
 }
 .rx-hero.is-clear {
   background:
@@ -163,7 +163,7 @@
   background: #fff4f2;
   text-align: left;
   transition: background-color .18s ease, scale .12s ease;
-  animation: ligtas-rise .5s .08s var(--ease-out) both;
+  animation: ligtas-rise .5s .08s var(--ease-out) backwards;
 }
 .rx-alert-strip:hover { background: #ffece9; }
 .rx-alert-strip:active { scale: .98; }
@@ -239,7 +239,7 @@
   border-radius: 20px;
   background: #fff;
   box-shadow: 0 6px 18px rgba(28, 58, 45, .06);
-  animation: ligtas-rise .45s var(--ease-out) both;
+  animation: ligtas-rise .45s var(--ease-out) backwards;
 }
 .rx-call::before {
   position: absolute;
@@ -352,7 +352,7 @@
   border: 1px solid var(--edge);
   border-radius: 18px;
   background: var(--tint);
-  animation: ligtas-rise .45s var(--ease-out) both;
+  animation: ligtas-rise .45s var(--ease-out) backwards;
 }
 .rx-alert--red { --tint: #fff6f5; --edge: #f6d3cf; --badge: #d94b45; }
 .rx-alert--yellow { --tint: #fffaf0; --edge: #f3e1b8; --badge: #d89a22; }

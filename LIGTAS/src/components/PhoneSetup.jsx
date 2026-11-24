@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'preact/hooks'
 import { Icon } from '../lib/ui.jsx'
+import { Portal } from './Portal.jsx'
 import { promptInstall, useInstallMode } from '../lib/install.js'
 import { disablePush, enablePush, sendTestPush, usePush } from '../lib/push.js'
 
@@ -96,7 +97,7 @@ export function InstallSteps({ mode, lang, onClose }) {
     return () => window.removeEventListener('keydown', onKey)
   }, [])
   const steps = mode === 'ios' ? t.iosSteps : t.androidSteps
-  return <div class="alert-modal-backdrop phone-backdrop" onClick={(event) => { if (event.target === event.currentTarget) onClose() }}>
+  return <Portal><div class="alert-modal-backdrop phone-backdrop" onClick={(event) => { if (event.target === event.currentTarget) onClose() }}>
     <section class="alert-modal install-steps" role="dialog" aria-modal="true" aria-labelledby="install-steps-title">
       <div class="alert-modal-heading">
         <h2 id="install-steps-title">{t.stepsTitle}</h2>
@@ -108,7 +109,7 @@ export function InstallSteps({ mode, lang, onClose }) {
       {mode === 'ios' && <p class="install-steps-note">{t.iosNote}</p>}
       <button type="button" class="install-steps-done" ref={closeRef} onClick={onClose}>{t.gotIt}</button>
     </section>
-  </div>
+  </div></Portal>
 }
 
 // One tap where the browser allows it, otherwise the steps. mode is 'none'

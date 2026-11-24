@@ -33,6 +33,10 @@ export type EventRow = { id: number; report_id: string; actor_id: string | null;
 export type AlertRow = {
   id: string
   created_by: string | null
+  // What the alert is about; for "Other", alert_type_other says what (such as
+  // "Chemical spill"). Both may be missing before the alert-types migration.
+  alert_type?: string | null
+  alert_type_other?: string | null
   severity: string
   title: string
   message: string
@@ -186,19 +190,29 @@ export function reportNotices(event: EventRow, report: ReportRow): Notice[] {
   }
 }
 
+const ALERT_TYPES_TL: Record<string, string> = { Flood: 'Baha', 'Severe weather': 'Masamang panahon', Landslide: 'Pagguho ng lupa', 'Road closure': 'Saradong daan', Other: 'Iba pa' }
+
+// What the alert is about, in the person's language; an "Other" alert shows
+// what the sender wrote (such as "Chemical spill") instead of "Other".
+export function alertTypeName(alert: AlertRow, lang: Lang) {
+  if (alert.alert_type === 'Other' && alert.alert_type_other) return alert.alert_type_other
+  if (!alert.alert_type) return null
+  return lang === 'tl' ? ALERT_TYPES_TL[alert.alert_type] ?? alert.alert_type : alert.alert_type
+}
+
 export function alertNotices(alert: AlertRow, now = Date.now()): Notice[] {
   const expires = alert.expires_at ? Date.parse(alert.expires_at) : NaN
   const ttl = Number.isFinite(expires) ? Math.max(60, Math.min(24 * HOUR, Math.round((expires - now) / 1000))) : 24 * HOUR
   const isHigh = alert.severity === 'High'
-  const message: Message = {
+  const message = (lang: Lang): Message => ({
     title: clip(alert.title, 80),
-    body: clip(join(alert.location, alert.message), 200),
+    body: clip(join(alertTypeName(alert, lang), alert.location, alert.message), 200),
     tag: `alert-${alert.id}`,
     urgent: isHigh,
     ttl,
     urgency: isHigh ? 'high' : 'normal',
-  }
-  return [{ roles: alert.target_roles, barangays: alert.barangays, skip: alert.created_by, message: () => message }]
+  })
+  return [{ roles: alert.target_roles, barangays: alert.barangays, skip: alert.created_by, message }]
 }
 
 export function testNotice(userId: string): Notice {

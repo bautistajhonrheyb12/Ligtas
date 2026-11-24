@@ -6,10 +6,11 @@ import {
   drawMapPoints,
   drawReports,
   escapeHtml,
+  refitArea,
   removeLigtasMap,
   watchMapSize,
 } from '../../lib/map.js'
-import { Icon, timeAgo } from '../../lib/ui.jsx'
+import { MapFullscreenButton, timeAgo, useFullscreenMap } from '../../lib/ui.jsx'
 
 function drawTeams(layer, teams) {
   teams.forEach((team) => {
@@ -53,7 +54,8 @@ export function AdminOperationsMap({
     })
     mapInstanceRef.current = map
     layerRef.current = L.layerGroup().addTo(map)
-    const stopWatching = watchMapSize(map, mapRef.current)
+    // Full screen and window changes: the whole town is fitted to the new size.
+    const stopWatching = watchMapSize(map, mapRef.current, (wholeTown) => refitArea(map, undefined, wholeTown))
     return () => {
       stopWatching()
       mapInstanceRef.current = null
@@ -81,13 +83,12 @@ export function AdminOperationsMap({
   }, [addingPoint])
 
   const located = reports.filter((report) => report.latitude != null).length
+  useFullscreenMap(isFullscreen, onToggleFullscreen)
 
   return <section class={`ops-map-frame admin-map-frame${isFullscreen ? ' is-fullscreen' : ''}`}>
     <div class="map-toolbar">
       <div><strong>Community operations map</strong><span>{points.length} map points · {located} located reports · {teams.length} teams sharing location</span></div>
-      <button type="button" class={`map-fullscreen-btn${isFullscreen ? ' is-active' : ''}`} onClick={onToggleFullscreen} aria-label={isFullscreen ? 'Exit full screen map' : 'Open full screen map'} title={isFullscreen ? 'Exit full screen map' : 'Open full screen map'}>
-        <span class="map-fullscreen-icon" aria-hidden="true"><Icon name={isFullscreen ? 'collapse' : 'expand'} size={18} /></span>
-      </button>
+      <MapFullscreenButton isFullscreen={isFullscreen} onToggle={onToggleFullscreen} />
     </div>
     <div class="real-map" ref={mapRef} />
     <div class="map-legend">

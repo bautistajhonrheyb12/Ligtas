@@ -4,7 +4,8 @@ import { PinPicker } from '../../components/PinPicker.jsx'
 import { coordinatesLabel, describeLocation } from '../../lib/geocode.js'
 import { queueReport } from '../../lib/offlineQueue.js'
 import { isInsideSantaMaria } from '../../lib/santaMaria.js'
-import { Icon, getCurrentPosition, reportTypeStyle } from '../../lib/ui.jsx'
+import { Icon, formatDistance, getCurrentPosition, reportTypeStyle } from '../../lib/ui.jsx'
+import { isRoughFix } from '../../lib/map.js'
 import { rescueHotline } from '../../lib/hotlines.js'
 
 const REPORT_TYPES = ['Flooding', 'Blocked road', 'Fallen tree', 'Power outage', 'Landslide', 'Fire', 'Medical', 'Other']
@@ -20,6 +21,8 @@ export function ReportDialog({ t, ownerId, hasPhone, onAddPhone, onClose, onDone
   const [location, setLocation] = useState('')
   const [position, setPosition] = useState(null)
   const [isLocating, setIsLocating] = useState(false)
+  // "Use my location": finding, found, rough (only approximate) or failed.
+  const [locateStatus, setLocateStatus] = useState({ state: 'idle', message: '' })
   const [photoFile, setPhotoFile] = useState(null)
   const [photoPreview, setPhotoPreview] = useState('')
   const [peopleAffected, setPeopleAffected] = useState('')
@@ -99,16 +102,21 @@ export function ReportDialog({ t, ownerId, hasPhone, onAddPhone, onClose, onDone
   const locate = async () => {
     setIsLocating(true)
     setError('')
+    setLocateStatus({ state: 'finding', message: t('locateFinding') })
     try {
       const here = await getCurrentPosition()
       // The database refuses GPS positions outside Santa Maria, so say so now.
       if (!isInsideSantaMaria(here.latitude, here.longitude)) {
-        setError(t('outsideAreaReport'))
+        setLocateStatus({ state: 'failed', message: t('outsideAreaReport') })
         return
       }
       setPosition({ ...here, source: 'gps' })
+      const distance = formatDistance((here.accuracy ?? 0) / 1000)
+      setLocateStatus(isRoughFix(here.accuracy)
+        ? { state: 'rough', message: t('locateRough', { distance }) }
+        : { state: 'found', message: t('locateFound', { distance }) })
     } catch (locateError) {
-      setError(locateError.message)
+      setLocateStatus({ state: 'failed', message: `${locateError.message} ${t('locatePinInstead')}` })
     } finally {
       setIsLocating(false)
     }
@@ -215,6 +223,12 @@ export function ReportDialog({ t, ownerId, hasPhone, onAddPhone, onClose, onDone
             </button>
           </div>
         </label>
+        {locateStatus.state !== 'idle' && <p class={`locate-status is-${locateStatus.state}`} role={locateStatus.state === 'failed' ? 'alert' : 'status'}>
+          {locateStatus.state === 'finding'
+            ? <span class="btn-spinner" aria-hidden="true" />
+            : <Icon name={locateStatus.state === 'found' ? 'check' : 'alert'} size={15} />}
+          <span>{locateStatus.message}</span>
+        </p>}
         {lookup.status !== 'idle' && <p class={`address-status address-status--${lookup.status}`} role="status">
           {lookup.status === 'looking' && !lookup.label && <><span class="btn-spinner" aria-hidden="true" /> <span>{t('addressLooking')}</span></>}
           {(lookup.status === 'done' || (lookup.status === 'looking' && lookup.label)) && (lookup.filled
@@ -225,7 +239,7 @@ export function ReportDialog({ t, ownerId, hasPhone, onAddPhone, onClose, onDone
             : <><Icon name="pin" size={14} /> <span>{t('addressSuggest', { address: lookup.label })}</span> <button type="button" onClick={useSuggestedAddress}>{t('addressUse')}</button></>)}
         </p>}
         <div class="pin-picker-wrap">
-          <PinPicker position={position} onChange={(next) => { setPinOutside(0); setPosition({ ...next, source: 'pin' }) }} onOutside={() => setPinOutside((count) => count + 1)} />
+          <PinPicker position={position} onChange={(next) => { setPinOutside(0); setLocateStatus({ state: 'idle', message: '' }); setPosition({ ...next, source: 'pin' }) }} onOutside={() => setPinOutside((count) => count + 1)} />
           <div class="pin-picker-caption">
             {pinOutside
               ? <span class="pin-outside" role="status"><Icon name="alert" size={14} /> {t('pinOutside')}</span>
@@ -233,7 +247,6 @@ export function ReportDialog({ t, ownerId, hasPhone, onAddPhone, onClose, onDone
               ? <><span class="pin-attached"><Icon name="check" size={14} /> {position.source === 'gps' ? t('locationAttached') : t('pinAttached')}</span><button type="button" onClick={() => setPosition(null)}>{t('removePin')}</button></>
               : <span>{t('pinOnMap')}</span>}
           </div>
-          {position?.source === 'gps' && position.accuracy > 30 && <p class="gps-accuracy-hint">{t('gpsAccuracyHint', { meters: Math.round(position.accuracy) })}</p>}
         </div>
 
         <div class="photo-field">

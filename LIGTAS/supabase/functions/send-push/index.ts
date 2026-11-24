@@ -27,7 +27,10 @@ const RECENT_MS = 15 * 60 * 1000
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 const NOTIFY_ACTIONS = ['SOS sent', 'Submitted', 'Verified', 'Rejected', 'Resolved', 'Assigned', 'Unassigned', 'En route', 'On scene']
 const REPORT_COLUMNS = 'id, report_type, location, status, reporter_id, assigned_to, people_affected, priority_needs'
-const ALERT_COLUMNS = 'id, created_by, severity, title, message, location, target_roles, barangays, expires_at, created_at'
+const ALERT_COLUMNS_BASE = 'id, created_by, alert_type, severity, title, message, location, target_roles, barangays, expires_at, created_at'
+// alert_type_other arrives with the alert-types migration; alerts still go out
+// (without it) if the function is deployed before the migration is run.
+const ALERT_COLUMNS = `${ALERT_COLUMNS_BASE}, alert_type_other`
 // Same rule as the database: only the push services of the major browsers.
 const PUSH_SERVICE = /^https:\/\/(fcm\.googleapis\.com|updates\.push\.services\.mozilla\.com|web\.push\.apple\.com|[a-z0-9-]+\.notify\.windows\.com|[a-z0-9.-]+\.push\.apple\.com)\//
 
@@ -164,7 +167,10 @@ Deno.serve(async (req) => {
   try {
     const { type, id } = payload
     if (type === 'alert' && typeof id === 'string' && UUID.test(id)) {
-      const { data: alert, error } = await admin.from('alerts').select(ALERT_COLUMNS).eq('id', id).maybeSingle()
+      let { data: alert, error } = await admin.from('alerts').select(ALERT_COLUMNS).eq('id', id).maybeSingle()
+      if (error && (error.code === '42703' || error.code === 'PGRST204')) {
+        ;({ data: alert, error } = await admin.from('alerts').select(ALERT_COLUMNS_BASE).eq('id', id).maybeSingle())
+      }
       if (error) throw error
       if (alert && isRecent(alert.created_at) && !(alert.expires_at && Date.parse(alert.expires_at) <= Date.now())) {
         await deliver(`alert:${alert.id}`, alertNotices(alert as AlertRow))

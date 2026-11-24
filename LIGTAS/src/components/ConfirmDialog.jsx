@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'preact/hooks'
 import { Icon } from '../lib/ui.jsx'
+import { Portal } from './Portal.jsx'
 
 // A confirmation box for actions that are hard to undo (rejecting, deleting,
 // signing someone out). Cancel has the focus, Escape or a tap outside cancels,
@@ -27,7 +28,7 @@ function ConfirmDialog({ title, message, details, confirmLabel = 'Confirm', canc
     }
   }, [])
 
-  return <div class="alert-modal-backdrop confirm-backdrop" onClick={(event) => { if (event.target === event.currentTarget) onCancel() }}>
+  return <Portal><div class="alert-modal-backdrop confirm-backdrop" onClick={(event) => { if (event.target === event.currentTarget) onCancel() }}>
     <section class={`alert-modal confirm-dialog confirm-dialog--${tone}`} role="alertdialog" aria-modal="true" aria-labelledby="confirm-title" aria-describedby="confirm-message">
       <span class="confirm-icon" aria-hidden="true"><Icon name={icon ?? (tone === 'danger' ? 'alert' : 'check')} size={22} /></span>
       <h2 id="confirm-title">{title}</h2>
@@ -48,7 +49,7 @@ function ConfirmDialog({ title, message, details, confirmLabel = 'Confirm', canc
         <button type="button" class="confirm-ok" disabled={!canConfirm} onClick={() => onConfirm(reasons ? chosen : true)}>{confirmLabel}</button>
       </div>
     </section>
-  </div>
+  </div></Portal>
 }
 
 // const [confirm, confirmDialog] = useConfirm()

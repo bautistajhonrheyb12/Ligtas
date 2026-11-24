@@ -540,7 +540,7 @@ h1 { font: 700 clamp(45px, 5vw, 76px)/1.05 Manrope, sans-serif; letter-spacing: 
     to{
 
         opacity:1;
-        transform:translateY(0);
+        transform: none;
 
     }
 
@@ -1392,16 +1392,12 @@ h1 { font: 700 clamp(45px, 5vw, 76px)/1.05 Manrope, sans-serif; letter-spacing: 
 .ops-alert-symbol { width: 34px; height: 34px; display: grid; place-items: center; border-radius: 8px; color: #bb4442; background: #f8e1e0; font-size: 16px; font-weight: 800; }
 .ops-alert-item--yellow .ops-alert-symbol { color: #ad791d; background: #faedcf; }
 .ops-alert-item--blue .ops-alert-symbol { color: #347f9c; background: #dceff5; }
-.ops-alert-title { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
-.ops-alert-title h3 { margin: 0; color: #17394c; font-size: 14px; line-height: 1.25; }
-.ops-alert-title span { color: #b54340; font-size: 9px; font-weight: 800; white-space: nowrap; }
-.ops-alert-item--yellow .ops-alert-title span { color: #a87821; }
-.ops-alert-item--blue .ops-alert-title span { color: #347f9c; }
 .ops-alert-item p { margin: 5px 0; color: #506970; font-size: 11px; line-height: 1.45; }
 .ops-alert-item small { color: #647b80; font-size: 10px; }
 
-/* Above the map controls (1000) and the rescuer call panel (1100), so nothing on a map shows through. */
-.alert-modal-backdrop { position: fixed; inset: 0; z-index: 1150; display: grid; place-items: center; overflow-y: auto; padding: 18px; background: rgba(5, 24, 34, .66); }
+/* Above the map controls (1000), the rescuer call panel (1100), the admin menu (1200) and a
+   full-screen staff map (1250), so nothing shows through and forms opened from a map stay on top. */
+.alert-modal-backdrop { position: fixed; inset: 0; z-index: 1270; display: grid; place-items: center; overflow-y: auto; padding: 18px; background: rgba(5, 24, 34, .66); }
 .alert-modal { width: min(100%, 500px); max-height: min(90svh, 700px); overflow-y: auto; padding: 22px; border: 1px solid #d3e2df; border-radius: 12px; color: #17394c; background: #f7faf8; box-shadow: 0 24px 70px rgba(0, 0, 0, .3); }
 .alert-modal-heading { display: flex; justify-content: space-between; align-items: start; margin-bottom: 18px; }
 .alert-modal-heading h2 { margin: 3px 0 0; color: #17394c; font: 700 21px/1.2 Manrope, sans-serif; }
@@ -1459,9 +1455,6 @@ h1 { font: 700 clamp(45px, 5vw, 76px)/1.05 Manrope, sans-serif; letter-spacing: 
   .queue-heading { margin-bottom: 8px; }
   .queue-heading h2 { font-size: 17px; }
   .ops-alerts-panel { padding: 13px 10px; }
-  .ops-alert-title { align-items: start; }
-  .ops-alert-title h3 { font-size: 12px; }
-  .ops-alert-title span { font-size: 8px; }
   .ops-alert-item { grid-template-columns: 31px minmax(0, 1fr); gap: 8px; padding: 10px 8px; }
   .ops-alert-symbol { width: 30px; height: 30px; }
   .ops-alert-item p { font-size: 10px; }
@@ -1856,7 +1849,6 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .queue-heading h2, .admin-section-heading h2 { color: var(--ui-ink); }
 .ops-alerts-panel { max-width: 1000px; padding: 22px; }
 .ops-alert-item { border: 1px solid #edf0ed; border-left: 4px solid #d95452; border-radius: 12px; }
-.ops-alert-title h3 { color: var(--ui-ink); font-size: 15px; }
 .ops-alert-item p { color: #53675e; font-size: 13px; }
 .ops-alert-item small { color: #728179; }
 .add-alert-button, .alert-cancel-button, .admin-publish-button {
@@ -2321,7 +2313,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .admin-ui .admin-stats .ops-stat,
 .admin-overview-map,
 .admin-dashboard-side > section {
-  animation: admin-dashboard-enter .42s both;
+  animation: admin-dashboard-enter .42s backwards;
 }
 .admin-ui .admin-dashboard-alert { animation-delay: .04s; }
 .admin-ui .admin-stats .ops-stat:nth-child(1) { animation-delay: .06s; }
@@ -2359,7 +2351,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 }
 @keyframes admin-dashboard-enter {
   from { opacity: 0; transform: translateY(7px); }
-  to { opacity: 1; transform: translateY(0); }
+  to { opacity: 1; transform: none; }
 }
 @media (hover: hover) and (pointer: fine) {
   .admin-ui .admin-stats .ops-stat:hover {
@@ -2761,11 +2753,11 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
   transform: rotate(90deg) scale(.9);
 }
 .admin-ui .admin-map-frame.is-fullscreen {
-  animation: admin-map-expand .28s cubic-bezier(.2, .75, .25, 1) both;
+  animation: admin-map-expand .28s cubic-bezier(.2, .75, .25, 1) backwards;
 }
 @keyframes admin-map-expand {
   from { opacity: .86; transform: scale(.985); }
-  to { opacity: 1; transform: scale(1); }
+  to { opacity: 1; transform: none; }
 }
 @media (max-width: 900px) {
   .admin-ui > .ops-header,

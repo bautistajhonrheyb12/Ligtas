@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'preact/hooks'
 import L from 'leaflet'
-import { mapTileUrl } from '../lib/map.js'
+import { isRoughFix, mapTileUrl } from '../lib/map.js'
 import { avoidAreas, hazardZones, hazardsAlongRoute, routeExposure } from '../lib/hazards.js'
 import {
   bearing,
@@ -461,7 +461,7 @@ export function NavigationView({ destination, points = [], reports = [], initial
     if (!map) return
     const current = live.current
     if (!layers.current.user) {
-      layers.current.accuracy = L.circle(point, { radius: accuracy ?? 0, color: '#2f78b7', weight: 1, fillColor: '#2f78b7', fillOpacity: 0.1, interactive: false }).addTo(map)
+      layers.current.accuracy = L.circle(point, { radius: isRoughFix(accuracy) ? 0 : accuracy ?? 0, color: '#2f78b7', weight: 1, opacity: 0.5, fillColor: '#2f78b7', fillOpacity: 0.08, interactive: false }).addTo(map)
       layers.current.user = L.marker(point, {
         icon: L.divIcon({ className: 'nav-user', html: '<span class="nav-user-arrow"></span>', iconSize: [34, 34] }),
         interactive: false,
@@ -483,7 +483,8 @@ export function NavigationView({ destination, points = [], reports = [], initial
       if (k < 1) current.frame = requestAnimationFrame(step)
     }
     current.frame = requestAnimationFrame(step)
-    layers.current.accuracy.setLatLng(point).setRadius(accuracy ?? 0)
+    // A rough fix gets no circle (it would cover the whole screen).
+    layers.current.accuracy.setLatLng(point).setRadius(isRoughFix(accuracy) ? 0 : accuracy ?? 0)
     const arrow = layers.current.user.getElement()?.querySelector('.nav-user-arrow')
     if (arrow && heading != null) arrow.style.transform = `rotate(${heading}deg)`
   }

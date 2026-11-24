@@ -861,13 +861,23 @@ export async function getReportEvents(limit = 40) {
 // Alerts
 // ---------------------------------------------------------------------------
 
+// alert_type_other (what an "Other" alert is about) comes with the alert-types
+// migration; until it is applied, alerts load without it.
+const ALERT_COLUMNS_BASE = 'id, alert_type, severity, title, message, location, target_roles, barangays, expires_at, created_at'
+let alertColumns = `${ALERT_COLUMNS_BASE}, alert_type_other`
+
 export async function getAlerts() {
   return withOfflineCache('alerts', async () => {
-    const { data, error } = await requireClient()
+    const load = () => requireClient()
       .from('alerts')
-      .select('id, alert_type, severity, title, message, location, target_roles, barangays, expires_at, created_at')
+      .select(alertColumns)
       .or(`expires_at.is.null,expires_at.gt.${new Date().toISOString()}`)
       .order('created_at', { ascending: false })
+    let { data, error } = await load()
+    if (isMissingColumn(error) && alertColumns !== ALERT_COLUMNS_BASE) {
+      alertColumns = ALERT_COLUMNS_BASE
+      ;({ data, error } = await load())
+    }
 
     if (error) {
       throw new Error(`Could not load alerts: ${error.message}`)
@@ -877,8 +887,10 @@ export async function getAlerts() {
   })
 }
 
-export async function publishAlert({ alertType, severity, title, message, location, targetRoles, barangays = null, expiresAt = null }) {
-  const { data, error } = await requireClient().from('alerts').insert({
+// alertTypeOther says what an "Other" alert is about (for example "Chemical
+// spill"); the database requires it for Other and refuses it otherwise.
+export async function publishAlert({ alertType, alertTypeOther = null, severity, title, message, location, targetRoles, barangays = null, expiresAt = null }) {
+  const row = {
     created_by: await currentUserId(),
     alert_type: alertType,
     severity,
@@ -888,9 +900,14 @@ export async function publishAlert({ alertType, severity, title, message, locati
     target_roles: targetRoles,
     barangays: barangays?.length ? barangays : null,
     expires_at: expiresAt,
-  }).select('id').single()
+  }
+  if (alertType === 'Other') row.alert_type_other = alertTypeOther?.trim() || null
+  const { data, error } = await requireClient().from('alerts').insert(row).select('id').single()
 
   if (error) {
+    if (isMissingColumn(error)) {
+      throw new Error('Alerts of another type need the latest database update (the alert-types migration). Until it is run, choose one of the listed types.')
+    }
     throw new Error(`Could not publish alert: ${error.message}`)
   }
   requestPush('alert', data.id)

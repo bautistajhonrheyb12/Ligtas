@@ -1,6 +1,7 @@
 import { useState } from 'preact/hooks'
 import { createRescuerAccount, deleteEvacuationCenter, publishAlert, saveEvacuationCenter } from '../../lib/supabase.js'
-import { Icon, LoadingCards, PasswordChecklist, alertIcon, capacityLevel, passwordProblem, reportTypeStyle, timeAgo } from '../../lib/ui.jsx'
+import { Icon, LoadingCards, PasswordChecklist, alertEndText, alertIcon, alertTypeLabel, capacityLevel, passwordProblem, reportTypeStyle, timeAgo, useMinuteClock } from '../../lib/ui.jsx'
+import { AlertTypeField, ExpiryField, alertTypeProblem, expiryFor } from '../../components/AlertFields.jsx'
 import { ConfirmAction, useConfirm } from '../../components/ConfirmDialog.jsx'
 
 // A button for something hard to undo: it asks in a confirmation box first.
@@ -231,38 +232,62 @@ export function TeamsPanel({ staff, locations, reports, onCreated, onNotice, onD
 // Alerts
 // ---------------------------------------------------------------------------
 
-const EXPIRY_OPTIONS = [['', 'Does not expire'], ['3', 'In 3 hours'], ['6', 'In 6 hours'], ['12', 'In 12 hours'], ['24', 'In 24 hours'], ['72', 'In 3 days']]
+const SEVERITIES = [
+  { value: 'Low', hint: 'For information' },
+  { value: 'Moderate', hint: 'Be prepared' },
+  { value: 'High', hint: 'Act now' },
+]
+const AUDIENCES = [['All users', 'Everyone'], ['Citizens', 'Citizens'], ['Rescuers', 'Rescuers']]
+
+// Who an alert was sent to, in words.
+function audienceText(roles) {
+  if (roles.includes('admin')) return 'Everyone'
+  if (roles.includes('citizen') && roles.includes('rescuer')) return 'Citizens and rescuers'
+  return roles.includes('rescuer') ? 'Rescuers' : 'Citizens'
+}
 
 export function AlertForm({ onCancel, onPublished }) {
+  const now = useMinuteClock()
+  const [type, setType] = useState('Flood')
+  const [typeOther, setTypeOther] = useState('')
   const [severity, setSeverity] = useState('High')
+  const [audience, setAudience] = useState(['Citizens', 'Rescuers'])
+  const [expiryChoice, setExpiryChoice] = useState('')
+  const [customEnd, setCustomEnd] = useState('')
   const [isSaving, setIsSaving] = useState(false)
   const [error, setError] = useState('')
+
+  const toggleAudience = (value) => setAudience((current) => current.includes(value) ? current.filter((item) => item !== value) : [...current, value])
 
   const submit = async (event) => {
     event.preventDefault()
     const form = new FormData(event.currentTarget)
-    const audience = form.getAll('audience')
     const targetRoles = audience.includes('All users')
       ? ['citizen', 'rescuer', 'admin']
       : [...(audience.includes('Citizens') ? ['citizen'] : []), ...(audience.includes('Rescuers') ? ['rescuer'] : [])]
-    if (!targetRoles.length) {
-      setError('Select at least one audience for this alert.')
+    const typeProblem = alertTypeProblem(type, typeOther)
+    // Worked out again at the moment of sending, so a time chosen a while ago
+    // is checked against the current time.
+    const expiry = expiryFor(expiryChoice, customEnd, Date.now())
+    const problem = typeProblem || expiry.error || (!targetRoles.length ? 'Choose who should get this alert.' : '')
+    if (problem) {
+      setError(problem)
       return
     }
-    const hours = Number(form.get('expiresIn'))
     const barangays = form.get('barangays').split(',').map((item) => item.trim()).filter(Boolean)
     setIsSaving(true)
     setError('')
     try {
       await publishAlert({
-        alertType: form.get('type'),
+        alertType: type,
+        alertTypeOther: type === 'Other' ? typeOther.trim() : null,
         severity,
         title: form.get('title').trim(),
         message: form.get('message').trim(),
         location: form.get('location').trim(),
         targetRoles,
         barangays,
-        expiresAt: hours ? new Date(Date.now() + hours * 3600000).toISOString() : null,
+        expiresAt: expiry.expiresAt,
       })
       onPublished()
     } catch (publishError) {
@@ -274,33 +299,82 @@ export function AlertForm({ onCancel, onPublished }) {
 
   return <>
     <div class="queue-heading"><div><span class="ops-eyebrow">Situation update</span><h2>Create alert</h2></div><button type="button" class="admin-back-button" onClick={onCancel}>‹ Back</button></div>
-    <form class="admin-create-alert" onSubmit={submit}>
-      <label>Alert type<select name="type" defaultValue="Flood"><option>Flood</option><option>Severe weather</option><option>Landslide</option><option>Road closure</option><option>Other</option></select></label>
-      <fieldset><legend>Severity level</legend><div class="admin-severity-options">{['Low', 'Moderate', 'High'].map((item) => <button type="button" class={`admin-severity admin-severity--${item.toLowerCase()}${severity === item ? ' is-selected' : ''}`} onClick={() => setSeverity(item)} key={item}>{item}</button>)}</div></fieldset>
-      <label>Title<input name="title" required minLength="2" maxLength="80" placeholder="e.g. Flood Alert Warning" /></label>
-      <label>Message<textarea name="message" required maxLength="1000" rows="3" placeholder="Describe the hazard and any response guidance" /></label>
-      <label>Affected area (shown on the alert)<input name="location" required minLength="2" maxLength="160" placeholder="e.g. Riverside barangays" /></label>
-      <label>Only notify these barangays <small class="admin-field-help">Comma-separated. Leave empty to notify the whole municipality.</small><input name="barangays" maxLength="400" placeholder="e.g. Poblacion, Catmon, Bagbaguin" /></label>
-      <label>Expires<select name="expiresIn" defaultValue="">{EXPIRY_OPTIONS.map(([value, label]) => <option value={value} key={value}>{label}</option>)}</select></label>
-      <fieldset class="admin-audience"><legend>Send to</legend><label><input type="checkbox" name="audience" value="All users" /> All users</label><label><input type="checkbox" name="audience" value="Citizens" defaultChecked /> Citizens</label><label><input type="checkbox" name="audience" value="Rescuers" defaultChecked /> Rescuers</label></fieldset>
+    <form class="admin-create-alert alert-compose" onSubmit={submit}>
+      <section class="alert-compose-section" aria-labelledby="alert-step-what">
+        <h3 id="alert-step-what"><span aria-hidden="true">1</span> What is happening</h3>
+        <AlertTypeField type={type} onTypeChange={(value) => { setType(value); setError('') }} other={typeOther} onOtherChange={(value) => { setTypeOther(value); setError('') }} />
+        <fieldset class="alert-severity-field">
+          <legend>Severity</legend>
+          <div class="admin-severity-options">
+            {SEVERITIES.map((item) => <button type="button" class={`admin-severity admin-severity--${item.value.toLowerCase()}${severity === item.value ? ' is-selected' : ''}`} aria-pressed={severity === item.value} onClick={() => setSeverity(item.value)} key={item.value}>
+              <strong>{item.value}</strong><small>{item.hint}</small>
+            </button>)}
+          </div>
+        </fieldset>
+      </section>
+
+      <section class="alert-compose-section" aria-labelledby="alert-step-message">
+        <h3 id="alert-step-message"><span aria-hidden="true">2</span> Message</h3>
+        <label>Title<input name="title" required minLength="2" maxLength="80" placeholder="e.g. Flood Alert Warning" /></label>
+        <label>Message<textarea name="message" required maxLength="1000" rows="3" placeholder="What is happening, and what people should do" /></label>
+      </section>
+
+      <section class="alert-compose-section" aria-labelledby="alert-step-where">
+        <h3 id="alert-step-where"><span aria-hidden="true">3</span> Where</h3>
+        <div class="alert-compose-grid">
+          <label>Affected area<small class="admin-field-help">Shown on the alert.</small><input name="location" required minLength="2" maxLength="160" placeholder="e.g. Riverside barangays" /></label>
+          <label>Only notify these barangays<small class="admin-field-help">Comma-separated. Leave empty for the whole municipality.</small><input name="barangays" maxLength="400" placeholder="e.g. Poblacion, Catmon" /></label>
+        </div>
+      </section>
+
+      <section class="alert-compose-section" aria-labelledby="alert-step-who">
+        <h3 id="alert-step-who"><span aria-hidden="true">4</span> Who and until when</h3>
+        <div class="alert-compose-grid">
+          <fieldset class="admin-audience">
+            <legend>Send to</legend>
+            <div class="alert-audience-chips">
+              {AUDIENCES.map(([value, label]) => <label class={`alert-audience-chip${audience.includes(value) ? ' is-checked' : ''}`} key={value}>
+                <input type="checkbox" name="audience" value={value} checked={audience.includes(value)} onChange={() => toggleAudience(value)} />
+                {audience.includes(value) && <Icon name="check" size={14} />}
+                {label}
+              </label>)}
+            </div>
+            <small class="admin-field-help">Everyone includes the operations team.</small>
+          </fieldset>
+          <ExpiryField choice={expiryChoice} onChoiceChange={(value) => { setExpiryChoice(value); setError('') }} custom={customEnd} onCustomChange={(value) => { setCustomEnd(value); setError('') }} now={now} />
+        </div>
+      </section>
+
       {error && <p class="form-error" role="alert" key={error}>{error}</p>}
-      <button class="admin-publish-button" type="submit" disabled={isSaving}>{isSaving && <span class="btn-spinner" aria-hidden="true" />}{isSaving ? 'Publishing…' : 'Send alert'}</button>
+      <div class="alert-compose-actions">
+        <button type="button" class="alert-cancel-button" onClick={onCancel}>Cancel</button>
+        <button class="admin-publish-button" type="submit" disabled={isSaving}>{isSaving && <span class="btn-spinner" aria-hidden="true" />}{isSaving ? 'Sending…' : 'Send alert'}</button>
+      </div>
     </form>
   </>
 }
 
 export function AlertList({ alerts, loading, error, onEnd, onDelete }) {
+  const now = useMinuteClock()
   return <div class="ops-alert-list">
-    {alerts.map((alert) => <article class={`ops-alert-item ops-alert-item--${alert.accent}`} key={alert.id}>
-      <span class="ops-alert-symbol"><Icon name={alertIcon(alert)} size={18} /></span>
-      <div>
-        <div class="ops-alert-title"><h3>{alert.title}</h3><span>{alert.severity}</span></div>
-        <p>{alert.description}</p>
-        <small>{alert.location} · {timeAgo(alert.createdAt)}</small>
-        <div class="admin-alert-meta">
-          <span><Icon name="users" size={12} /> {alert.targetRoles.join(', ')}</span>
-          {alert.barangays?.length > 0 && <span><Icon name="pin" size={12} /> {alert.barangays.join(', ')}</span>}
-          {alert.expiresAt && <span><Icon name="clock" size={12} /> Expires {new Date(alert.expiresAt).toLocaleString([], { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}</span>}
+    {alerts.map((alert) => {
+      const level = alert.severity.replace(' Severity', '')
+      return <article class={`ops-alert-item ops-alert-item--${alert.accent} alert-card`} key={alert.id}>
+        <span class="ops-alert-symbol"><Icon name={alertIcon(alert)} size={18} /></span>
+        <div class="alert-card-body">
+          <div class="alert-card-chips">
+            <span class="alert-type-chip">{alertTypeLabel(alert)}</span>
+            <span class={`alert-severity-chip is-${level.toLowerCase()}`}>{level}</span>
+            <span class={`alert-status-chip${alert.expiresAt ? ' is-timed' : ''}`}><Icon name="clock" size={12} /> {alert.expiresAt ? `Ends ${alertEndText(alert.expiresAt, now)}` : 'No end time'}</span>
+          </div>
+          <h3>{alert.title}</h3>
+          <p>{alert.description}</p>
+          <ul class="alert-card-facts">
+            <li><Icon name="pin" size={13} /> {alert.location}</li>
+            {alert.barangays?.length > 0 && <li><Icon name="home" size={13} /> Notifies {alert.barangays.join(', ')}</li>}
+            <li><Icon name="users" size={13} /> {audienceText(alert.targetRoles)}</li>
+            <li><Icon name="send" size={13} /> Sent {timeAgo(alert.createdAt).toLowerCase()}</li>
+          </ul>
         </div>
         {(onEnd || onDelete) && <div class="admin-alert-actions">
           {onEnd && <ConfirmButton class="admin-alert-end" label={`End ${alert.title}`} onConfirm={() => onEnd(alert)} ask={{
@@ -317,8 +391,8 @@ export function AlertList({ alerts, loading, error, onEnd, onDelete }) {
             icon: 'trash',
           }}><Icon name="trash" size={14} /></ConfirmButton>}
         </div>}
-      </div>
-    </article>)}
+      </article>
+    })}
     {!loading && !error && alerts.length === 0 && <p class="admin-empty-state">There are no current alerts.</p>}
     {loading && <LoadingCards label="Loading alerts…" count={2} />}
   </div>

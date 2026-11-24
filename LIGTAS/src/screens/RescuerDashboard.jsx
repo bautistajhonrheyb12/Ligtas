@@ -33,17 +33,22 @@ import {
   Icon,
   LoadingCards,
   Logo,
+  MapFullscreenButton,
   OfflineBanner,
   ToastStack,
   directionsUrl,
   distanceKm,
   formatDistance,
+  isCurrentAlert,
   playAlertChime,
   reportTypeStyle,
   timeAgo,
   toAlertView,
   alertIcon,
+  alertTypeLabel,
+  useFullscreenMap,
   useLivePosition,
+  useAlertClock,
   useOnlineStatus,
   useRefreshOnReturn,
   useTabIndicator,
@@ -58,6 +63,7 @@ import { placeReport } from '../lib/callLocation.js'
 import { CallSheet } from './rescuer/CallSheet.jsx'
 import { NotificationPrompt } from '../components/PhoneSetup.jsx'
 import { ProfileButton, ProfilePage } from '../components/Profile.jsx'
+import { AlertTypeField, alertTypeProblem } from '../components/AlertFields.jsx'
 import { syncPush } from '../lib/push.js'
 import { Tour } from '../components/Tour.jsx'
 import { TOURS, markTourDone, tourDone } from '../lib/tours.js'
@@ -143,13 +149,12 @@ function RescuerSituationMap({ reports, points, centers, myPosition, isFullscree
   }, [myPosition])
 
   const unlocated = reports.filter((report) => report.latitude == null).length
+  useFullscreenMap(isFullscreen, onToggleFullscreen)
 
   return <section class={`ops-map-frame${isFullscreen ? ' is-fullscreen' : ''}`}>
     <div class="map-toolbar">
       <div><strong>Field map</strong><span>{reports.length} open calls{unlocated ? ` · ${unlocated} without GPS (see Calls)` : ''} · tap a call for details</span></div>
-      <button type="button" class="map-fullscreen-btn" onClick={onToggleFullscreen} aria-label={isFullscreen ? 'Exit full screen map' : 'Open full screen map'}>
-        <Icon name={isFullscreen ? 'collapse' : 'expand'} size={18} />
-      </button>
+      <MapFullscreenButton isFullscreen={isFullscreen} onToggle={onToggleFullscreen} />
     </div>
     <div class="real-map" ref={mapRef} />
     {children}
@@ -195,13 +200,18 @@ export function RescuerDashboard({ onSignOut, canStartTour = true }) {
     setSelectedCallId(report.id)
     setActiveTab('map')
   }
-  const [alerts, setAlerts] = useState([])
+  const [allAlerts, setAlerts] = useState([])
+  // Only alerts that have not ended; an alert disappears at its end time.
+  const alertClock = useAlertClock(allAlerts)
+  const alerts = allAlerts.filter((alert) => isCurrentAlert(alert, alertClock))
   const [alertsLoading, setAlertsLoading] = useState(true)
   const [alertsError, setAlertsError] = useState('')
   const [alertFilter, setAlertFilter] = useState('all')
   const [isAlertFormOpen, setIsAlertFormOpen] = useState(false)
   const [isAlertSaving, setIsAlertSaving] = useState(false)
   const [newAlertSeverity, setNewAlertSeverity] = useState('High')
+  const [newAlertType, setNewAlertType] = useState('Flood')
+  const [newAlertTypeOther, setNewAlertTypeOther] = useState('')
   const [isMapFullscreen, setIsMapFullscreen] = useState(false)
   const [lastUpdated, setLastUpdated] = useState(null)
   const [isRefreshing, setIsRefreshing] = useState(false)
@@ -412,11 +422,17 @@ export function RescuerDashboard({ onSignOut, canStartTour = true }) {
   const addAlert = async (event) => {
     event.preventDefault()
     const formData = new FormData(event.currentTarget)
+    const typeProblem = alertTypeProblem(newAlertType, newAlertTypeOther)
+    if (typeProblem) {
+      setAlertsError(typeProblem)
+      return
+    }
     setIsAlertSaving(true)
     setAlertsError('')
     try {
       await publishAlert({
-        alertType: formData.get('type'),
+        alertType: newAlertType,
+        alertTypeOther: newAlertType === 'Other' ? newAlertTypeOther.trim() : null,
         severity: formData.get('severity'),
         title: formData.get('title').trim(),
         message: formData.get('description').trim(),
@@ -424,6 +440,8 @@ export function RescuerDashboard({ onSignOut, canStartTour = true }) {
         targetRoles: ['citizen', 'rescuer'],
       })
       setIsAlertFormOpen(false)
+      setNewAlertType('Flood')
+      setNewAlertTypeOther('')
       loadAlerts()
     } catch (error) {
       setAlertsError(error instanceof Error ? error.message : 'Could not publish alert.')
@@ -642,6 +660,7 @@ export function RescuerDashboard({ onSignOut, canStartTour = true }) {
           {!alertsLoading && visibleAlerts.map((alert) => <article class={`rx-alert rx-alert--${alert.accent}`} key={alert.id}>
             <span class="rx-alert-icon"><Icon name={alertIcon(alert)} size={20} /></span>
             <div>
+              <span class="alert-item-type">{alertTypeLabel(alert)}</span>
               <div class="rx-alert-title"><h3>{alert.title}</h3><span>{alert.severity.replace(' Severity', '')}</span></div>
               <p>{alert.description}</p>
               <small><Icon name="pin" size={13} /> {alert.location} · {timeAgo(alert.createdAt)}</small>
@@ -674,7 +693,7 @@ export function RescuerDashboard({ onSignOut, canStartTour = true }) {
       <section class="alert-modal" role="dialog" aria-modal="true" aria-labelledby="alert-form-title">
         <div class="alert-modal-heading"><div><span class="ops-eyebrow">Situation update</span><h2 id="alert-form-title">New alert</h2></div><button type="button" class="alert-modal-close" aria-label="Close alert form" onClick={() => setIsAlertFormOpen(false)}>×</button></div>
         <form class="alert-form" onSubmit={addAlert}>
-          <label>Alert type<select name="type" required defaultValue="Flood"><option>Flood</option><option>Severe weather</option><option>Landslide</option><option>Road closure</option><option>Other</option></select></label>
+          <AlertTypeField type={newAlertType} onTypeChange={(value) => { setNewAlertType(value); setAlertsError('') }} other={newAlertTypeOther} onOtherChange={(value) => { setNewAlertTypeOther(value); setAlertsError('') }} />
           <label>Alert title<input name="title" required minLength="2" maxLength="80" placeholder="e.g. Road access blocked" /></label>
           <label>Severity<select name="severity" required value={newAlertSeverity} onChange={(event) => setNewAlertSeverity(event.currentTarget.value)}><option>Low</option><option>Moderate</option><option>High</option></select></label>
           <label>Location<input name="location" required minLength="2" maxLength="160" placeholder="Barangay or affected area" /></label>

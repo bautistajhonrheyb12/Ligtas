@@ -25,10 +25,12 @@ import {
   OfflineBanner,
   ToastStack,
   alertSymbol,
+  alertTypeLabel,
   capacityLevel,
   directionsUrl,
   distanceKm,
   formatDistance,
+  isCurrentAlert,
   playAlertChime,
   timeAgo,
   toAlertView,
@@ -36,9 +38,11 @@ import {
   useOnlineStatus,
   useRefreshOnReturn,
   useTabIndicator,
+  useAlertClock,
   useToasts,
 } from '../lib/ui.jsx'
 import { NavigationView } from '../components/NavigationView.jsx'
+import { isRoughFix } from '../lib/map.js'
 import { pickNearestSafeCenter, travelTimesToCenters } from '../lib/evacuation.js'
 import { hazardZones } from '../lib/hazards.js'
 import { formatMeters, formatMinutes } from '../lib/navigation.js'
@@ -85,7 +89,10 @@ export function CitizenDashboard({ onSignOut }) {
   const sheetWasDraggedRef = useRef(false)
 
   const [profile, setProfile] = useState(null)
-  const [alerts, setAlerts] = useState([])
+  const [allAlerts, setAlerts] = useState([])
+  // Only alerts that have not ended; an alert disappears at its end time.
+  const alertClock = useAlertClock(allAlerts)
+  const alerts = allAlerts.filter((alert) => isCurrentAlert(alert, alertClock))
   const [alertsLoading, setAlertsLoading] = useState(true)
   const [alertsError, setAlertsError] = useState('')
   const [alertFilter, setAlertFilter] = useState('all')
@@ -339,7 +346,10 @@ export function CitizenDashboard({ onSignOut }) {
     if (userPosition) {
       setWantsMyLocation(false)
       if (isOutsideArea) pushToast(t('outsideArea'), 'info')
-      else setFocusTarget({ ...userPosition })
+      else {
+        setFocusTarget({ ...userPosition })
+        if (isRoughFix(userPosition.accuracy)) pushToast(t('locationRough', { distance: formatDistance(userPosition.accuracy / 1000) }), 'info')
+      }
     } else if (livePosition.error) {
       setWantsMyLocation(false)
       pushToast(livePosition.error, 'urgent')
@@ -482,7 +492,7 @@ export function CitizenDashboard({ onSignOut }) {
 
           {urgentAlert && <button class="alert-banner citizen-sheet-alert" type="button" onClick={() => selectTab('alerts')}>
             <div class="alert-icon">{alertSymbol(urgentAlert)}</div>
-            <div><strong>{urgentAlert.title}</strong><span>{urgentAlert.location} · {timeAgo(urgentAlert.createdAt)}</span></div>
+            <div><strong>{urgentAlert.title}</strong><span>{alertTypeLabel(urgentAlert, lang)} · {urgentAlert.location} · {timeAgo(urgentAlert.createdAt)}</span></div>
           </button>}
 
           {priorityMembers.some((member) => member.status === 'rejected') && <button class="priority-attention" type="button" onClick={() => selectTab('prepare')}>
@@ -557,6 +567,7 @@ export function CitizenDashboard({ onSignOut }) {
             {!alertsLoading && visibleAlerts.map((item) => <div class={`alert-item alert-item--${item.accent}`} key={item.id}>
               <div class="alert-item__icon">{alertSymbol(item)}</div>
               <div class="alert-item__content">
+                <span class="alert-item-type">{alertTypeLabel(item, lang)}</span>
                 <div class="alert-item__topline"><h3>{item.title}</h3><span class="alert-tag">{t(severityKeys[item.severity.replace(' Severity', '')])}</span></div>
                 <p>{item.description}</p>
                 <small>{item.location}{item.expiresAt ? ` · ${t('expires', { time: new Date(item.expiresAt).toLocaleString([], { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }) })}` : ''}</small>

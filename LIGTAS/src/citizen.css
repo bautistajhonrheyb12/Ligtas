@@ -29,7 +29,7 @@
   font-size: 13px;
   font-weight: 700;
   pointer-events: auto;
-  animation: toast-in .4s var(--ease-spring) both;
+  animation: toast-in .4s var(--ease-spring) backwards;
 }
 .toast > .ui-icon { color: #3d86c0; }
 .toast--success > .ui-icon { color: var(--ui-green); }
@@ -49,7 +49,7 @@
 .toast button:hover { background: rgba(0, 0, 0, .05); opacity: 1; }
 @keyframes toast-in {
   from { opacity: 0; translate: 0 -14px; scale: .97; }
-  to { opacity: 1; translate: 0 0; scale: 1; }
+  to { opacity: 1; translate: none; scale: none; }
 }
 
 .offline-banner {
@@ -396,7 +396,6 @@
 .address-status span { flex: 1 1 auto; min-width: 0; }
 .address-status button { flex: 0 0 auto; align-self: center; }
 .address-status button { padding: 4px 10px; border: 1px solid #bbd3c2; border-radius: 999px; color: var(--ui-green-dark); background: #f3f8f4; font: 800 11.5px 'DM Sans', sans-serif; cursor: pointer; }
-.gps-accuracy-hint { margin: 0; padding: 6px 10px; border-top: 1px solid var(--ui-border); color: #8a5a0b; background: #fff8e6; font-size: 11.5px; font-weight: 600; }
 .photo-field { display: grid; gap: 8px; }
 .photo-field-label { color: #425a4e; font-size: 13px; font-weight: 800; }
 .photo-preview { width: 100%; max-height: 180px; border-radius: 12px; object-fit: cover; }
@@ -516,7 +515,7 @@ p.sos-offline { color: #8e2f2c; font-weight: 700; }
   border-left: 4px solid var(--tone);
   border-radius: 14px;
   background: #fff;
-  animation: ligtas-rise .4s var(--ease-out) both;
+  animation: ligtas-rise .4s var(--ease-out) backwards;
 }
 .my-report.is-queued { border-style: dashed; border-left-style: solid; background: #fffcf4; }
 .my-report-top { display: grid; grid-template-columns: 36px minmax(0, 1fr) auto; align-items: center; gap: 10px; }
@@ -594,7 +593,7 @@ p.sos-offline { color: #8e2f2c; font-weight: 700; }
   border: 1px solid var(--ui-border);
   border-radius: 16px;
   background: #fff;
-  animation: ligtas-rise .4s var(--ease-out) both;
+  animation: ligtas-rise .4s var(--ease-out) backwards;
 }
 .prepare-card:nth-child(2) { animation-delay: .05s; }
 .prepare-card:nth-child(3) { animation-delay: .1s; }
@@ -686,7 +685,7 @@ p.sos-offline { color: #8e2f2c; font-weight: 700; }
 }
 .hazard-tabs button.is-active { border-color: var(--ui-green); color: #fff; background: var(--ui-green); }
 .phase-tabs { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-.tip-list { display: grid; gap: 8px; margin: 0; padding: 0; list-style: none; animation: ligtas-rise .35s var(--ease-out) both; }
+.tip-list { display: grid; gap: 8px; margin: 0; padding: 0; list-style: none; animation: ligtas-rise .35s var(--ease-out) backwards; }
 .tip-list li { display: flex; gap: 8px; color: #3f564b; font-size: 13px; line-height: 1.5; }
 .tip-list li .ui-icon { margin-top: 2px; color: var(--ui-green); }
 .profile-form { display: grid; gap: 12px; }
