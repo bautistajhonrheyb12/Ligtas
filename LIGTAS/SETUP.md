@@ -132,19 +132,25 @@ Google sign-in also returns to these addresses.
 
 ### Continue with Google (citizens only)
 
-The citizen login and sign-up screens offer *Continue with Google*. It stays broken
-until Google is turned on in Supabase:
+The citizen login and sign-up screens offer *Continue with Google*, using Google's
+own button (Google Identity Services, `src/lib/googleSignIn.js`). Google's sign-in
+window then shows LIGTAS's address instead of the Supabase project address. If the
+button cannot load (no signal, or blocked), the screen falls back to the older
+redirect sign-in. It stays broken until Google is turned on in Supabase:
 
 1. In [Google Cloud Console](https://console.cloud.google.com/) create a project, then
    open *APIs & Services → OAuth consent screen* and set it up (External, app name
    LIGTAS, your support email).
 2. Open *Credentials → Create credentials → OAuth client ID*, type **Web application**.
    - **Authorized JavaScript origins:** the app address (for example
-     `https://ligtas-self.vercel.app`) and `http://localhost:5173`
+     `https://ligtas-self.vercel.app`) and `http://localhost:5173`. Google's button
+     refuses to work on any address missing from this list.
    - **Authorized redirect URIs:** `https://<project-ref>.supabase.co/auth/v1/callback`
      (Supabase shows this exact address on the Google provider page)
 3. In Supabase open *Authentication → Sign In / Providers → Google*, switch it on and
    paste the **Client ID** and **Client Secret**.
+4. Put the same Client ID in `src/lib/googleSignIn.js` (or set `VITE_GOOGLE_CLIENT_ID`).
+   It is not a secret: it is part of every Google sign-in link.
 
 While the consent screen is in *Testing*, only the Google accounts listed under
 *Test users* can sign in. Publish the app there to let anyone in.
@@ -219,7 +225,9 @@ until the connection returns. Service workers only run over HTTPS (or `localhost
 
 `vercel.json` sends security headers with every page. The Content Security Policy
 only lets the app load scripts from its own site and talk to its own Supabase project,
-OpenStreetMap tiles and Google Fonts. **If the Supabase project changes, update the
+OpenStreetMap tiles and Google Fonts, plus Google's sign-in button
+(`accounts.google.com/gsi/`). `Cross-Origin-Opener-Policy` is
+`same-origin-allow-popups` so Google's sign-in window can hand its result back. **If the Supabase project changes, update the
 project address in `vercel.json`**, or the app cannot reach the database.
 
 The database rules, two-step sign-in and these headers do not cover everything. These

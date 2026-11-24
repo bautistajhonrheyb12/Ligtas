@@ -406,11 +406,24 @@ export async function signInWithGoogle() {
   }
 }
 
-// The session token lists how the person signed in; Google sign-in shows as 'oauth'.
+// Google's own button (lib/googleSignIn.js) hands over a signed ID token;
+// Supabase checks it (and the nonce) and signs the person in.
+export async function signInWithGoogleToken(token, nonce) {
+  const { data, error } = await requireClient().auth.signInWithIdToken({ provider: 'google', token, nonce })
+  if (error) {
+    throw new Error(isNetworkError(error)
+      ? 'No connection. Connect to the internet and try again.'
+      : `Google sign-in didn't finish: ${error.message}`)
+  }
+  return data.user
+}
+
+// The session token lists how the person signed in: Google shows as 'oauth'
+// (the redirect sign-in) or 'id_token' (Google's button).
 export function isGoogleSession(session) {
   try {
     const payload = JSON.parse(atob(session.access_token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')))
-    return payload.amr?.some((entry) => entry.method === 'oauth') ?? false
+    return payload.amr?.some((entry) => entry.method === 'oauth' || entry.method === 'id_token') ?? false
   } catch {
     return false
   }

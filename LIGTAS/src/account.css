@@ -349,3 +349,12 @@ button.profile-row:focus-visible, a.profile-row:focus-visible { outline-offset: 
   text-underline-offset: 3px;
   cursor: pointer;
 }
+
+/* "Continue with Google": Google draws its own button in the holder; LIGTAS's
+   button stands in until it has loaded (or if it cannot load). */
+.google-signin { display: grid; gap: 8px; }
+.google-signin-button { display: flex; width: 100%; justify-content: center; }
+.google-signin.is-ready .google-signin-button { min-height: 44px; }
+.google-signin.is-busy .google-signin-button { opacity: .55; pointer-events: none; }
+.google-signin-status { display: flex; align-items: center; justify-content: center; gap: 8px; margin: 0; color: var(--ui-muted); font-size: 13px; font-weight: 700; }
+.google-signin-status .btn-spinner { margin: 0; color: var(--ui-green); }

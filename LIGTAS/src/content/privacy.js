@@ -95,7 +95,7 @@ export const privacy = {
         { providers: [
           ['Supabase', 'Database, sign-in and file storage for profiles, reports, photos and proofs.', SUPABASE],
           ['Vercel', 'Hosts the LIGTAS website and app.', VERCEL],
-          ['Google', 'Sign-in, only if you choose Continue with Google.', GOOGLE],
+          ['Google', 'Sign-in with Google. Its sign-in button is loaded from Google on the citizen sign-in screen, so Google receives basic technical details (such as your IP address and browser) when that screen opens. Your Google account details are shared only if you choose Continue with Google.', GOOGLE],
           ['OpenStreetMap', 'Map images of the area you view, and the address of a spot you pin in a report (Nominatim).', OSM],
           ['FOSSGIS (Germany)', 'Directions and travel times: your starting point and destination, and the nearest named road to a pinned spot.', FOSSGIS],
           ['Your browser\'s push service (Google, Apple, Mozilla or Microsoft)', 'Delivers notifications to your phone, if you turn them on. Messages are encrypted, so the push service cannot read them.'],
@@ -265,7 +265,7 @@ export const privacy = {
         { providers: [
           ['Supabase', 'Database, sign-in at storage ng file para sa mga profile, ulat, litrato at patunay.', SUPABASE],
           ['Vercel', 'Nagho-host ng website at app ng LIGTAS.', VERCEL],
-          ['Google', 'Sign-in, kung pipiliin mo lang ang Continue with Google.', GOOGLE],
+          ['Google', 'Pag-sign in gamit ang Google. Mula sa Google ang sign-in button sa sign-in screen ng mamamayan, kaya nakakatanggap ang Google ng ilang teknikal na detalye (gaya ng IP address at browser mo) kapag binuksan ang screen na iyon. Ibinabahagi lang ang detalye ng Google account mo kung pipiliin mo ang Continue with Google.', GOOGLE],
           ['OpenStreetMap', 'Mga larawan ng mapa ng lugar na tinitingnan mo, at ang address ng lugar na pinin mo sa ulat (Nominatim).', OSM],
           ['FOSSGIS (Germany)', 'Direksyon at tagal ng biyahe: ang simula at destinasyon mo, at ang pinakamalapit na kalyeng may pangalan sa naka-pin na lugar.', FOSSGIS],
           ['Push service ng browser mo (Google, Apple, Mozilla o Microsoft)', 'Naghahatid ng mga notification sa telepono mo, kung bubuksan mo ang mga ito. Naka-encrypt ang mga mensahe, kaya hindi ito mababasa ng push service.'],

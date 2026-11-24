@@ -10,6 +10,7 @@ import {
   savedSignInUserId,
   isSessionEnded,
   SESSION_ENDED_EVENT,
+  signInWithGoogleToken,
   supabase,
   takeGoogleSignIn,
 } from './lib/supabase.js'
@@ -188,6 +189,29 @@ export function App() {
     setAuthMessage('')
     setShowAuth(false)
     return { confirmationRequired: false }
+  }
+
+  // Google's own button (citizens only): the signed ID token becomes a LIGTAS
+  // sign-in on this page, with no trip through the Supabase address.
+  const handleGoogleCredential = async (token, nonce) => {
+    if (!supabase) throw new Error('Supabase is not configured.')
+    const user = await signInWithGoogleToken(token, nonce)
+    let role
+    try {
+      role = await getProfileRole(user.id)
+    } catch (profileError) {
+      await supabase.auth.signOut({ scope: 'local' })
+      throw profileError
+    }
+    // Rescuer and admin accounts must use their email and password, even when
+    // Google is linked to the same email address.
+    if (role !== 'citizen') {
+      await supabase.auth.signOut({ scope: 'local' })
+      throw new Error('Google sign-in is for citizen accounts only. Sign in with your email and password instead.')
+    }
+    await completeSignIn(role)
+    setAuthMessage('')
+    setShowAuth(false)
   }
 
   const handleSignOut = async () => {
@@ -400,7 +424,7 @@ export function App() {
     </main>
   }
   if (isRestoring) return <main class="app-splash" aria-busy="true" aria-label="Loading LIGTAS"><Logo /><span class="btn-spinner" aria-hidden="true" /></main>
-  if (showAuth) return <main class="site auth-site"><AuthScreen showAdmin={isStaffAccess} role={authRole} mode={authMode} onChooseRole={(role) => { setAuthMessage(''); setAuthRole(role) }} onModeChange={setAuthMode} onBack={() => setAuthRole(null)} onClose={() => setShowAuth(false)} onLogin={handleLogin} authMessage={authMessage} /></main>
+  if (showAuth) return <main class="site auth-site"><AuthScreen showAdmin={isStaffAccess} role={authRole} mode={authMode} onChooseRole={(role) => { setAuthMessage(''); setAuthRole(role) }} onModeChange={setAuthMode} onBack={() => setAuthRole(null)} onClose={() => setShowAuth(false)} onLogin={handleLogin} onGoogleCredential={handleGoogleCredential} authMessage={authMessage} /></main>
   if (isAuthenticated && userRole) {
     if (dashboard.Dashboard) return <>
       <dashboard.Dashboard onSignOut={handleSignOut} canStartTour={staffTerms === 'accepted'} />
