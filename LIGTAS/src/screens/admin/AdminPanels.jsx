@@ -1,6 +1,20 @@
 import { useState } from 'preact/hooks'
-import { createRescuerAccount, deleteEvacuationCenter, publishAlert, saveEvacuationCenter } from '../../lib/supabase.js'
-import { Icon, LoadingCards, PasswordChecklist, alertEndText, alertIcon, alertTypeLabel, capacityLevel, passwordProblem, reportTypeStyle, timeAgo, useMinuteClock } from '../../lib/ui.jsx'
+import { createRescuerAccount, deleteEvacuationCenter, publishAlert, updateEvacuationCenterStatus } from '../../lib/supabase.js'
+import { Icon, LoadingCards, PasswordChecklist, alertEndText, alertIcon, alertTypeLabel, passwordProblem, reportTypeStyle, timeAgo, useMinuteClock } from '../../lib/ui.jsx'
+import {
+  MDRRMO_GUIDANCE,
+  centerCapacity,
+  centerLoad,
+  centerSummary,
+  centerTitle,
+  classificationOf,
+  contactNumbers,
+  facilityTypeLabel,
+  formatRange,
+  hasPin,
+  locationStatusOf,
+  occupantLimit,
+} from '../../lib/centers.js'
 import { AlertTypeField, ExpiryField, alertTypeProblem, expiryFor } from '../../components/AlertFields.jsx'
 import { ConfirmAction, useConfirm } from '../../components/ConfirmDialog.jsx'
 
@@ -14,26 +28,34 @@ export function ConfirmButton({ class: className, label, ask, onConfirm, disable
 // Evacuation centers
 // ---------------------------------------------------------------------------
 
+const LOCATION_TEXT = {
+  confirmed: 'Pin checked on site',
+  unconfirmed: 'Pin not yet checked on site',
+  unknown: 'Needs a location: not on the map',
+}
+const LEVEL_TEXT = { open: 'Space available', busy: 'Filling up', critical: 'Near capacity', unknown: 'Capacity not confirmed' }
+
+function capacityText(center) {
+  const load = centerLoad(center)
+  if (load.status === 'documented') return { main: `${center.occupants} / ${center.capacity}`, sub: `Registered capacity · ${load.percent}% occupied · ${load.spaceLow} spaces left` }
+  if (load.status === 'estimated') return { main: `${center.occupants} / ${formatRange(center.capacity, center.capacity_max)}`, sub: `Estimated capacity (${center.capacity_source || MDRRMO_GUIDANCE}) · about ${formatRange(load.spaceLow, load.spaceHigh)} spaces left` }
+  return { main: `${center.occupants} here`, sub: 'Capacity not confirmed: record it when known' }
+}
+
 function CenterCard({ center, onEdit, onNotice, onChanged }) {
   const [isSaving, setIsSaving] = useState(false)
   const [confirm, confirmDialog] = useConfirm()
-  const level = capacityLevel(center.occupants, center.capacity)
-  const percent = Math.round(center.occupants / center.capacity * 100)
+  const load = centerLoad(center)
+  const kind = classificationOf(center)
+  const location = locationStatusOf(center)
+  const capacity = capacityText(center)
+  const title = centerTitle(center)
 
+  // Only the changed fields are written, so nothing else about the center is touched.
   const save = async (changes) => {
     setIsSaving(true)
     try {
-      await saveEvacuationCenter({
-        id: center.id,
-        name: center.name,
-        location: center.location,
-        latitude: center.latitude,
-        longitude: center.longitude,
-        capacity: center.capacity,
-        occupants: center.occupants,
-        isOpen: center.is_open,
-        ...changes,
-      })
+      await updateEvacuationCenterStatus(center.id, changes)
       onChanged()
     } catch (error) {
       onNotice(error.message, true)
@@ -42,14 +64,15 @@ function CenterCard({ center, onEdit, onNotice, onChanged }) {
     }
   }
 
-  const adjust = (delta) => save({ occupants: Math.min(Math.max(center.occupants + delta, 0), center.capacity) })
+  const limit = occupantLimit(center)
+  const adjust = (delta) => save({ occupants: Math.min(Math.max(center.occupants + delta, 0), limit) })
 
   // Closing hides the center from citizens' "nearest center" and directions,
   // so it is confirmed; opening is not.
   const toggleOpen = async () => {
     if (center.is_open) {
       const sure = await confirm({
-        title: `Close ${center.name}?`,
+        title: `Close ${title}?`,
         message: 'Citizens will no longer be sent here: it is removed from "nearest evacuation center" and from directions.',
         confirmLabel: 'Close center',
         tone: 'warning',
@@ -62,7 +85,7 @@ function CenterCard({ center, onEdit, onNotice, onChanged }) {
 
   const remove = async () => {
     const sure = await confirm({
-      title: `Remove ${center.name}?`,
+      title: `Remove ${title}?`,
       message: 'It disappears from every map and from the list of evacuation centers. This cannot be undone.',
       confirmLabel: 'Remove center',
       icon: 'trash',
@@ -71,39 +94,49 @@ function CenterCard({ center, onEdit, onNotice, onChanged }) {
     setIsSaving(true)
     try {
       await deleteEvacuationCenter(center.id)
-      onNotice(`${center.name} was removed.`)
+      onNotice(`${title} was removed.`)
     } catch (error) {
       onNotice(error.message, true)
       setIsSaving(false)
     }
   }
 
-  return <article class={`admin-center-card admin-center-card--rich${center.is_open ? '' : ' is-closed'}`}>
+  return <article class={`admin-center-card admin-center-card--rich${center.is_open ? '' : ' is-closed'}${kind ? ` is-${kind}` : ''}`}>
     <div class="admin-center-info">
-      <h3>{center.name}</h3>
-      <p>{center.location}{center.latitude == null ? ' · not on map' : ''}</p>
+      <div class="admin-center-chips center-kind-row">
+        {kind ? <span class={`center-kind is-${kind}`}>{kind === 'official' ? 'Official evacuation center' : 'Temporary evacuation site'}</span> : <span class="center-kind is-missing">Not classified</span>}
+        {center.facility_type && <span class="center-type-chip">{facilityTypeLabel(center.facility_type)}</span>}
+      </div>
+      <h3>{title}</h3>
+      <p>{center.location}</p>
+      <ul class="center-facts">
+        <li class={`is-${location}`}><Icon name="pin" size={13} /> {LOCATION_TEXT[location]}</li>
+        {contactNumbers(center).length > 0 && <li><Icon name="phone" size={13} /> {center.contact_numbers}</li>}
+        {center.source && <li><Icon name="file" size={13} /> {center.source}</li>}
+      </ul>
+      {center.verification_notes && <details class="center-notes"><summary>What still needs checking</summary><p>{center.verification_notes}</p></details>}
       <div class="admin-center-chips">
-        <span class={`capacity-chip capacity-chip--${center.is_open ? level.level : 'closed'}`}>{center.is_open ? level.label : 'Closed'}</span>
+        <span class={`capacity-chip capacity-chip--${center.is_open ? load.level : 'closed'}`}>{center.is_open ? LEVEL_TEXT[load.level] : 'Closed'}</span>
         <small>Updated {timeAgo(center.updated_at).toLowerCase()}</small>
       </div>
     </div>
     <div class="admin-center-capacity">
-      <strong>{center.occupants} / {center.capacity}</strong>
-      <span>{percent}% occupied · {Math.max(center.capacity - center.occupants, 0)} spaces left</span>
-      <div><i data-level={level.level} style={{ width: `${percent}%` }} /></div>
-      <div class="admin-occupancy-controls" aria-label={`Adjust occupants for ${center.name}`}>
+      <strong>{capacity.main}</strong>
+      <span>{capacity.sub}</span>
+      {load.percent != null && <div><i data-level={load.level} style={{ width: `${load.percent}%` }} /></div>}
+      <div class="admin-occupancy-controls" aria-label={`Adjust occupants for ${title}`}>
         <button type="button" disabled={isSaving || center.occupants === 0} onClick={() => adjust(-10)}>−10</button>
         <button type="button" disabled={isSaving || center.occupants === 0} onClick={() => adjust(-1)}>−1</button>
-        <button type="button" disabled={isSaving || center.occupants >= center.capacity} onClick={() => adjust(1)}>+1</button>
-        <button type="button" disabled={isSaving || center.occupants >= center.capacity} onClick={() => adjust(10)}>+10</button>
+        <button type="button" disabled={isSaving || center.occupants >= limit} onClick={() => adjust(1)}>+1</button>
+        <button type="button" disabled={isSaving || center.occupants >= limit} onClick={() => adjust(10)}>+10</button>
       </div>
     </div>
     <div class="admin-center-actions">
       <button type="button" class={`admin-toggle${center.is_open ? ' is-on' : ''}`} role="switch" aria-checked={center.is_open} disabled={isSaving} onClick={toggleOpen}>
         <i aria-hidden="true" /> {center.is_open ? 'Open' : 'Closed'}
       </button>
-      <button type="button" class="admin-icon-button" onClick={() => onEdit(center)} aria-label={`Edit ${center.name}`}><Icon name="edit" size={16} /></button>
-      <button type="button" class="admin-icon-button is-danger" disabled={isSaving} onClick={remove} aria-label={`Remove ${center.name}`}>
+      <button type="button" class="admin-icon-button" onClick={() => onEdit(center)} aria-label={`Edit ${title}`}><Icon name="edit" size={16} /></button>
+      <button type="button" class="admin-icon-button is-danger" disabled={isSaving} onClick={remove} aria-label={`Remove ${title}`}>
         <Icon name="trash" size={16} />
       </button>
     </div>
@@ -111,19 +144,53 @@ function CenterCard({ center, onEdit, onNotice, onChanged }) {
   </article>
 }
 
+const CENTER_FILTERS = [
+  ['all', 'All', () => true],
+  ['official', 'Official', (center) => classificationOf(center) === 'official'],
+  ['temporary', 'Temporary', (center) => classificationOf(center) === 'temporary'],
+  ['location', 'Needs a location', (center) => !hasPin(center)],
+  ['pin', 'Pin not checked', (center) => locationStatusOf(center) === 'unconfirmed'],
+  ['capacity', 'Capacity not confirmed', (center) => centerCapacity(center).status === 'unverified'],
+]
+
 export function CentersPanel({ centers, loading, onAdd, onEdit, onNotice, onChanged }) {
+  const [filter, setFilter] = useState('all')
+  const [search, setSearch] = useState('')
+  const summary = centerSummary(centers)
   const open = centers.filter((center) => center.is_open)
-  const capacity = open.reduce((sum, center) => sum + center.capacity, 0)
-  const occupants = open.reduce((sum, center) => sum + center.occupants, 0)
+  const words = search.trim().toLowerCase().split(/\s+/).filter(Boolean)
+  const matches = (center) => words.every((word) => `${center.name} ${center.barangay ?? ''} ${center.location}`.toLowerCase().includes(word))
+  const visible = centers
+    .filter(CENTER_FILTERS.find(([key]) => key === filter)[2])
+    .filter(matches)
+    .sort((a, b) => (classificationOf(a) === 'official' ? 0 : 1) - (classificationOf(b) === 'official' ? 0 : 1)
+      || (a.barangay ?? '').localeCompare(b.barangay ?? '') || a.name.localeCompare(b.name))
 
   return <section class="admin-centers-panel">
     <div class="queue-heading">
       <div><span class="ops-eyebrow">Shelter capacity</span><h2>Evacuation centers</h2></div>
       <button type="button" class="add-alert-button" onClick={onAdd}><Icon name="plus" size={16} /> Add center</button>
     </div>
-    <p class="admin-panel-summary">{open.length} of {centers.length} open · {occupants.toLocaleString()} sheltered · {Math.max(capacity - occupants, 0).toLocaleString()} spaces available</p>
+    {centers.length > 0 && <div class="center-summary">
+      <div><strong>{summary.total}</strong><span>{summary.official} official · {summary.temporary} temporary{summary.unclassified ? ` · ${summary.unclassified} not classified` : ''}</span></div>
+      <div><strong>{open.length}</strong><span>open · {summary.sheltered.toLocaleString()} people sheltered</span></div>
+      <div><strong>{summary.onMap}</strong><span>on the map ({summary.pinConfirmed} checked on site) · {summary.needsLocation} need a location</span></div>
+      <div class="center-summary-capacity">
+        <span>Capacity, kept apart by how it is known:</span>
+        <span>{summary.documented.count} with an official figure{summary.documented.count ? ` (${summary.documented.capacity.toLocaleString()} people)` : ''}</span>
+        <span>{summary.estimated.count} estimated{summary.estimated.count ? ` (${formatRange(summary.estimated.low, summary.estimated.high)} people, estimate only)` : ''}</span>
+        <span>{summary.unverified} not confirmed</span>
+      </div>
+    </div>}
+    {centers.length > 0 && <div class="center-filters">
+      <div class="center-filter-chips" role="group" aria-label="Show">
+        {CENTER_FILTERS.map(([key, label, test]) => <button type="button" key={key} class={filter === key ? 'is-active' : ''} aria-pressed={filter === key} onClick={() => setFilter(key)}>{label} <b>{centers.filter(test).length}</b></button>)}
+      </div>
+      <input type="search" value={search} onInput={(event) => setSearch(event.currentTarget.value)} placeholder="Search centers or barangays" aria-label="Search evacuation centers by name, barangay or address" />
+    </div>}
     {loading && <LoadingCards label="Loading evacuation centers…" />}
-    {centers.map((center) => <CenterCard center={center} key={center.id} onEdit={onEdit} onNotice={onNotice} onChanged={onChanged} />)}
+    {visible.map((center) => <CenterCard center={center} key={center.id} onEdit={onEdit} onNotice={onNotice} onChanged={onChanged} />)}
+    {!loading && centers.length > 0 && visible.length === 0 && <p class="admin-empty-state">No centers match. Try another filter or search.</p>}
     {!loading && centers.length === 0 && <p class="admin-empty-state">No evacuation centers yet. Add the first one so citizens can find shelter.</p>}
   </section>
 }

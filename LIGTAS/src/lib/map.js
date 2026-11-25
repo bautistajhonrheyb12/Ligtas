@@ -2,6 +2,7 @@ import L from 'leaflet'
 import { santaMariaBoundary } from './santaMaria.js'
 import { iconHtml } from './icons.jsx'
 import { reportTypeStyle } from './ui.jsx'
+import { centerLoad, classificationOf, facilityTypeLabel, locationStatusOf } from './centers.js'
 
 export const mapCenter = [14.842, 120.985]
 export const mapTileUrl = 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png'
@@ -197,18 +198,39 @@ export function drawMapPoints(layer, points, { newIds = null } = {}) {
   })
 }
 
-export function drawEvacuationCenters(layer, centers, { onSelect } = {}) {
+// Wording for evacuation center popups; the resident map passes its own
+// language (see CitizenMap).
+export const centerPopupLabels = {
+  official: 'Official evacuation center',
+  temporary: 'Temporary evacuation site',
+  center: 'Evacuation center',
+  closed: 'Closed',
+  type: (type) => facilityTypeLabel(type),
+  capacity: (center, load) => (load.status === 'documented'
+    ? `${load.spaceLow} of ${center.capacity} spaces available`
+    : load.status === 'estimated'
+      ? (center.occupants > 0 ? `${center.occupants} here · room for about ${load.spaceLow}–${load.spaceHigh} more (estimate)` : `Estimated capacity ${center.capacity}–${center.capacity_max} people`)
+      : center.occupants > 0 ? `${center.occupants} people here · capacity not confirmed` : 'Capacity not confirmed'),
+  unconfirmedPin: 'Pin from map data, not yet checked on site',
+}
+
+// Official centers are solid green squares; temporary sites are white circles
+// with a dashed green edge, so the two differ in shape as well as colour.
+export function drawEvacuationCenters(layer, centers, { onSelect, labels = centerPopupLabels } = {}) {
   centers.filter((center) => center.latitude != null).forEach((center) => {
-    const available = Math.max(center.capacity - center.occupants, 0)
+    const kind = classificationOf(center)
+    const capacityText = labels.capacity(center, centerLoad(center))
+    const tag = !center.is_open ? labels.closed : kind === 'official' ? labels.official : kind === 'temporary' ? labels.temporary : labels.center
+    const details = [center.facility_type ? labels.type(center.facility_type) : null, center.barangay].filter(Boolean).join(' · ')
     const marker = L.marker([center.latitude, center.longitude], {
       icon: L.divIcon({
-        className: `center-marker${center.is_open ? '' : ' is-closed'}`,
+        className: ['center-marker', kind ? `is-${kind}` : '', center.is_open ? '' : 'is-closed'].filter(Boolean).join(' '),
         html: `<span>${iconHtml('home', 15)}</span>`,
         iconSize: [30, 30],
       }),
-      title: center.name,
+      title: `${center.name}${kind === 'temporary' ? ` (${labels.temporary})` : kind === 'official' ? ` (${labels.official})` : ''}`,
     })
-      .bindPopup(`<span class="map-popup-tag map-popup-tag--safe">${center.is_open ? 'Evacuation center' : 'Closed'}</span><strong>${escapeHtml(center.name)}</strong><br />${escapeHtml(center.location)}<br /><small>${available} of ${center.capacity} spaces available</small>`, { maxWidth: 240 })
+      .bindPopup(`<span class="map-popup-tag map-popup-tag--${center.is_open ? (kind === 'temporary' ? 'temporary' : 'safe') : 'closed'}">${escapeHtml(tag)}</span><strong>${escapeHtml(center.name)}</strong>${details ? `<br /><small>${escapeHtml(details)}</small>` : ''}<br />${escapeHtml(center.location)}<br /><small>${escapeHtml(capacityText)}</small>${locationStatusOf(center) === 'unconfirmed' ? `<br /><small class="map-popup-note">${escapeHtml(labels.unconfirmedPin)}</small>` : ''}`, { maxWidth: 250 })
       .addTo(layer)
     if (onSelect) marker.on('click', () => onSelect(center))
   })

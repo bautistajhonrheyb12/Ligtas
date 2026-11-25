@@ -26,8 +26,6 @@ import {
   ToastStack,
   alertSymbol,
   alertTypeLabel,
-  capacityLevel,
-  directionsUrl,
   distanceKm,
   formatDistance,
   isCurrentAlert,
@@ -47,6 +45,8 @@ import { pickNearestSafeCenter, travelTimesToCenters } from '../lib/evacuation.j
 import { hazardZones } from '../lib/hazards.js'
 import { formatMeters, formatMinutes } from '../lib/navigation.js'
 import { CitizenMap } from './citizen/CitizenMap.jsx'
+import { CenterKindChip, CentersDirectory, capacityLine } from '../components/CentersDirectory.jsx'
+import { centerLoad, centerTitle, hasPin } from '../lib/centers.js'
 import { MyReports } from './citizen/MyReports.jsx'
 import { PreparePanel } from './citizen/PreparePanel.jsx'
 import { PriorityQuestion } from './citizen/Priority.jsx'
@@ -64,7 +64,7 @@ import { ProfileButton, ProfilePage } from '../components/Profile.jsx'
 import { TOURS, markTourDone, tourDone } from '../lib/tours.js'
 import { syncPush } from '../lib/push.js'
 
-const capacityKeys = { open: 'capOpen', busy: 'capBusy', critical: 'capCritical' }
+const capacityKeys = { open: 'capOpen', busy: 'capBusy', critical: 'capCritical', unknown: 'capUnknown' }
 const severityKeys = { High: 'sevHigh', Moderate: 'sevModerate', Low: 'sevLow' }
 const statusKeys = { Pending: 'statusPending', Verified: 'statusVerified', Resolved: 'statusResolved', Rejected: 'statusRejected', Cancelled: 'statusCancelled' }
 
@@ -258,18 +258,25 @@ export function CitizenDashboard({ onSignOut }) {
   const urgentAlert = areaAlerts.find((alert) => alert.accent === 'red')
 
   const openCenters = centers.filter((center) => center.is_open)
+  // Free spaces count documented capacity and the low end of estimates (never
+  // a center whose capacity is unknown); the label says "estimate" whenever an
+  // estimate is included.
+  const openLoads = openCenters.map(centerLoad)
   const stats = {
     openCenters: openCenters.length,
-    slots: openCenters.reduce((sum, center) => sum + Math.max(center.capacity - center.occupants, 0), 0),
+    slots: openLoads.reduce((sum, load) => sum + (load.spaceLow ?? 0), 0),
+    slotsEstimated: openLoads.some((load) => load.status === 'estimated'),
     sheltered: centers.reduce((sum, center) => sum + center.occupants, 0),
     danger: points.filter((point) => point.point_type === 'Danger zone').length,
   }
+  // Only centers with a map pin can be "nearest"; the rest are in the full list.
   const nearestCenters = openCenters
+    .filter(hasPin)
     .map((center) => ({
       ...center,
-      distance: userPosition && center.latitude != null ? distanceKm(userPosition, center) : null,
+      distance: userPosition ? distanceKm(userPosition, center) : null,
       road: travelTimes?.has(center.id) ? travelTimes.get(center.id) : undefined,
-      available: Math.max(center.capacity - center.occupants, 0),
+      available: centerLoad(center).spaceHigh ?? -1,
     }))
     // By travel time on the road when known, then by straight-line distance.
     .sort((a, b) => (a.road !== undefined || b.road !== undefined
@@ -313,7 +320,7 @@ export function CitizenDashboard({ onSignOut }) {
         return
       }
       const travel = times.get(center.id)
-      setNavTarget({ ...center, notice: t('evacuateChosen', { name: center.name, time: formatMinutes(travel.timeS) }) })
+      setNavTarget({ ...center, notice: t('evacuateChosen', { name: centerTitle(center), time: formatMinutes(travel.timeS) }) })
     } catch (error) {
       pushToast(error.message, 'urgent')
     } finally {
@@ -421,7 +428,7 @@ export function CitizenDashboard({ onSignOut }) {
     </header>
     <div class="map-section">
       <div class={`map-frame${isMapFullscreen ? ' is-fullscreen' : ''}`}>
-        <CitizenMap points={points} centers={centers} userPosition={isOutsideArea ? null : userPosition} focusTarget={focusTarget} locationError={livePosition.error} isLocating={isLocating} onLocate={locateMe} isFullscreen={isMapFullscreen} t={t} />
+        <CitizenMap points={points} centers={centers} userPosition={isOutsideArea ? null : userPosition} focusTarget={focusTarget} locationError={livePosition.error} isLocating={isLocating} onLocate={locateMe} isFullscreen={isMapFullscreen} t={t} lang={lang} />
       </div>
     </div>
 
@@ -502,7 +509,7 @@ export function CitizenDashboard({ onSignOut }) {
 
           <div class="citizen-stats-row" aria-label="Community safety overview">
             <div class="citizen-sheet-stat stat-blue"><strong><CountUp value={stats.openCenters} /></strong><span>{t('statOpenCenters')}</span></div>
-            <div class="citizen-sheet-stat stat-green"><strong><CountUp value={stats.slots} /></strong><span>{t('statSlots')}</span></div>
+            <div class="citizen-sheet-stat stat-green"><strong>{stats.slotsEstimated ? '~' : ''}<CountUp value={stats.slots} /></strong><span>{stats.slotsEstimated ? t('statSlotsEst') : t('statSlots')}</span></div>
             <div class="citizen-sheet-stat stat-orange"><strong><CountUp value={stats.sheltered} /></strong><span>{t('statSheltered')}</span></div>
             <div class="citizen-sheet-stat stat-red"><strong><CountUp value={stats.danger} /></strong><span>{t('statDanger')}</span></div>
           </div>
@@ -522,25 +529,32 @@ export function CitizenDashboard({ onSignOut }) {
             </div>
             {!userPosition && openCenters.length > 0 && <p class="section-hint">{t('sortedBySpace')}</p>}
             {centersLoading && <LoadingCards label={t('loadingCenters')} count={2} />}
-            {!centersLoading && nearestCenters.length === 0 && <p class="admin-empty-state">{t('noCenters')}</p>}
+            {!centersLoading && centers.length === 0 && <p class="admin-empty-state">{t('noCenters')}</p>}
             <div class="nearest-list">
               {nearestCenters.map((center) => {
-                const level = capacityLevel(center.occupants, center.capacity)
+                const load = centerLoad(center)
                 return <article class="citizen-evac-card" key={center.id}>
                   <div class="citizen-evac-heading">
-                    <div><strong>{center.name}</strong><span>{center.location}{center.road ? ` · ${t('byRoad', { time: formatMinutes(center.road.timeS), distance: formatMeters(center.road.distanceM) })}` : center.road === null ? ` · ${t('noSafeRoad')}` : center.distance != null ? ` · ${t('away', { distance: formatDistance(center.distance) })}` : ''}</span></div>
-                    <span class={`capacity-chip capacity-chip--${level.level}`}>{t(capacityKeys[level.level])}</span>
+                    <div><strong>{centerTitle(center)}</strong><span>{center.location}{center.road ? ` · ${t('byRoad', { time: formatMinutes(center.road.timeS), distance: formatMeters(center.road.distanceM) })}` : center.road === null ? ` · ${t('noSafeRoad')}` : center.distance != null ? ` · ${t('away', { distance: formatDistance(center.distance) })}` : ''}</span></div>
+                    <div class="citizen-evac-chips">
+                      <CenterKindChip center={center} t={t} />
+                      <span class={`capacity-chip capacity-chip--${load.level}`}>{t(capacityKeys[load.level])}</span>
+                    </div>
                   </div>
-                  <div class="evac-progress"><div class="bar" data-level={level.level} style={{ width: `${center.occupants / center.capacity * 100}%` }}></div><div class="counts">{t('capacity', { occupants: center.occupants, capacity: center.capacity })}</div></div>
+                  <div class="evac-progress">
+                    {load.percent != null && <div class="bar" data-level={load.level} style={{ width: `${load.percent}%` }}></div>}
+                    <div class="counts">{capacityLine(center, t)}</div>
+                  </div>
                   <div class="evac-actions">
-                    {center.latitude != null
-                      ? <button type="button" class="evac-navigate" onClick={() => setNavTarget(center)}><Icon name="navigate" size={16} /> {t('navigate')}</button>
-                      : <a class="evac-navigate" href={directionsUrl(center)} target="_blank" rel="noreferrer"><Icon name="navigate" size={16} /> {t('navigate')}</a>}
-                    {center.latitude != null && <button type="button" class="evac-show" onClick={() => { setFocusTarget({ latitude: center.latitude, longitude: center.longitude }); setIsSheetExpanded(false) }}><Icon name="pin" size={16} /> {t('showOnMap')}</button>}
+                    <button type="button" class="evac-navigate" onClick={() => setNavTarget(center)}><Icon name="navigate" size={16} /> {t('navigate')}</button>
+                    <button type="button" class="evac-show" onClick={() => { setFocusTarget({ latitude: center.latitude, longitude: center.longitude }); setIsSheetExpanded(false) }}><Icon name="pin" size={16} /> {t('showOnMap')}</button>
                   </div>
                 </article>
               })}
             </div>
+            {centers.length > 0 && <button type="button" class="all-centers-button" onClick={() => setDialog('centers')}>
+              <Icon name="list" size={16} /> {t('allCentersButton', { count: centers.length })}
+            </button>}
           </div>
 
           <aside class="incident-report-card panel-box">
@@ -623,6 +637,16 @@ export function CitizenDashboard({ onSignOut }) {
       onSos={() => setDialog('sos')}
       onSignOut={onSignOut}
       onToast={pushToast}
+    />}
+    {dialog === 'centers' && <CentersDirectory
+      centers={centers}
+      userPosition={isOutsideArea ? null : userPosition}
+      homeBarangay={profile?.barangay}
+      t={t}
+      lang={lang}
+      onClose={() => setDialog(null)}
+      onNavigate={(center) => { setDialog(null); setNavTarget(center) }}
+      onShowOnMap={(center) => { setDialog(null); setFocusTarget({ latitude: center.latitude, longitude: center.longitude }); setIsSheetExpanded(false) }}
     />}
     {dialog === 'report' && <ReportDialog t={t} ownerId={myId} limit={reportLimitReached(myReports, queuedReports)} onSos={() => setDialog('sos')} hasPhone={Boolean(profile?.phone)} onAddPhone={() => { setDialog(null); setProfileView('personal') }} onClose={() => setDialog(null)} onDone={(result) => {
       setDialog(null)

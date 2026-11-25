@@ -1,6 +1,7 @@
 // Finds the evacuation centers a person can reach soonest by road, avoiding
 // verified closures and high-risk zones. A center that can only be reached
 // through a hazard (or that sits inside one) gets no travel time.
+import { mayHaveRoom } from './centers.js'
 import { avoidAreas } from './hazards.js'
 import { distanceM } from './navigation.js'
 import { requestTravelTimes } from './routing.js'
@@ -21,11 +22,13 @@ export async function travelTimesToCenters({ origin, centers, zones, mode = 'aut
   return new Map(candidates.map((center, index) => [center.id, times[index]]))
 }
 
-// The open center with free space that is soonest to reach by road; a full
-// center only when every reachable one is full.
+// The open center that is soonest to reach by road and not known to be full; a
+// full center only when every reachable one is full. A center whose capacity is
+// not confirmed is not assumed to be full, and an estimate counts as full only
+// at its top end (lib/centers.js).
 export function pickNearestSafeCenter(centers, travelTimes) {
   const reachable = centers
     .filter((center) => travelTimes.get(center.id))
     .sort((a, b) => travelTimes.get(a.id).timeS - travelTimes.get(b.id).timeS)
-  return reachable.find((center) => center.capacity - center.occupants > 0) ?? reachable[0] ?? null
+  return reachable.find(mayHaveRoom) ?? reachable[0] ?? null
 }

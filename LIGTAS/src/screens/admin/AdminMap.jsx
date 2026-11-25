@@ -95,7 +95,8 @@ export function AdminOperationsMap({
       <span><i class="legend-red" /> Danger zone / critical</span>
       <span><i class="legend-yellow" /> Closed road / urgent</span>
       <span><i class="legend-blue" /> Report</span>
-      <span><i class="legend-green" /> Evac. center</span>
+      <span><i class="legend-official" /> Official evac. center</span>
+      <span><i class="legend-temporary" /> Temporary evac. site</span>
       <span><i class="legend-team" /> Rescue team</span>
     </div>
   </section>

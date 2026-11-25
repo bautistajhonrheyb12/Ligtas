@@ -162,7 +162,8 @@ function RescuerSituationMap({ reports, points, centers, myPosition, isFullscree
       <span><i class="legend-red" /> Critical call</span>
       <span><i class="legend-yellow" /> Urgent call</span>
       <span><i class="legend-blue" /> Call / you</span>
-      <span><i class="legend-green" /> Evac. center</span>
+      <span><i class="legend-official" /> Official evac. center</span>
+      <span><i class="legend-temporary" /> Temporary evac. site</span>
     </div>
   </section>
 }

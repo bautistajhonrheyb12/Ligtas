@@ -936,12 +936,21 @@ export async function deleteAlert(alertId) {
 // Evacuation centers and map points
 // ---------------------------------------------------------------------------
 
+const CENTER_COLUMNS_BASE = 'id, name, location, latitude, longitude, capacity, occupants, is_open, updated_at'
+// Official or temporary, facility details, and capacity and location status
+// (evacuation center details migration).
+const CENTER_COLUMNS = `${CENTER_COLUMNS_BASE}, classification, facility_type, barangay, contact_numbers, capacity_status, capacity_max, capacity_source, location_status, location_source, source, remarks, verification_notes, suggested_latitude, suggested_longitude`
+let centerColumns = CENTER_COLUMNS
+const CENTER_MIGRATION_NEEDED = 'Saving these center details needs the latest database update (the evacuation center details migration). Ask whoever manages LIGTAS to run it.'
+
 export async function getEvacuationCenters() {
   return withOfflineCache('evacuation-centers', async () => {
-    const { data, error } = await requireClient()
-      .from('evacuation_centers')
-      .select('id, name, location, latitude, longitude, capacity, occupants, is_open, updated_at')
-      .order('name', { ascending: true })
+    const load = (columns) => requireClient().from('evacuation_centers').select(columns).order('name', { ascending: true })
+    let { data, error } = await load(centerColumns)
+    if (isMissingColumn(error) && centerColumns !== CENTER_COLUMNS_BASE) {
+      centerColumns = CENTER_COLUMNS_BASE
+      ;({ data, error } = await load(centerColumns))
+    }
 
     if (error) {
       throw new Error(`Could not load evacuation centers: ${error.message}`)
@@ -951,15 +960,58 @@ export async function getEvacuationCenters() {
   })
 }
 
-export async function saveEvacuationCenter({ id, name, location, latitude = null, longitude = null, capacity, occupants, isOpen }) {
-  const row = { name, location, latitude, longitude, capacity, occupants, is_open: isOpen }
-  const query = id
-    ? requireClient().from('evacuation_centers').update(row).eq('id', id)
+const centerSaveError = (error) => {
+  if (isMissingColumn(error)) return new Error(CENTER_MIGRATION_NEEDED)
+  if (error.code === '23505') return new Error('This facility is already listed in this barangay. Edit the existing record instead of adding it again.')
+  if (error.code === '23514' && /occupants/.test(error.message)) return new Error('There are more occupants than the capacity allows. Lower the occupants or raise the capacity.')
+  return new Error(`Could not save the evacuation center: ${error.message}`)
+}
+
+// Saves a center from the full form: every detail is written.
+export async function saveEvacuationCenter(center) {
+  const row = {
+    name: center.name,
+    location: center.location,
+    latitude: center.latitude ?? null,
+    longitude: center.longitude ?? null,
+    capacity: center.capacity ?? null,
+    occupants: center.occupants,
+    is_open: center.isOpen,
+    classification: center.classification,
+    facility_type: center.facilityType,
+    barangay: center.barangay || null,
+    contact_numbers: center.contactNumbers || null,
+    capacity_status: center.capacityStatus,
+    capacity_max: center.capacityMax ?? null,
+    capacity_source: center.capacitySource || null,
+    location_status: center.locationStatus,
+    location_source: center.locationSource || null,
+    source: center.source || null,
+    remarks: center.remarks || null,
+    verification_notes: center.verificationNotes || null,
+  }
+  const query = center.id
+    ? requireClient().from('evacuation_centers').update(row).eq('id', center.id)
     : requireClient().from('evacuation_centers').insert(row)
-  const { data, error } = await query.select().single()
+  const { data, error } = await query.select(centerColumns).single()
 
   if (error) {
-    throw new Error(`Could not save the evacuation center: ${error.message}`)
+    throw centerSaveError(error)
+  }
+
+  return data
+}
+
+// Quick changes from a center's card (occupants, open or closed): only those
+// fields are written, so nothing else about the center can be overwritten.
+export async function updateEvacuationCenterStatus(id, { occupants, isOpen }) {
+  const row = {}
+  if (occupants !== undefined) row.occupants = occupants
+  if (isOpen !== undefined) row.is_open = isOpen
+  const { data, error } = await requireClient().from('evacuation_centers').update(row).eq('id', id).select(centerColumns).single()
+
+  if (error) {
+    throw centerSaveError(error)
   }
 
   return data

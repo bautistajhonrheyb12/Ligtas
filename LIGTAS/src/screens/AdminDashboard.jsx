@@ -28,7 +28,6 @@ import {
   LoadingCards,
   Logo,
   ToastStack,
-  capacityLevel,
   isCurrentAlert,
   playAlertChime,
   reportTypeStyle,
@@ -42,6 +41,7 @@ import { markTampered, useReportIntegrity } from '../lib/integrity.js'
 import { isInsideSantaMaria } from '../lib/santaMaria.js'
 import { AdminOperationsMap } from './admin/AdminMap.jsx'
 import { CenterForm, PointForm } from './admin/AdminForms.jsx'
+import { centerLoad, centerTitle } from '../lib/centers.js'
 import { ActivityFeed, AlertForm, AlertList, CentersPanel, TeamsPanel } from './admin/AdminPanels.jsx'
 import { AnalyticsPanel } from './admin/AnalyticsPanel.jsx'
 import { PriorityPanel } from './admin/PriorityPanel.jsx'
@@ -456,7 +456,7 @@ export function AdminDashboard({ onSignOut, canStartTour = true }) {
       </button>}
       <NotificationPrompt role="admin" />
       <section class="ops-stats admin-stats" aria-label="Community operations overview">
-        <article class="ops-stat ops-stat--blue"><span class="ops-stat-icon"><Icon name="home" size={18} /></span><div><strong><CountUp value={openCenters.length} /></strong><span>Open evac. centers</span></div></article>
+        <article class="ops-stat ops-stat--blue"><span class="ops-stat-icon"><Icon name="home" size={18} /></span><div><strong><CountUp value={openCenters.length} /></strong><span>Open evac. centers{openCenters.length ? ` · ${openCenters.filter((center) => center.classification === 'official').length} official` : ''}</span></div></article>
         <article class="ops-stat ops-stat--red"><span class="ops-stat-icon"><Icon name="alert" size={18} /></span><div><strong><CountUp value={activeReports.length} /></strong><span>Active reports</span></div></article>
         <article class="ops-stat ops-stat--orange"><span class="ops-stat-icon"><Icon name="users" size={18} /></span><div><strong><CountUp value={teams.length} /></strong><span>Teams in the field</span></div></article>
         <article class="ops-stat ops-stat--green"><span class="ops-stat-icon"><Icon name="check" size={18} /></span><div><strong><CountUp value={recentCheckins.length - needHelp} /></strong><span>{needHelp ? `Marked safe · ${needHelp} need help` : 'Marked safe (3 days)'}</span></div></article>
@@ -485,11 +485,15 @@ export function AdminDashboard({ onSignOut, canStartTour = true }) {
           <section class="admin-recent-alerts admin-capacity-panel">
             <div class="admin-section-heading"><h2>Shelter capacity</h2><button type="button" onClick={() => selectAdminTab('centers')}>Manage <span>›</span></button></div>
             {centersLoading && <LoadingCards label="Loading evacuation centers…" count={2} />}
-            {openCenters.slice(0, 4).map((center) => {
-              const capacity = capacityLevel(center.occupants, center.capacity)
+            {/* The busiest open centers. An estimate is measured against its low end
+                and says so; a capacity nobody has confirmed shows a head count only. */}
+            {[...openCenters].sort((a, b) => b.occupants - a.occupants || (centerLoad(b).percent ?? -1) - (centerLoad(a).percent ?? -1)).slice(0, 4).map((center) => {
+              const load = centerLoad(center)
               return <div class="admin-capacity-row" key={center.id}>
-                <div><strong>{center.name}</strong><span>{Math.round(center.occupants / center.capacity * 100)}%</span></div>
-                <div class="admin-center-capacity"><div><i data-level={capacity.level} style={{ width: `${center.occupants / center.capacity * 100}%` }} /></div></div>
+                <div><strong>{centerTitle(center)}</strong><span>{load.percent == null ? `${center.occupants} here` : `${load.percent}%${load.status === 'estimated' ? ' (est.)' : ''}`}</span></div>
+                {load.percent == null
+                  ? <small class="admin-capacity-unknown">Capacity not confirmed</small>
+                  : <div class="admin-center-capacity"><div><i data-level={load.level} style={{ width: `${load.percent}%` }} /></div></div>}
               </div>
             })}
             {!centersLoading && openCenters.length === 0 && <p class="admin-empty-state">No open evacuation centers.</p>}
@@ -596,12 +600,13 @@ export function AdminDashboard({ onSignOut, canStartTour = true }) {
     />}
     {centerForm && <CenterForm
       center={centerForm.center}
+      centers={centers}
       initialPosition={centerForm.position}
       onClose={() => setCenterForm(null)}
       onSaved={(center) => {
         setCenterForm(null)
         setCenters((current) => [...current.filter((item) => item.id !== center.id), center].sort((a, b) => a.name.localeCompare(b.name)))
-        showNotice(`${center.name} saved.`)
+        showNotice(`${centerTitle(center)} saved.`)
       }}
     />}
     {confirmDialog}

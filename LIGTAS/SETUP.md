@@ -116,8 +116,32 @@ Older alerts are not affected. After running it, deploy `send-push` again
 (section 14) so notifications name the alert type. Until it is run, every type
 except *Other* can still be sent.
 
+`20261126090000_evacuation_center_details.sql` describes each evacuation center
+honestly: whether it is an **official** evacuation center or a **temporary** site
+(courts, chapels, schools, halls), its facility type and barangay, contact
+numbers, and how its capacity is known: an official figure, an estimate (a range
+such as the MDRRMO's 100–150 people for a covered court, always shown as an
+estimate) or not confirmed (no number shown). A map pin is *unconfirmed* until an
+admin ticks that it was checked on site; a center without a pin is listed by
+address only and is not on the map. The same facility cannot be added twice in a
+barangay. Existing centers keep working (their capacity counts as an official
+figure). Until it is run, centers show as before and only saving the new details
+fails, with a message saying so.
+
+`20261126090100_evacuation_center_inventory.sql` adds the 31 facilities of the
+*Inventory of Evacuation Centers* (1 official, 30 temporary). It needs the
+migration above first, and running it again adds nothing twice. Covered courts
+get the MDRRMO estimate; schools, the chapel, the barangay hall and the municipal
+center have no confirmed capacity yet. 9 have a pin from map data (unconfirmed),
+6 have a suggested spot that an admin can place with one tap after checking, and
+16 have no reliable location yet. In *Centers*, the filters **Needs a location**,
+**Pin not checked** and **Capacity not confirmed** list what is left to verify;
+each center's *What still needs checking* note says what. All imported centers
+start open with no occupants; close any that should not receive evacuees.
+
 Apply every migration, in order. Screens built for a newer migration than the
-database has fail with a "column does not exist" error, except the last three above.
+database has fail with a "column does not exist" error, except the last four
+above (the inventory needs the details migration).
 
 Apply each migration with either option:
 

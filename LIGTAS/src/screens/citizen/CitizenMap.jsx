@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'preact/hooks'
 import L from 'leaflet'
 import { Icon } from '../../lib/ui.jsx'
+import { centerMapLabels } from '../../components/CentersDirectory.jsx'
 import {
   AREA_EDGE,
   createLigtasMap,
@@ -70,7 +71,7 @@ function refit(map, container, wholeTown) {
   refitArea(map, overlayPadding(container), wholeTown)
 }
 
-export function CitizenMap({ points, centers, userPosition, focusTarget, locationError, isLocating, onLocate, isFullscreen = false, t }) {
+export function CitizenMap({ points, centers, userPosition, focusTarget, locationError, isLocating, onLocate, isFullscreen = false, t, lang = 'en' }) {
   const mapRef = useRef(null)
   const mapInstanceRef = useRef(null)
   const layerRef = useRef(null)
@@ -119,8 +120,8 @@ export function CitizenMap({ points, centers, userPosition, focusTarget, locatio
     if (!map || !layer) return
     layer.clearLayers()
     drawMapPoints(layer, points)
-    drawEvacuationCenters(layer, centers)
-  }, [points, centers])
+    drawEvacuationCenters(layer, centers, { labels: centerMapLabels(t, lang) })
+  }, [points, centers, lang])
 
   useEffect(() => {
     const map = mapInstanceRef.current
@@ -157,7 +158,8 @@ export function CitizenMap({ points, centers, userPosition, focusTarget, locatio
     <div class="map-legend">
       <span><i class="legend-red" /> {t('legendDanger')}</span>
       <span><i class="legend-yellow" /> {t('legendClosed')}</span>
-      <span><i class="legend-green" /> {t('legendCenter')}</span>
+      <span><i class="legend-official" /> {t('legendOfficial')}</span>
+      <span><i class="legend-temporary" /> {t('legendTemporary')}</span>
       {userPosition && <span><i class="legend-blue" /> {t('legendYou')}</span>}
       <small class="map-credit">© OpenStreetMap contributors</small>
     </div>
