@@ -139,9 +139,16 @@ center have no confirmed capacity yet. 9 have a pin from map data (unconfirmed),
 each center's *What still needs checking* note says what. All imported centers
 start open with no occupants; close any that should not receive evacuees.
 
+`20261126100000_evacuation_center_locations.sql` applies the LIGTAS team's
+locations (Google Maps and community reports, Nov 2026): 23 centers get a pin,
+still *unconfirmed* until checked on site, 13 addresses are updated (the
+inventory's address is kept in the remarks), and 8 centers still have no pin. It
+leaves alone any pin an admin has placed or confirmed, and running it again
+changes nothing.
+
 Apply every migration, in order. Screens built for a newer migration than the
-database has fail with a "column does not exist" error, except the last four
-above (the inventory needs the details migration).
+database has fail with a "column does not exist" error, except the last five
+above (the inventory and its locations need the details migration).
 
 Apply each migration with either option:
 

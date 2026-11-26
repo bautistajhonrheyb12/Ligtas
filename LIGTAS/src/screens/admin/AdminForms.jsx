@@ -1,8 +1,10 @@
-import { useEffect, useState } from 'preact/hooks'
+import { useEffect, useRef, useState } from 'preact/hooks'
 import { addMapPoint, saveEvacuationCenter } from '../../lib/supabase.js'
 import { PinPicker } from '../../components/PinPicker.jsx'
 import { Portal } from '../../components/Portal.jsx'
 import { BARANGAYS, CAPACITY_GUIDES, FACILITY_TYPES, MDRRMO_GUIDANCE, centerCapacity, facilityTypeLabel, findDuplicate } from '../../lib/centers.js'
+import { parseMapLocation } from '../../lib/pluscode.js'
+import { isInsideSantaMaria } from '../../lib/santaMaria.js'
 
 function Modal({ title, eyebrow, onClose, children, wide = false }) {
   useEffect(() => {
@@ -66,6 +68,27 @@ export function CenterForm({ center, centers = [], initialPosition = null, onClo
     setPosition(next)
     setPinConfirmed(false)
     setLocationSource(next ? source : '')
+    setPlaceMessage(null)
+  }
+
+  // A plus code or coordinates pasted from Google Maps.
+  // Read straight from the box when pressed, so a paste followed at once by
+  // Enter is never missed.
+  const placeInputRef = useRef(null)
+  const [placeMessage, setPlaceMessage] = useState(null)
+  const placeFromText = () => {
+    const found = parseMapLocation(placeInputRef.current?.value)
+    if (found.error) {
+      setPlaceMessage({ tone: 'error', text: found.error })
+      return
+    }
+    if (!isInsideSantaMaria(found.latitude, found.longitude)) {
+      setPlaceMessage({ tone: 'error', text: `That ${found.label.startsWith('plus') ? 'plus code' : 'spot'} is outside Santa Maria. Check that it was copied whole.` })
+      return
+    }
+    movePin({ latitude: found.latitude, longitude: found.longitude }, `Placed by an admin from Google Maps (${found.label})`)
+    if (placeInputRef.current) placeInputRef.current.value = ''
+    setPlaceMessage({ tone: 'done', text: `Pin placed from the ${found.label}. Check on the map that it is on the building.` })
   }
 
   const applyGuide = (guide) => {
@@ -196,6 +219,21 @@ export function CenterForm({ center, centers = [], initialPosition = null, onClo
 
       <section class="center-compose-section">
         <h3><span>3</span> Map location</h3>
+        <div class="center-place-from">
+          <label for="center-place-input">Place from Google Maps <small class="admin-field-help">In Google Maps, tap the place, then copy its plus code (like RX55+WWV) or its coordinates and paste it here.</small></label>
+          <div class="center-place-row">
+            <input
+              id="center-place-input"
+              ref={placeInputRef}
+              onKeyDown={(event) => { if (event.key === 'Enter') { event.preventDefault(); placeFromText() } }}
+              placeholder="RX55+WWV or 14.81391, 120.95149"
+              autoComplete="off"
+              spellcheck={false}
+            />
+            <button type="button" class="secondary-action" onClick={placeFromText}>Place pin</button>
+          </div>
+          {placeMessage && <small class={`center-place-message is-${placeMessage.tone}`} role={placeMessage.tone === 'error' ? 'alert' : 'status'}>{placeMessage.text}</small>}
+        </div>
         {!position && suggestion && <div class="center-suggestion">
           <span><strong>Map data suggests a possible spot</strong> (not checked): {suggestion.latitude.toFixed(5)}, {suggestion.longitude.toFixed(5)}. See the notes below.</span>
           <button type="button" class="secondary-action" onClick={() => movePin(suggestion, PIN_FROM_SUGGESTION)}>Place the pin there</button>
