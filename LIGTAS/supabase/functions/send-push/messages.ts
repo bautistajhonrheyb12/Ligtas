@@ -47,14 +47,27 @@ export type AlertRow = {
 }
 
 const HOUR = 3600
+// Report categories as the app shows them ('Blocked road' and 'Medical' keep
+// their stored names; older categories stay for older reports).
+const TYPES_EN: Record<string, string> = {
+  'Vehicular accident': 'Vehicular Accident',
+  Medical: 'Medical Emergency',
+  Rescue: 'Rescue / Trapped',
+  'Blocked road': 'Road Obstruction',
+  'Downed power line': 'Downed Power Line',
+  Other: 'Others',
+}
 const TYPES_TL: Record<string, string> = {
   Flooding: 'Baha',
-  'Blocked road': 'Saradong daan',
+  Fire: 'Sunog',
+  'Vehicular accident': 'Aksidente sa Daan',
+  Medical: 'Medikal / Ambulansya',
+  Rescue: 'Pagliligtas',
+  'Blocked road': 'Nakaharang sa Daan / Puno',
+  'Downed power line': 'Nakalaylay na Kable',
   'Fallen tree': 'Natumbang puno',
   'Power outage': 'Brownout',
   Landslide: 'Pagguho ng lupa',
-  Fire: 'Sunog',
-  Medical: 'Medikal',
   Other: 'Iba pa',
   SOS: 'SOS',
 }
@@ -68,7 +81,7 @@ export function clip(text: string, max: number): string {
 const join = (...parts: (string | null | undefined | false)[]) => parts.filter(Boolean).join(' · ')
 
 function typeName(report: ReportRow, lang: Lang) {
-  return lang === 'tl' ? TYPES_TL[report.report_type] ?? report.report_type : report.report_type
+  return (lang === 'tl' ? TYPES_TL : TYPES_EN)[report.report_type] ?? report.report_type
 }
 
 function place(report: ReportRow) {
@@ -104,12 +117,12 @@ export function reportNotices(event: EventRow, report: ReportRow): Notice[] {
       return [{ roles: ['rescuer', 'admin'], skip: actor, message: staff(report, 'SOS: someone needs help now', true) }]
 
     case 'Submitted':
-      return [{ roles: ['admin'], skip: actor, message: staff(report, `New report to review: ${report.report_type}`, false) }]
+      return [{ roles: ['admin'], skip: actor, message: staff(report, `New report to review: ${typeName(report, 'en')}`, false) }]
 
     case 'Verified':
       if (isSos) return []
       return [
-        { roles: ['rescuer'], skip: actor, message: staff(report, `New call: ${report.report_type}`, false) },
+        { roles: ['rescuer'], skip: actor, message: staff(report, `New call: ${typeName(report, 'en')}`, false) },
         {
           users: reporter,
           skip: actor,
@@ -134,7 +147,7 @@ export function reportNotices(event: EventRow, report: ReportRow): Notice[] {
       const assignee = event.detail && /^[0-9a-f-]{36}$/i.test(event.detail) ? event.detail : report.assigned_to
       const notices: Notice[] = []
       if (assignee && assignee !== actor) {
-        notices.push({ users: [assignee], message: staff(report, isSos ? 'SOS assigned to you' : `Assigned to you: ${report.report_type}`, isSos) })
+        notices.push({ users: [assignee], message: staff(report, isSos ? 'SOS assigned to you' : `Assigned to you: ${typeName(report, 'en')}`, isSos) })
       }
       notices.push({
         users: reporter,
@@ -153,7 +166,7 @@ export function reportNotices(event: EventRow, report: ReportRow): Notice[] {
     }
 
     case 'Unassigned':
-      return [{ roles: ['admin'], skip: actor, message: staff(report, `Call returned: ${report.report_type}`, isSos, join(place(report), 'needs a team')) }]
+      return [{ roles: ['admin'], skip: actor, message: staff(report, `Call returned: ${typeName(report, 'en')}`, isSos, join(place(report), 'needs a team')) }]
 
     case 'En route':
       return [{

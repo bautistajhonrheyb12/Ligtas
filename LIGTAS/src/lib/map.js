@@ -1,8 +1,8 @@
 import L from 'leaflet'
 import { santaMariaBoundary } from './santaMaria.js'
 import { iconHtml } from './icons.jsx'
-import { reportTypeStyle } from './ui.jsx'
-import { centerLoad, classificationOf, facilityTypeLabel, locationStatusOf } from './centers.js'
+import { reportTypeLabel, reportTypeStyle } from './ui.jsx'
+import { addressParts, centerLoad, classificationOf, facilityTypeLabel, hasPin, locationStatusOf } from './centers.js'
 
 export const mapCenter = [14.842, 120.985]
 export const mapTileUrl = 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png'
@@ -211,17 +211,29 @@ export const centerPopupLabels = {
     : load.status === 'estimated'
       ? (center.occupants > 0 ? `${center.occupants} here · room for about ${load.spaceLow}–${load.spaceHigh} more (estimate)` : `Estimated capacity ${center.capacity}–${center.capacity_max} people`)
       : center.occupants > 0 ? `${center.occupants} people here · capacity not confirmed` : 'Capacity not confirmed'),
-  unconfirmedPin: 'Pin from map data, not yet checked on site',
+  unconfirmedPin: 'Pin not yet checked on site',
 }
 
 // Official centers are solid green squares; temporary sites are white circles
 // with a dashed green edge, so the two differ in shape as well as colour.
-export function drawEvacuationCenters(layer, centers, { onSelect, labels = centerPopupLabels } = {}) {
-  centers.filter((center) => center.latitude != null).forEach((center) => {
+// `actions` adds buttons to the popup: [{ key, label, icon?, run(center) }].
+export function drawEvacuationCenters(layer, centers, { onSelect, labels = centerPopupLabels, actions = [] } = {}) {
+  centers.filter(hasPin).forEach((center) => {
     const kind = classificationOf(center)
     const capacityText = labels.capacity(center, centerLoad(center))
     const tag = !center.is_open ? labels.closed : kind === 'official' ? labels.official : kind === 'temporary' ? labels.temporary : labels.center
     const details = [center.facility_type ? labels.type(center.facility_type) : null, center.barangay].filter(Boolean).join(' · ')
+    const tone = center.is_open ? (kind === 'temporary' ? 'temporary' : 'safe') : 'closed'
+    const buttons = actions.length
+      ? `<div class="center-popup-actions">${actions.map((action, index) => `<button type="button" class="center-popup-button${index === 0 ? ' is-primary' : ''}" data-action="${action.key}">${action.icon ? iconHtml(action.icon, 14) : ''}<span>${escapeHtml(action.label)}</span></button>`).join('')}</div>`
+      : ''
+    const html = `<div class="center-popup"><span class="map-popup-tag map-popup-tag--${tone}">${escapeHtml(tag)}</span>`
+      + `<strong class="center-popup-name">${escapeHtml(center.name)}</strong>`
+      + (details ? `<span class="center-popup-meta">${escapeHtml(details)}</span>` : '')
+      + `<span class="center-popup-address">${escapeHtml(addressParts(center).text)}</span>`
+      + `<span class="center-popup-capacity">${escapeHtml(capacityText)}</span>`
+      + (locationStatusOf(center) === 'unconfirmed' ? `<span class="center-popup-note">${escapeHtml(labels.unconfirmedPin)}</span>` : '')
+      + `${buttons}</div>`
     const marker = L.marker([center.latitude, center.longitude], {
       icon: L.divIcon({
         className: ['center-marker', kind ? `is-${kind}` : '', center.is_open ? '' : 'is-closed'].filter(Boolean).join(' '),
@@ -230,8 +242,18 @@ export function drawEvacuationCenters(layer, centers, { onSelect, labels = cente
       }),
       title: `${center.name}${kind === 'temporary' ? ` (${labels.temporary})` : kind === 'official' ? ` (${labels.official})` : ''}`,
     })
-      .bindPopup(`<span class="map-popup-tag map-popup-tag--${center.is_open ? (kind === 'temporary' ? 'temporary' : 'safe') : 'closed'}">${escapeHtml(tag)}</span><strong>${escapeHtml(center.name)}</strong>${details ? `<br /><small>${escapeHtml(details)}</small>` : ''}<br />${escapeHtml(center.location)}<br /><small>${escapeHtml(capacityText)}</small>${locationStatusOf(center) === 'unconfirmed' ? `<br /><small class="map-popup-note">${escapeHtml(labels.unconfirmedPin)}</small>` : ''}`, { maxWidth: 250 })
+      .bindPopup(html, { maxWidth: 260, minWidth: 210 })
       .addTo(layer)
+    if (actions.length) {
+      marker.on('popupopen', (event) => {
+        event.popup.getElement()?.querySelectorAll('[data-action]').forEach((button) => {
+          button.onclick = () => {
+            marker.closePopup()
+            actions.find((action) => action.key === button.dataset.action)?.run(center)
+          }
+        })
+      })
+    }
     if (onSelect) marker.on('click', () => onSelect(center))
   })
 }
@@ -310,11 +332,11 @@ export function drawReports(layer, reports, { onSelect, selectedId } = {}) {
         iconAnchor: [17, 34],
         popupAnchor: [0, -30],
       }),
-      title: `${report.report_type} · ${report.location}`,
+      title: `${reportTypeLabel(report)} · ${report.location}`,
       zIndexOffset: report.id === selectedId ? 1000 : report.report_type === 'SOS' ? 500 : 0,
     })
     if (onSelect) marker.on('click', () => onSelect(report))
-    else marker.bindPopup(hazardPopup(report.report_type, report.notes, report.location, report.priority === 'Normal' ? 'safe' : 'high', `${report.priority} · ${report.status}`), { maxWidth: 260 })
+    else marker.bindPopup(hazardPopup(reportTypeLabel(report), report.notes, report.location, report.priority === 'Normal' ? 'safe' : 'high', `${report.priority} · ${report.status}`), { maxWidth: 260 })
     marker.addTo(layer)
   })
 }

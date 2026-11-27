@@ -847,14 +847,26 @@ nav.has-pill > button.active span { display: inline-block; animation: ligtas-bou
    ========================================================== */
 
 .admin-nav-backdrop { animation: ligtas-fade .2s ease both; }
-.admin-nav-open .admin-sidebar nav button { animation: sidebar-item-in .4s var(--ease-out) backwards; }
-.admin-nav-open .admin-sidebar nav button:nth-child(2) { animation-delay: .04s; }
-.admin-nav-open .admin-sidebar nav button:nth-child(3) { animation-delay: .08s; }
-.admin-nav-open .admin-sidebar nav button:nth-child(4) { animation-delay: .12s; }
-.admin-nav-open .admin-sidebar nav button:nth-child(5) { animation-delay: .16s; }
+/* Every sidebar item slides in the same way, one after another (--i is the
+   item's position, set in AdminDashboard.jsx). Before, only items 2–5 had a
+   delay, so Map and Centers were the only ones you could see move. */
+.admin-nav-open .admin-sidebar nav button {
+  animation: sidebar-item-in .32s var(--ease-out) backwards;
+  animation-delay: calc(var(--i, 0) * 30ms);
+}
 @keyframes sidebar-item-in {
   from { opacity: 0; translate: -14px 0; }
   to { opacity: 1; translate: none; }
+}
+/* The same highlight for every item: the background and the green edge
+   change together, at one speed. */
+.admin-sidebar nav button { transition: background-color .2s ease, color .2s ease, transform .2s ease; }
+.admin-sidebar nav button::before { transition: transform .2s var(--ease-out); }
+.admin-sidebar nav button:focus-visible { outline: 2px solid #8bd1aa; outline-offset: -2px; }
+@media (prefers-reduced-motion: reduce) {
+  .admin-nav-open .admin-sidebar nav button { animation: none; }
+  .admin-sidebar nav button, .admin-sidebar nav button::before { transition: none; }
+  .admin-sidebar nav button:hover { transform: none; }
 }
 .admin-sidebar-count { animation: ligtas-siren 2s var(--ease-out) infinite; }
 /* Hamburger morphs into an X while the sidebar is open (bars sit 6px apart). */

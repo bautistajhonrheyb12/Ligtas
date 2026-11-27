@@ -109,7 +109,7 @@ export function AboutPage({ onGetStarted }) {
   return <div class="about-page">
     <section class="about-hero" data-reveal>
       <span class="about-eyebrow">About us</span>
-      <h1>Built in Santa Maria,<br />for Santa Maria.</h1>
+      <h1>A safer Santa Maria starts <span class="about-hero-break">with being prepared.</span></h1>
       <p>
         <b>LIGTAS</b>, the <b>Localized Informative Geographic Tagging &amp; Safety Mapping System</b>, is a disaster
         preparedness and response system built for Santa Maria, Bulacan. Its purpose is to give residents, rescuers

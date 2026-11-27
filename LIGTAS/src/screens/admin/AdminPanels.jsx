@@ -1,8 +1,9 @@
 import { useState } from 'preact/hooks'
 import { createRescuerAccount, deleteEvacuationCenter, publishAlert, updateEvacuationCenterStatus } from '../../lib/supabase.js'
-import { Icon, LoadingCards, PasswordChecklist, alertEndText, alertIcon, alertTypeLabel, passwordProblem, reportTypeStyle, timeAgo, useMinuteClock } from '../../lib/ui.jsx'
+import { Icon, LoadingCards, PasswordChecklist, alertEndText, alertIcon, alertTypeLabel, passwordProblem, reportTypeLabel, reportTypeStyle, timeAgo, useMinuteClock } from '../../lib/ui.jsx'
 import {
   MDRRMO_GUIDANCE,
+  addressParts,
   centerCapacity,
   centerLoad,
   centerSummary,
@@ -11,6 +12,7 @@ import {
   contactNumbers,
   facilityTypeLabel,
   formatRange,
+  googleMapsUrl,
   hasPin,
   locationStatusOf,
   occupantLimit,
@@ -50,6 +52,8 @@ function CenterCard({ center, onEdit, onNotice, onChanged }) {
   const location = locationStatusOf(center)
   const capacity = capacityText(center)
   const title = centerTitle(center)
+  const address = addressParts(center)
+  const mapsUrl = googleMapsUrl(center)
 
   // Only the changed fields are written, so nothing else about the center is touched.
   const save = async (changes) => {
@@ -83,6 +87,18 @@ function CenterCard({ center, onEdit, onNotice, onChanged }) {
     save({ isOpen: !center.is_open })
   }
 
+  // Confirming a pin is a claim people will rely on, so it is asked first.
+  const confirmPin = async () => {
+    const sure = await confirm({
+      title: `Mark the pin for ${title} as checked?`,
+      message: 'Only do this after someone has been there and seen that the pin is on the actual building. Residents will then see "Pin checked on site".',
+      confirmLabel: 'Mark as checked',
+      tone: 'warning',
+      icon: 'check',
+    })
+    if (sure) save({ locationStatus: 'confirmed' })
+  }
+
   const remove = async () => {
     const sure = await confirm({
       title: `Remove ${title}?`,
@@ -108,13 +124,15 @@ function CenterCard({ center, onEdit, onNotice, onChanged }) {
         {center.facility_type && <span class="center-type-chip">{facilityTypeLabel(center.facility_type)}</span>}
       </div>
       <h3>{title}</h3>
-      <p>{center.location}</p>
+      <p>{address.text}{address.plusCode && <span class="center-plus-chip">{address.plusCode}</span>}</p>
       <ul class="center-facts">
         <li class={`is-${location}`}><Icon name="pin" size={13} /> {LOCATION_TEXT[location]}</li>
+        {mapsUrl && <li><a href={mapsUrl} target="_blank" rel="noreferrer"><Icon name="external" size={13} /> Check in Google Maps</a></li>}
         {contactNumbers(center).length > 0 && <li><Icon name="phone" size={13} /> {center.contact_numbers}</li>}
         {center.source && <li><Icon name="file" size={13} /> {center.source}</li>}
       </ul>
       {center.verification_notes && <details class="center-notes"><summary>What still needs checking</summary><p>{center.verification_notes}</p></details>}
+      {location === 'unconfirmed' && <button type="button" class="center-confirm-pin" disabled={isSaving} onClick={confirmPin}><Icon name="check" size={14} /> Mark pin checked on site</button>}
       <div class="admin-center-chips">
         <span class={`capacity-chip capacity-chip--${center.is_open ? load.level : 'closed'}`}>{center.is_open ? LEVEL_TEXT[load.level] : 'Closed'}</span>
         <small>Updated {timeAgo(center.updated_at).toLowerCase()}</small>
@@ -142,6 +160,15 @@ function CenterCard({ center, onEdit, onNotice, onChanged }) {
     </div>
     {confirmDialog}
   </article>
+}
+
+function ProgressRow({ label, done, total }) {
+  const percent = total ? Math.round((done / total) * 100) : 0
+  return <div class="center-progress-row">
+    <span>{label}</span>
+    <div class="center-progress-bar" role="progressbar" aria-valuemin="0" aria-valuemax={total} aria-valuenow={done} aria-label={label}><i style={{ width: `${percent}%` }} /></div>
+    <small><b>{done}</b> of {total}</small>
+  </div>
 }
 
 const CENTER_FILTERS = [
@@ -174,13 +201,23 @@ export function CentersPanel({ centers, loading, onAdd, onEdit, onNotice, onChan
     {centers.length > 0 && <div class="center-summary">
       <div><strong>{summary.total}</strong><span>{summary.official} official · {summary.temporary} temporary{summary.unclassified ? ` · ${summary.unclassified} not classified` : ''}</span></div>
       <div><strong>{open.length}</strong><span>open · {summary.sheltered.toLocaleString()} people sheltered</span></div>
-      <div><strong>{summary.onMap}</strong><span>on the map ({summary.pinConfirmed} checked on site) · {summary.needsLocation} need a location</span></div>
-      <div class="center-summary-capacity">
-        <span>Capacity, kept apart by how it is known:</span>
-        <span>{summary.documented.count} with an official figure{summary.documented.count ? ` (${summary.documented.capacity.toLocaleString()} people)` : ''}</span>
-        <span>{summary.estimated.count} estimated{summary.estimated.count ? ` (${formatRange(summary.estimated.low, summary.estimated.high)} people, estimate only)` : ''}</span>
-        <span>{summary.unverified} not confirmed</span>
-      </div>
+      <section class="center-progress" aria-label="Verification progress">
+        <h3>Verification</h3>
+        <ProgressRow label="On the map" done={summary.onMap} total={summary.total} />
+        <ProgressRow label="Pins checked on site" done={summary.pinConfirmed} total={summary.onMap} />
+        <div class="center-progress-row">
+          <span>Capacity</span>
+          <div class="center-progress-bar is-stacked" role="img" aria-label={`${summary.documented.count} official figures, ${summary.estimated.count} estimates, ${summary.unverified} not confirmed`}>
+            <i class="is-documented" style={{ width: `${(summary.documented.count / summary.total) * 100}%` }} />
+            <i class="is-estimated" style={{ width: `${(summary.estimated.count / summary.total) * 100}%` }} />
+          </div>
+          <small>
+            <b class="dot is-documented" /> {summary.documented.count} official{summary.documented.count ? ` (${summary.documented.capacity.toLocaleString()} people)` : ''}
+            <b class="dot is-estimated" /> {summary.estimated.count} estimated{summary.estimated.count ? ` (${formatRange(summary.estimated.low, summary.estimated.high)}, estimate only)` : ''}
+            <b class="dot" /> {summary.unverified} not confirmed
+          </small>
+        </div>
+      </section>
     </div>}
     {centers.length > 0 && <div class="center-filters">
       <div class="center-filter-chips" role="group" aria-label="Show">
@@ -267,7 +304,7 @@ export function TeamsPanel({ staff, locations, reports, onCreated, onNotice, onD
             <span><b>{active.length}</b> active</span>
             <span><b>{resolved}</b> resolved</span>
           </div>
-          {active[0] && <p class="admin-team-current"><Icon name="navigate" size={13} /> {active[0].report_type} · {active[0].location} · {active[0].response_stage ?? 'Assigned'}</p>}
+          {active[0] && <p class="admin-team-current"><Icon name="navigate" size={13} /> {reportTypeLabel(active[0])} · {active[0].location} · {active[0].response_stage ?? 'Assigned'}</p>}
           <div class="admin-team-actions">
             <ConfirmButton class="admin-team-signout" label={`Sign ${person.display_name || 'rescuer'} out everywhere`} onConfirm={() => onEndSessions(person)} ask={{
               title: `Sign ${person.display_name || 'this rescuer'} out everywhere?`,
@@ -498,7 +535,7 @@ export function ActivityFeed({ events, reports, staff, loading, limit = 8 }) {
       return <li class={`activity-item rx-tone--${actionTone[event.action] ?? 'blue'}`} key={event.id}>
         <span class="activity-dot"><Icon name={type.icon} size={13} /></span>
         <div>
-          {event.action === 'SOS sent' ? <p><b>{actor}</b> sent an <b>SOS</b>{report ? ` from ${report.location}` : ''}</p> : <p><b>{actor}</b> {event.action === 'Assigned' ? (event.detail === event.actor_id ? 'took' : `assigned ${assignee ?? 'a team'} to`) : handedBack ? 'handed back' : actionVerb[event.action] ?? event.action.toLowerCase()} {report ? <>the <b>{report.report_type === 'SOS' ? 'SOS' : report.report_type.toLowerCase()}</b> report at {report.location}</> : 'a report'}</p>}
+          {event.action === 'SOS sent' ? <p><b>{actor}</b> sent an <b>SOS</b>{report ? ` from ${report.location}` : ''}</p> : <p><b>{actor}</b> {event.action === 'Assigned' ? (event.detail === event.actor_id ? 'took' : `assigned ${assignee ?? 'a team'} to`) : handedBack ? 'handed back' : actionVerb[event.action] ?? event.action.toLowerCase()} {report ? <>the <b>{report.report_type === 'SOS' ? 'SOS' : reportTypeLabel(report).toLowerCase()}</b> report at {report.location}</> : 'a report'}</p>}
           <small>{timeAgo(event.created_at)}</small>
         </div>
       </li>

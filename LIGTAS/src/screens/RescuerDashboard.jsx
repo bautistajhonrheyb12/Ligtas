@@ -283,7 +283,7 @@ export function RescuerDashboard({ onSignOut, canStartTour = true }) {
         const isNewCall = change.new?.status === 'Verified' && change.old?.status !== 'Verified' && !change.new.assigned_to
         if (isNewCall) {
           const critical = change.new.priority === 'Critical'
-          pushToast(`${critical ? 'Critical' : 'New'} call: ${change.new.report_type} · ${change.new.location}`, critical ? 'urgent' : 'info')
+          pushToast(`${critical ? 'Critical' : 'New'} call: ${reportTypeLabel(change.new)} · ${change.new.location}`, critical ? 'urgent' : 'info')
           playAlertChime(critical)
         }
         loadReports()
@@ -371,12 +371,12 @@ export function RescuerDashboard({ onSignOut, canStartTour = true }) {
   const claim = (report) => applyUpdate(report.id, () => claimIncidentReport(report.id)).then((ok) => {
     if (ok) {
       setQueueView('mine')
-      pushToast(`You took the ${report.report_type} call.`, 'success')
+      pushToast(`You took the ${reportTypeLabel(report)} call.`, 'success')
     }
   })
   const release = async (report) => {
     const sure = await confirm({
-      title: `Return this ${report.report_type === 'SOS' ? 'SOS' : report.report_type.toLowerCase()} call?`,
+      title: `Return this ${report.report_type === 'SOS' ? 'SOS' : reportTypeLabel(report).toLowerCase()} call?`,
       message: 'It goes back to the open queue so another team can take it. Do this only if you cannot respond.',
       confirmLabel: 'Return the call',
       tone: 'warning',
@@ -389,7 +389,7 @@ export function RescuerDashboard({ onSignOut, canStartTour = true }) {
     })
     if (ok) {
       setQueueView('open')
-      pushToast(`The ${report.report_type} call is back in the open queue.`, 'info')
+      pushToast(`The ${reportTypeLabel(report)} call is back in the open queue.`, 'info')
     }
   }
   // Navigating to your own call keeps its stage up to date for operations:
@@ -576,7 +576,7 @@ export function RescuerDashboard({ onSignOut, canStartTour = true }) {
               <div class="rx-call-top">
                 <span class="rx-type-icon"><Icon name={type.icon} size={22} /></span>
                 <div class="rx-call-title">
-                  <strong>{report.report_type}</strong>
+                  <strong>{reportTypeLabel(report)}</strong>
                   <span><Icon name="clock" size={13} /> {timeAgo(report.created_at)}{distance != null && <> · <Icon name="navigate" size={12} /> {formatDistance(distance)}</>}</span>
                 </div>
                 {isResolved
@@ -678,7 +678,7 @@ export function RescuerDashboard({ onSignOut, canStartTour = true }) {
 
     {resolvingReport && <div class="alert-modal-backdrop" onClick={(event) => { if (event.target === event.currentTarget && !updatingReportId) setResolvingReport(null) }}>
       <section class="alert-modal rx-resolve-dialog" role="dialog" aria-modal="true" aria-labelledby="resolve-title">
-        <div class="alert-modal-heading"><div><span class="ops-eyebrow">{resolvingReport.report_type} · {resolvingReport.location}</span><h2 id="resolve-title">Resolve this call</h2></div><button type="button" class="alert-modal-close" aria-label="Close" onClick={() => setResolvingReport(null)}>×</button></div>
+        <div class="alert-modal-heading"><div><span class="ops-eyebrow">{reportTypeLabel(resolvingReport)} · {resolvingReport.location}</span><h2 id="resolve-title">Resolve this call</h2></div><button type="button" class="alert-modal-close" aria-label="Close" onClick={() => setResolvingReport(null)}>×</button></div>
         <form class="alert-form" onSubmit={submitResolution}>
           <label>What was done? (optional)<textarea rows="3" maxLength="500" value={resolutionNote} onInput={(event) => setResolutionNote(event.currentTarget.value)} placeholder="e.g. 2 residents evacuated to Catmon ES, road cleared" autoFocus /></label>
           <div class="rx-quick-notes">
@@ -714,7 +714,7 @@ export function RescuerDashboard({ onSignOut, canStartTour = true }) {
       </button>)}
     </nav>
     {navTarget && <NavigationView
-      destination={{ latitude: navReport.latitude, longitude: navReport.longitude, name: navReport.report_type, location: navReport.location }}
+      destination={{ latitude: navReport.latitude, longitude: navReport.longitude, name: reportTypeLabel(navReport), location: navReport.location }}
       points={points}
       reports={reports}
       initialPosition={myPosition}

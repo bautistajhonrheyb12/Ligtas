@@ -47,6 +47,11 @@ function WithdrawButton({ t, onWithdraw }) {
 }
 
 export function MyReports({ t, reports, queued, loading, error, onWithdraw }) {
+  // "Others" reports show what the resident wrote, e.g. "Others: Gas leak".
+  const typeName = (type, other) => {
+    const name = t('types')[type] ?? type
+    return type === 'Other' && other ? `${name}: ${other}` : name
+  }
   return <div class="citizen-panel">
     <div class="alerts-header-row"><h2>{t('myReportsTitle')}</h2><span class="severity-button">{reports.length + queued.length}</span></div>
     {error && <p class="admin-notice" role="alert">{error}</p>}
@@ -57,7 +62,7 @@ export function MyReports({ t, reports, queued, loading, error, onWithdraw }) {
         return <article class={`my-report rx-tone--${style.tone} is-queued`} key={report.queuedAt}>
           <div class="my-report-top">
             <span class="my-report-icon"><Icon name={style.icon} size={18} /></span>
-            <div><strong>{t('types')[report.reportType] ?? report.reportType}</strong><small>{report.location}</small></div>
+            <div><strong>{typeName(report.reportType, report.reportTypeOther)}</strong><small>{report.location}</small></div>
             <span class="my-report-status my-report-status--queued"><Icon name="wifiOff" size={13} /> {t('statusQueued')}</span>
           </div>
         </article>
@@ -67,7 +72,7 @@ export function MyReports({ t, reports, queued, loading, error, onWithdraw }) {
         return <article class={`my-report rx-tone--${style.tone}`} key={report.id}>
           <div class="my-report-top">
             <span class="my-report-icon"><Icon name={style.icon} size={18} /></span>
-            <div><strong>{t('types')[report.report_type] ?? report.report_type}</strong><small>{report.location} · {timeAgo(report.created_at)}</small></div>
+            <div><strong>{typeName(report.report_type, report.report_type_other)}</strong><small>{report.location} · {timeAgo(report.created_at)}</small></div>
             <span class={`my-report-status my-report-status--${report.status.toLowerCase()}`}>{t(statusKey[report.status])}</span>
           </div>
           <ol class="report-steps">

@@ -30,6 +30,7 @@ import {
   ToastStack,
   isCurrentAlert,
   playAlertChime,
+  reportTypeLabel,
   reportTypeStyle,
   timeAgo,
   toAlertView,
@@ -201,7 +202,7 @@ export function AdminDashboard({ onSignOut, canStartTour = true }) {
       subscribeToTable('incident_reports', (change) => {
         if (change.eventType === 'INSERT') {
           const isSos = change.new.report_type === 'SOS'
-          pushToast(isSos ? `SOS received: ${change.new.location}` : `New ${change.new.report_type.toLowerCase()} report needs review`, isSos ? 'urgent' : 'info')
+          pushToast(isSos ? `SOS received: ${change.new.location}` : `New ${reportTypeLabel(change.new).toLowerCase()} report needs review`, isSos ? 'urgent' : 'info')
           playAlertChime(isSos)
         }
         loadReports()
@@ -420,9 +421,10 @@ export function AdminDashboard({ onSignOut, canStartTour = true }) {
         <div><strong>LIGTAS</strong><span>Community operations</span></div>
       </div>
       <nav>
-        {adminNavItems.map((item) => <button
+        {adminNavItems.map((item, index) => <button
           type="button"
           key={item.id}
+          style={{ '--i': index }}
           class={activeTab === item.id ? 'active' : ''}
           aria-current={activeTab === item.id ? 'page' : undefined}
           tabIndex={isAdminNavOpen ? 0 : -1}
@@ -473,10 +475,10 @@ export function AdminDashboard({ onSignOut, canStartTour = true }) {
               const type = reportTypeStyle(report.report_type)
               return <article class={`admin-review-item rx-tone--${type.tone}`} key={report.id}>
                 <span class="admin-review-icon"><Icon name={type.icon} size={18} /></span>
-                <div><strong>{report.report_type}{report.priority !== 'Normal' && <span class={`admin-priority admin-priority--${report.priority.toLowerCase()}`}>{report.priority}</span>}</strong><small>{report.location}</small></div>
+                <div><strong>{reportTypeLabel(report)}{report.priority !== 'Normal' && <span class={`admin-priority admin-priority--${report.priority.toLowerCase()}`}>{report.priority}</span>}</strong><small>{report.location}</small></div>
                 <div class="admin-review-actions">
-                  <button type="button" class="approve-button" disabled={updatingReportId === report.id} onClick={() => updateReport(report.id, { status: 'Verified' })} aria-label={`Approve ${report.report_type} report`}><Icon name="check" size={16} /></button>
-                  <button type="button" class="reject-button" disabled={updatingReportId === report.id} onClick={() => quickReject(report)} aria-label={`Reject ${report.report_type} report`}><Icon name="x" size={16} /></button>
+                  <button type="button" class="approve-button" disabled={updatingReportId === report.id} onClick={() => updateReport(report.id, { status: 'Verified' })} aria-label={`Approve ${reportTypeLabel(report)} report`}><Icon name="check" size={16} /></button>
+                  <button type="button" class="reject-button" disabled={updatingReportId === report.id} onClick={() => quickReject(report)} aria-label={`Reject ${reportTypeLabel(report)} report`}><Icon name="x" size={16} /></button>
                 </div>
               </article>
             })}
@@ -506,7 +508,9 @@ export function AdminDashboard({ onSignOut, canStartTour = true }) {
       </div>
     </>}
 
-    {activeTab !== 'dashboard' && <div class="ops-content admin-content">
+    {/* Keyed by tab, so every tab's content enters the same way (without the
+        key, tabs that share an element type reused it and did not animate). */}
+    {activeTab !== 'dashboard' && <div class="ops-content admin-content" key={activeTab}>
       {activeTab === 'alerts' && <section class="ops-alerts-panel admin-alerts-panel">
         {noticeBanner}
         {alertsError && !isAlertFormOpen && <p class="admin-notice" role="alert">{alertsError}</p>}
@@ -543,7 +547,7 @@ export function AdminDashboard({ onSignOut, canStartTour = true }) {
             {points.map((point) => <div key={point.id}>
               <i class={`admin-point-dot admin-point-dot--${point.point_type.toLowerCase().replace(/[^a-z]+/g, '-')}`} />
               <span>{point.name}</span>
-              <small>{point.point_type}</small>
+              <small title={point.point_type === 'Other info' && point.description ? point.description : undefined}>{point.point_type === 'Other info' && point.description ? `Other: ${point.description}` : point.point_type}</small>
               <button type="button" class="admin-point-delete" onClick={() => removePoint(point)} aria-label={`Remove ${point.name}`}>
                 <Icon name="trash" size={14} />
               </button>
@@ -574,7 +578,7 @@ export function AdminDashboard({ onSignOut, canStartTour = true }) {
         </section>
       </div>}
 
-      {activeTab === 'analytics' && <AnalyticsPanel reports={reports} events={events} checkins={checkins} />}
+      {activeTab === 'analytics' && <AnalyticsPanel reports={reports} checkins={checkins} />}
 
       {activeTab === 'priority' && <>
         {noticeBanner}

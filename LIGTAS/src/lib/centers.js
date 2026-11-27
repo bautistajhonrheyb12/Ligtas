@@ -121,3 +121,38 @@ export function centerSummary(centers) {
 }
 
 export const formatRange = (low, high) => (low === high ? low.toLocaleString() : `${low.toLocaleString()}–${high.toLocaleString()}`)
+
+// An address as people read it. Addresses copied from Google Maps can start
+// with a plus code ("RXQG+VRH, Santa Maria, Bulacan"): the code is split off
+// (shown separately, for Google Maps), "Brgy" leftovers and the postcode are
+// dropped, and the barangay is added when the address does not name it.
+const LEADING_PLUS_CODE = /^\s*([23456789CFGHJMPQRVWX]{4,8}\+[23456789CFGHJMPQRVWX]{2,3})\s*,?\s*/i
+const plainName = (text) => text.toLowerCase().replace(/\bsta\.?\s/g, 'santa ').replace(/\bsto\.?\s/g, 'santo ')
+export function addressParts(center) {
+  const location = center.location ?? ''
+  const match = location.match(LEADING_PLUS_CODE)
+  const plusCode = match ? match[1].toUpperCase() : null
+  let text = (match ? location.slice(match[0].length) : location)
+    .replace(/\s*\bBrgy\.?\s*(?=,|$)/gi, '')
+    .replace(/,\s*\d{4}\s+Bulacan\b/i, ', Bulacan')
+    .replace(/\s*,\s*(?=,)/g, '')
+    .replace(/^[\s,]+|[\s,]+$/g, '')
+  const meaningful = text.replace(/santa maria|sta\.? maria|bulacan|[\s,]/gi, '')
+  const barangay = center.barangay
+  if (!meaningful) text = [barangay, 'Santa Maria, Bulacan'].filter(Boolean).join(', ')
+  else {
+    if (barangay && !plainName(text).includes(plainName(barangay))) {
+      const town = text.search(/,\s*(santa|sta\.?)\s+maria\b/i)
+      text = town >= 0 ? `${text.slice(0, town)}, ${barangay}${text.slice(town)}` : `${text}, ${barangay}`
+    }
+    if (!/(santa|sta\.?)\s+maria/i.test(text)) text += ', Santa Maria'
+  }
+  return { plusCode, text }
+}
+
+// A Google Maps link for checking or finding a center: its pin, else its plus code.
+export function googleMapsUrl(center) {
+  if (hasPin(center)) return `https://www.google.com/maps/search/?api=1&query=${center.latitude},${center.longitude}`
+  const { plusCode } = addressParts(center)
+  return plusCode ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${plusCode} Santa Maria, Bulacan`)}` : null
+}

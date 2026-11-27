@@ -234,6 +234,74 @@
 }
 .safe-trigger.is-marked { border-color: #9fd0b2; }
 
+/* Report sits beside SOS (I'm safe moved to Prepare → Safety check-in). */
+.report-trigger {
+  display: flex;
+  min-height: 64px;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 1px solid #efd4ad;
+  border-radius: 16px;
+  color: #7f4a10;
+  background: linear-gradient(135deg, #fff1de, #fffaf3);
+  text-align: left;
+  transition: scale .12s ease, box-shadow .2s ease;
+}
+.report-trigger:active { scale: .97; }
+.report-trigger:hover { box-shadow: 0 6px 14px rgba(160, 100, 30, .14); }
+.report-trigger strong { display: block; font: 800 16px/1.15 Manrope, sans-serif; }
+.report-trigger small { display: block; margin-top: 2px; font-size: 11px; font-weight: 600; opacity: .85; }
+.report-trigger-icon {
+  display: grid;
+  width: 40px;
+  height: 40px;
+  flex: 0 0 40px;
+  place-items: center;
+  border-radius: 50%;
+  color: #fff;
+  background: #c27a26;
+}
+
+/* Prepare → Safety check-in */
+.safety-checkin .safe-trigger { width: 100%; margin-top: 2px; }
+.safety-checkin-status {
+  margin: 0;
+  padding: 8px 10px;
+  border-radius: 10px;
+  color: #4d615a;
+  background: #f2f6f3;
+  font-size: 12.5px;
+  font-weight: 700;
+  line-height: 1.4;
+}
+.safety-checkin-status.is-safe { color: #1f6b43; background: #e7f4eb; }
+.safety-checkin-status.is-help { color: #9b3431; background: #fdeceb; }
+
+/* The quick "I'm safe" on the live SOS panel, beside Stop. */
+.citizen-sheet .sos-live-banner { grid-template-columns: auto minmax(0, 1fr) auto auto; }
+.sos-live-safe {
+  display: inline-flex;
+  min-height: 34px;
+  align-items: center;
+  gap: 5px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 999px;
+  color: #fff;
+  background: var(--ui-green);
+  font: 800 12.5px 'DM Sans', sans-serif;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.sos-live-safe .btn-spinner { width: 12px; height: 12px; margin: 0; }
+.sos-live-safe:disabled { opacity: .75; cursor: progress; }
+@media (max-width: 420px) {
+  .citizen-sheet .sos-live-banner { grid-template-columns: auto minmax(0, 1fr) auto; }
+  .citizen-sheet .sos-live-banner > span:nth-child(2) { grid-column: 2 / -1; }
+  .sos-live-safe { grid-column: 2; justify-self: start; }
+}
+
 /* Nearest centers */
 /* Evacuate now: navigation to the nearest safe center by road */
 .evacuate-now {
@@ -292,6 +360,24 @@
 .evac-show { border: 1px solid var(--ui-border); color: var(--ui-ink); background: #fff; }
 .evac-show:hover { background: #f3f7f4; }
 .incident-report-trigger { display: inline-flex; align-items: center; justify-content: center; gap: 8px; }
+
+/* The sheet is a fixed-height column: the content area fills it and scrolls on
+   its own, and the tab bar stays at the bottom whatever the tab holds. Before,
+   on screens wider than a phone the content area did not grow, so a short tab
+   (one alert, say) pulled the bar up into the middle of the panel. */
+.citizen-ui .citizen-sheet-scroll { flex: 1 1 auto; }
+.citizen-ui .citizen-sheet > .citizen-tabs { flex: 0 0 auto; margin-top: auto; }
+/* A phone turned sideways is wider than 600 px but short: let the screen fit
+   the viewport instead of a 520 px minimum that pushed the tab bar off it. */
+@media (max-height: 560px) {
+  .citizen-ui { min-height: 0; }
+}
+/* Collapsed on a phone, the sheet holds exactly the handle (26 px), the peek
+   line (42 px) and the tab bar (65 px). It was 128 px, which cut 5 px off the
+   bar and made it jump when the sheet opened. */
+@media (max-width: 600px) {
+  .citizen-ui .citizen-sheet:not(.is-expanded) { height: calc(133px + env(safe-area-inset-bottom)); }
+}
 
 /* Four citizen tabs */
 .citizen-ui .citizen-tabs { flex-wrap: nowrap; }
@@ -435,6 +521,37 @@
   .citizen-report-dialog .report-type-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .citizen-report-dialog .report-type { flex-direction: row; justify-content: flex-start; min-height: 46px; padding: 6px 10px; }
 }
+/* Each category is named in English with the Filipino below it, e.g.
+   "Flooding / Baha". Long names wrap inside the tile instead of overflowing. */
+.citizen-report-dialog .report-type { min-height: 74px; line-height: 1.2; }
+.report-type-text { display: grid; min-width: 0; gap: 1px; }
+.report-type-name { overflow-wrap: anywhere; }
+.report-type-sub { color: #6d7f77; font-size: 10px; font-weight: 600; overflow-wrap: anywhere; }
+.report-type.active .report-type-sub { color: inherit; opacity: .85; }
+@media (max-width: 420px) {
+  .citizen-report-dialog .report-type { min-height: 52px; text-align: left; }
+}
+/* "Others, please specify": required when Others is chosen. */
+.report-other-field {
+  display: grid;
+  gap: 6px;
+  margin: -4px 0 14px;
+  color: #2f4a3e;
+  font-size: 13px;
+  font-weight: 700;
+}
+.report-other-field input {
+  min-height: 44px;
+  padding: 0 12px;
+  border: 1.5px solid var(--ui-border);
+  border-radius: 10px;
+  color: var(--ui-ink);
+  background: #fff;
+  font: 600 14px/1.3 'DM Sans', sans-serif;
+}
+.report-other-field input:focus { border-color: var(--ui-green); outline: none; box-shadow: 0 0 0 3px rgba(39, 116, 91, .14); }
+.report-other-field.has-error input { border-color: #c4473f; }
+.report-other-field .field-error { color: #b23f3c; font-size: 12px; font-weight: 700; }
 
 /* SOS dialog */
 .sos-backdrop { background: rgba(80, 20, 18, .45); }

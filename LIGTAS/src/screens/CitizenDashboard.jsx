@@ -23,6 +23,7 @@ import {
   LoadingCards,
   Logo,
   OfflineBanner,
+  REPORT_TYPE_LABELS,
   ToastStack,
   alertSymbol,
   alertTypeLabel,
@@ -46,7 +47,7 @@ import { hazardZones } from '../lib/hazards.js'
 import { formatMeters, formatMinutes } from '../lib/navigation.js'
 import { CitizenMap } from './citizen/CitizenMap.jsx'
 import { CenterKindChip, CentersDirectory, capacityLine } from '../components/CentersDirectory.jsx'
-import { centerLoad, centerTitle, hasPin } from '../lib/centers.js'
+import { addressParts, centerLoad, centerTitle, hasPin } from '../lib/centers.js'
 import { MyReports } from './citizen/MyReports.jsx'
 import { PreparePanel } from './citizen/PreparePanel.jsx'
 import { PriorityQuestion } from './citizen/Priority.jsx'
@@ -127,6 +128,8 @@ export function CitizenDashboard({ onSignOut }) {
   const [profileView, setProfileView] = useState(null)
   // The evacuation center being navigated to, if any.
   const [navTarget, setNavTarget] = useState(null)
+  // The center to open in the full list (from a map popup's Details).
+  const [centersFocus, setCentersFocus] = useState(null)
   // Travel time by road to each open center (null: no safe road route),
   // worked out from where the person is, avoiding reported hazards.
   const [travelTimes, setTravelTimes] = useState(null)
@@ -145,6 +148,7 @@ export function CitizenDashboard({ onSignOut }) {
   const tourPrepare = {
     map: () => { setIsMapFullscreen(false); setActiveTab('home'); setIsSheetExpanded(false) },
     home: () => { setIsMapFullscreen(false); setActiveTab('home'); setIsSheetExpanded(true) },
+    prepare: () => { setIsMapFullscreen(false); setActiveTab('prepare'); setIsSheetExpanded(true) },
   }
 
   const loadAlerts = () => getAlerts()
@@ -334,7 +338,7 @@ export function CitizenDashboard({ onSignOut }) {
     await submitIncidentReport({
       reportType: type,
       location: where,
-      notes: `${type} reported while navigating${position.roadName ? ` on ${position.roadName}` : ''}.`,
+      notes: `${REPORT_TYPE_LABELS[type] ?? type} reported while navigating${position.roadName ? ` on ${position.roadName}` : ''}.`,
       latitude: position.latitude,
       longitude: position.longitude,
       locationSource: 'gps',
@@ -428,7 +432,7 @@ export function CitizenDashboard({ onSignOut }) {
     </header>
     <div class="map-section">
       <div class={`map-frame${isMapFullscreen ? ' is-fullscreen' : ''}`}>
-        <CitizenMap points={points} centers={centers} userPosition={isOutsideArea ? null : userPosition} focusTarget={focusTarget} locationError={livePosition.error} isLocating={isLocating} onLocate={locateMe} isFullscreen={isMapFullscreen} t={t} lang={lang} />
+        <CitizenMap points={points} centers={centers} userPosition={isOutsideArea ? null : userPosition} focusTarget={focusTarget} locationError={livePosition.error} isLocating={isLocating} onLocate={locateMe} isFullscreen={isMapFullscreen} t={t} lang={lang} onNavigateCenter={(center) => setNavTarget(center)} onCenterDetails={(center) => { setCentersFocus(center.id); setDialog('centers') }} />
       </div>
     </div>
 
@@ -465,7 +469,6 @@ export function CitizenDashboard({ onSignOut }) {
       </button>
       <div class="citizen-sheet-peek">
         <span>{peekText}</span>
-        <button type="button" onClick={() => setDialog('report')}>{t('reportIncident')}</button>
       </div>
 
       <div class="citizen-sheet-scroll">
@@ -475,6 +478,11 @@ export function CitizenDashboard({ onSignOut }) {
           {sosLive.sharing && <div class="sos-live-banner" role="status">
             <span class="sos-live-dot" aria-hidden="true" />
             <span><strong>{t('sosLiveSharing')}</strong><small>{t('sosLiveDetail', { time: timeAgo(sosLive.savedAt).toLowerCase() })}</small></span>
+            {/* A quick check-in while the SOS is open (the full one is in Prepare). */}
+            <button type="button" class={`sos-live-safe${checkin?.status === 'Safe' ? ' is-marked' : ''}`} onClick={markSafe} disabled={isSavingCheckin} aria-label={checkin?.status === 'Safe' ? t('safeMarked', { time: timeAgo(checkin.updated_at).toLowerCase() }) : t('safeButton')}>
+              {isSavingCheckin ? <span class="btn-spinner" aria-hidden="true" /> : <Icon name={checkin?.status === 'Safe' ? 'check' : 'heart'} size={14} />}
+              {t('safeButton')}
+            </button>
             <ConfirmAction class="sos-live-stop" onConfirm={sosLive.stop} ask={{
               title: t('sosLiveStopTitle'),
               message: t('sosLiveStopText'),
@@ -489,9 +497,9 @@ export function CitizenDashboard({ onSignOut }) {
               <span class="sos-trigger-icon"><Icon name="sos" size={26} /></span>
               <span><strong>{t('sosButton')}</strong><small>{t('sosHint')}</small></span>
             </button>
-            <button type="button" class={`safe-trigger${checkin?.status === 'Safe' ? ' is-marked' : ''}`} onClick={markSafe} disabled={isSavingCheckin}>
-              <span class="safe-trigger-icon">{isSavingCheckin ? <span class="btn-spinner" aria-hidden="true" /> : <Icon name={checkin?.status === 'Safe' ? 'check' : 'heart'} size={22} />}</span>
-              <span><strong>{t('safeButton')}</strong><small>{checkin?.status === 'Safe' ? t('safeMarked', { time: timeAgo(checkin.updated_at).toLowerCase() }) : t('safeHint')}</small></span>
+            <button type="button" class="report-trigger" onClick={() => setDialog('report')}>
+              <span class="report-trigger-icon"><Icon name="camera" size={22} /></span>
+              <span><strong>{t('reportIncident')}</strong><small>{t('reportHint')}</small></span>
             </button>
           </div>
           <FamilyStatus t={t} family={family} onManage={openFamily} />
@@ -533,17 +541,33 @@ export function CitizenDashboard({ onSignOut }) {
             <div class="nearest-list">
               {nearestCenters.map((center) => {
                 const load = centerLoad(center)
+                const isUnknown = load.status === 'unverified'
+                const travel = center.road
+                  ? t('byRoad', { time: formatMinutes(center.road.timeS), distance: formatMeters(center.road.distanceM) })
+                  : center.road === null ? t('noSafeRoad') : center.distance != null ? t('away', { distance: formatDistance(center.distance) }) : ''
+                // A bar only when the capacity is known (or estimated) and someone is there.
+                const showMeter = !isUnknown && load.percent != null && center.occupants > 0
                 return <article class="citizen-evac-card" key={center.id}>
                   <div class="citizen-evac-heading">
-                    <div><strong>{centerTitle(center)}</strong><span>{center.location}{center.road ? ` · ${t('byRoad', { time: formatMinutes(center.road.timeS), distance: formatMeters(center.road.distanceM) })}` : center.road === null ? ` · ${t('noSafeRoad')}` : center.distance != null ? ` · ${t('away', { distance: formatDistance(center.distance) })}` : ''}</span></div>
+                    <div class="citizen-evac-title">
+                      <strong>{centerTitle(center)}</strong>
+                      <span class="citizen-evac-address">{addressParts(center).text}</span>
+                      {travel && <span class={`citizen-evac-travel${center.road === null ? ' is-warning' : ''}`}>{travel}</span>}
+                    </div>
                     <div class="citizen-evac-chips">
                       <CenterKindChip center={center} t={t} />
-                      <span class={`capacity-chip capacity-chip--${load.level}`}>{t(capacityKeys[load.level])}</span>
+                      {!isUnknown && <span class={`capacity-chip capacity-chip--${load.level}`}>{t(capacityKeys[load.level])}</span>}
                     </div>
                   </div>
-                  <div class="evac-progress">
-                    {load.percent != null && <div class="bar" data-level={load.level} style={{ width: `${load.percent}%` }}></div>}
-                    <div class="counts">{capacityLine(center, t)}</div>
+                  <div class={`evac-capacity${isUnknown ? ' is-unknown' : ''}`}>
+                    <p class="evac-capacity-label">
+                      {isUnknown && <Icon name="info" size={14} />}
+                      <span>{isUnknown ? t('capUnknown') : capacityLine(center, t)}</span>
+                    </p>
+                    {isUnknown && center.occupants > 0 && <p class="evac-capacity-note">{t('capUnverifiedCount', { occupants: center.occupants })}</p>}
+                    {showMeter && <div class="evac-meter" role="meter" aria-valuemin="0" aria-valuemax="100" aria-valuenow={load.percent} aria-label={capacityLine(center, t)}>
+                      <i data-level={load.level} style={{ width: `${load.percent}%` }} />
+                    </div>}
                   </div>
                   <div class="evac-actions">
                     <button type="button" class="evac-navigate" onClick={() => setNavTarget(center)}><Icon name="navigate" size={16} /> {t('navigate')}</button>
@@ -556,14 +580,6 @@ export function CitizenDashboard({ onSignOut }) {
               <Icon name="list" size={16} /> {t('allCentersButton', { count: centers.length })}
             </button>}
           </div>
-
-          <aside class="incident-report-card panel-box">
-            <div class="panel-header"><span>{t('reportCardTitle')}</span></div>
-            <p class="incident-report-prompt">{t('reportCardText')}</p>
-            <button type="button" class="secondary-action incident-report-trigger" onClick={() => setDialog('report')}>
-              <Icon name="camera" size={18} /> {t('reportCardButton')}
-            </button>
-          </aside>
         </>}
 
         {activeTab === 'alerts' && <div class="alerts-panel">
@@ -596,6 +612,7 @@ export function CitizenDashboard({ onSignOut }) {
 
         {activeTab === 'prepare' && <PreparePanel
           t={t}
+          checkin={{ status: checkin, saving: isSavingCheckin, onMarkSafe: markSafe }}
           family={{ family, onChanged: loadFamily, onToast: pushToast }}
           profile={profile}
           priority={{
@@ -642,10 +659,11 @@ export function CitizenDashboard({ onSignOut }) {
       centers={centers}
       userPosition={isOutsideArea ? null : userPosition}
       homeBarangay={profile?.barangay}
+      focusId={centersFocus}
       t={t}
       lang={lang}
-      onClose={() => setDialog(null)}
-      onNavigate={(center) => { setDialog(null); setNavTarget(center) }}
+      onClose={() => { setDialog(null); setCentersFocus(null) }}
+      onNavigate={(center) => { setDialog(null); setCentersFocus(null); setNavTarget(center) }}
       onShowOnMap={(center) => { setDialog(null); setFocusTarget({ latitude: center.latitude, longitude: center.longitude }); setIsSheetExpanded(false) }}
     />}
     {dialog === 'report' && <ReportDialog t={t} ownerId={myId} limit={reportLimitReached(myReports, queuedReports)} onSos={() => setDialog('sos')} hasPhone={Boolean(profile?.phone)} onAddPhone={() => { setDialog(null); setProfileView('personal') }} onClose={() => setDialog(null)} onDone={(result) => {

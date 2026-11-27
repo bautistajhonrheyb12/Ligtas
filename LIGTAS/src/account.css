@@ -125,6 +125,47 @@
 .profile-photo-form .profile-note { text-align: center; }
 .profile-photo-form .form-notice, .profile-photo-form .form-error { display: flex; align-items: center; justify-content: center; gap: 6px; margin: 0; }
 .profile-photo-form .profile-photo-input { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+/* Cropping a new photo: a square frame, darkened outside the circle that
+   becomes the avatar, with a zoom slider below. */
+.photo-cropper { display: grid; justify-items: center; gap: 12px; }
+.photo-crop-frame {
+  position: relative;
+  width: min(260px, 72vw);
+  aspect-ratio: 1;
+  overflow: hidden;
+  border-radius: 16px;
+  background: #1d2a24;
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+}
+.photo-crop-frame:active { cursor: grabbing; }
+.photo-crop-frame:focus-visible { outline: 3px solid var(--ui-green); outline-offset: 3px; }
+.photo-crop-frame img { position: absolute; max-width: none; pointer-events: none; }
+.photo-crop-mask {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  box-shadow: 0 0 0 999px rgba(16, 28, 22, .55);
+  outline: 2px solid rgba(255, 255, 255, .9);
+  outline-offset: -2px;
+  pointer-events: none;
+}
+.photo-crop-zoom { display: flex; width: min(260px, 72vw); align-items: center; gap: 8px; }
+.photo-crop-zoom input { flex: 1; accent-color: var(--ui-green); }
+.photo-crop-zoom button {
+  display: grid;
+  width: 36px;
+  height: 36px;
+  flex: none;
+  place-items: center;
+  border: 1px solid var(--ui-border);
+  border-radius: 10px;
+  color: var(--ui-green-dark);
+  background: #fff;
+}
+.photo-crop-zoom button:disabled { opacity: .45; }
 .profile-quiet-button {
   display: inline-flex;
   min-height: 44px;

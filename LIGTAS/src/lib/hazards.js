@@ -6,6 +6,7 @@
 //   caution – lower-risk zones and unverified reports: routes may pass, with a
 //             warning
 import { distanceM } from './navigation.js'
+import { REPORT_TYPE_LABELS } from './ui.jsx'
 
 // Radius of each kind of area, in metres. Points mark a spot on a road or the
 // middle of an affected area, so closures are small and hazards larger.
@@ -17,7 +18,9 @@ const MAX_VERTICES = 100
 // Each area is sent as an octagon (9 points including the closing one).
 const SIDES = 8
 
-const REPORT_CLOSURES = ['Blocked road', 'Fallen tree']
+// A verified road obstruction (formerly "blocked road"; older fallen-tree
+// reports too), vehicular accident or downed power line closes that spot.
+const REPORT_CLOSURES = ['Blocked road', 'Fallen tree', 'Vehicular accident', 'Downed power line']
 const REPORT_HAZARDS = ['Flooding', 'Landslide', 'Fire']
 
 export function hazardZones({ points = [], reports = [] }) {
@@ -38,14 +41,15 @@ export function hazardZones({ points = [], reports = [] }) {
     const isClosure = REPORT_CLOSURES.includes(report.report_type)
     const isHazard = REPORT_HAZARDS.includes(report.report_type)
     if (!isClosure && !isHazard) continue
-    const base = { id: `report-${report.id}`, lat: report.latitude, lng: report.longitude, label: report.report_type, detail: report.location ?? '' }
+    const name = REPORT_TYPE_LABELS[report.report_type] ?? report.report_type
+    const base = { id: `report-${report.id}`, lat: report.latitude, lng: report.longitude, label: name, detail: report.location ?? '' }
     if (report.status === 'Pending') {
       // Unverified: never closes a road, only warns.
-      zones.push({ ...base, kind: 'caution', radiusM: RADIUS.unverified, source: `Unverified ${report.report_type.toLowerCase()} report` })
+      zones.push({ ...base, kind: 'caution', radiusM: RADIUS.unverified, source: `Unverified ${name.toLowerCase()} report` })
     } else if (isClosure) {
-      zones.push({ ...base, kind: 'closure', radiusM: RADIUS.closure, source: `Verified ${report.report_type.toLowerCase()} report` })
+      zones.push({ ...base, kind: 'closure', radiusM: RADIUS.closure, source: `Verified ${name.toLowerCase()} report` })
     } else {
-      zones.push({ ...base, kind: 'hazard', radiusM: report.report_type === 'Flooding' ? RADIUS.flood : RADIUS.otherHazard, source: `Verified ${report.report_type.toLowerCase()} report` })
+      zones.push({ ...base, kind: 'hazard', radiusM: report.report_type === 'Flooding' ? RADIUS.flood : RADIUS.otherHazard, source: `Verified ${name.toLowerCase()} report` })
     }
   }
   return zones

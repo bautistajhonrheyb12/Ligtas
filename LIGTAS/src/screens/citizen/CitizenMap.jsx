@@ -71,7 +71,10 @@ function refit(map, container, wholeTown) {
   refitArea(map, overlayPadding(container), wholeTown)
 }
 
-export function CitizenMap({ points, centers, userPosition, focusTarget, locationError, isLocating, onLocate, isFullscreen = false, t, lang = 'en' }) {
+export function CitizenMap({ points, centers, userPosition, focusTarget, locationError, isLocating, onLocate, isFullscreen = false, t, lang = 'en', onNavigateCenter, onCenterDetails }) {
+  // The popup buttons always call the latest handlers.
+  const centerActionsRef = useRef({})
+  centerActionsRef.current = { navigate: onNavigateCenter, details: onCenterDetails }
   const mapRef = useRef(null)
   const mapInstanceRef = useRef(null)
   const layerRef = useRef(null)
@@ -120,7 +123,13 @@ export function CitizenMap({ points, centers, userPosition, focusTarget, locatio
     if (!map || !layer) return
     layer.clearLayers()
     drawMapPoints(layer, points)
-    drawEvacuationCenters(layer, centers, { labels: centerMapLabels(t, lang) })
+    drawEvacuationCenters(layer, centers, {
+      labels: centerMapLabels(t, lang),
+      actions: [
+        { key: 'navigate', label: t('navigate'), icon: 'navigate', run: (center) => centerActionsRef.current.navigate?.(center) },
+        { key: 'details', label: t('centerDetails'), run: (center) => centerActionsRef.current.details?.(center) },
+      ],
+    })
   }, [points, centers, lang])
 
   useEffect(() => {

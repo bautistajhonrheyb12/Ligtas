@@ -1,6 +1,6 @@
 import { useState } from 'preact/hooks'
 import { getReportPhotoUrl } from '../../lib/supabase.js'
-import { Icon, LoadingCards, downloadCsv, reportTypeStyle, timeAgo } from '../../lib/ui.jsx'
+import { Icon, LoadingCards, REPORT_CATEGORIES, REPORT_TYPE_LABELS, downloadCsv, reportTypeLabel, reportTypeStyle, timeAgo } from '../../lib/ui.jsx'
 import { STAFF_LABELS, countCategories } from '../../lib/priority.js'
 import { PriorityTags } from '../../components/PriorityTags.jsx'
 import { useConfirm } from '../../components/ConfirmDialog.jsx'
@@ -30,6 +30,8 @@ export function ReportsPanel({ reports, integrity = {}, loading, staff, updating
   const [confirm, confirmDialog] = useConfirm()
   const [filter, setFilter] = useState(initialFilter)
   const [search, setSearch] = useState('')
+  // A report category, or '' for every category.
+  const [category, setCategory] = useState('')
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE)
   const rescuers = staff.filter((person) => person.role === 'rescuer')
   const staffName = (id) => staff.find((person) => person.id === id)?.display_name || 'Unnamed rescuer'
@@ -59,10 +61,14 @@ export function ReportsPanel({ reports, integrity = {}, loading, staff, updating
 
   const filtered = reports.filter((report) => {
     const matchesFilter = filter === 'All' || (filter === 'SOS' ? report.report_type === 'SOS' : report.status === filter)
+    const matchesCategory = !category || report.report_type === category
     const query = search.trim().toLowerCase()
-    const matchesSearch = !query || `${report.report_type} ${report.location} ${report.notes} ${report.contact_name ?? ''} ${report.contact_phone ?? ''}`.toLowerCase().includes(query)
-    return matchesFilter && matchesSearch
+    const matchesSearch = !query || `${reportTypeLabel(report)} ${report.report_type} ${report.location} ${report.notes} ${report.contact_name ?? ''} ${report.contact_phone ?? ''}`.toLowerCase().includes(query)
+    return matchesFilter && matchesCategory && matchesSearch
   })
+
+  // Today's categories, then any older ones that past reports still use.
+  const categoryOptions = [...REPORT_CATEGORIES, ...new Set(reports.map((report) => report.report_type).filter((type) => type !== 'SOS' && !REPORT_CATEGORIES.includes(type)))]
 
   const exportCsv = () => {
     const rows = [[
@@ -72,7 +78,7 @@ export function ReportsPanel({ reports, integrity = {}, loading, staff, updating
     const categories = (list) => countCategories(list).map(([category, count]) => `${STAFF_LABELS[category]}${count > 1 ? ` x${count}` : ''}`).join('; ')
     filtered.forEach((report) => rows.push([
       new Date(report.created_at).toLocaleString(),
-      report.report_type,
+      reportTypeLabel(report),
       report.priority,
       report.status,
       report.location,
@@ -97,6 +103,10 @@ export function ReportsPanel({ reports, integrity = {}, loading, staff, updating
     <div class="admin-report-tools">
       <div class="admin-report-toolbar">
         <label class="admin-report-search"><span>⌕</span><input aria-label="Search incident reports" placeholder="Search type, location, notes or reporter…" value={search} onInput={(event) => { setSearch(event.currentTarget.value); setVisibleCount(PAGE_SIZE) }} /></label>
+        <select class="admin-report-category" aria-label="Report category" value={category} onChange={(event) => { setCategory(event.currentTarget.value); setVisibleCount(PAGE_SIZE) }}>
+          <option value="">All categories</option>
+          {categoryOptions.map((type) => <option value={type} key={type}>{REPORT_TYPE_LABELS[type] ?? type} ({reports.filter((report) => report.report_type === type).length})</option>)}
+        </select>
         <button type="button" class="admin-export-button" onClick={exportCsv} disabled={!filtered.length}><Icon name="download" size={16} /> Export CSV</button>
       </div>
       <div class="admin-report-filters">
@@ -115,7 +125,7 @@ export function ReportsPanel({ reports, integrity = {}, loading, staff, updating
             <div class="admin-report-head">
               <span class="admin-review-icon"><Icon name={type.icon} size={18} /></span>
               <div>
-                <h2>{report.report_type}{report.priority !== 'Normal' && <span class={`admin-priority admin-priority--${report.priority.toLowerCase()}`}>{report.priority}</span>}</h2>
+                <h2>{reportTypeLabel(report)}{report.priority !== 'Normal' && <span class={`admin-priority admin-priority--${report.priority.toLowerCase()}`}>{report.priority}</span>}</h2>
                 <small>{timeAgo(report.created_at)} · {new Date(report.created_at).toLocaleString([], { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}</small>
               </div>
             </div>
@@ -151,7 +161,7 @@ export function ReportsPanel({ reports, integrity = {}, loading, staff, updating
             </div>}
             {(report.status === 'Pending' || report.status === 'Verified') && report.report_type !== 'SOS' && <label class="admin-status-override admin-priority-select">
               <span>Priority</span>
-              <select aria-label={`Change ${report.report_type} priority`} value={report.priority} disabled={isBusy} onChange={(event) => onUpdate(report.id, { priority: event.currentTarget.value })}>
+              <select aria-label={`Change ${reportTypeLabel(report)} priority`} value={report.priority} disabled={isBusy} onChange={(event) => onUpdate(report.id, { priority: event.currentTarget.value })}>
                 <option>Normal</option><option>Urgent</option><option>Critical</option>
               </select>
             </label>}
@@ -166,7 +176,7 @@ export function ReportsPanel({ reports, integrity = {}, loading, staff, updating
             {report.status === 'Resolved' && report.assigned_to && <small class="admin-report-by">by {staffName(report.assigned_to)}{report.resolved_at ? ` · ${timeAgo(report.resolved_at)}` : ''}</small>}
             {report.status !== 'Pending' && report.status !== 'Cancelled' && <label class="admin-status-override">
               <span>Change status</span>
-              <select aria-label={`Change ${report.report_type} status`} value={report.status} disabled={isBusy} onChange={(event) => changeStatus(report, event.currentTarget)}>
+              <select aria-label={`Change ${reportTypeLabel(report)} status`} value={report.status} disabled={isBusy} onChange={(event) => changeStatus(report, event.currentTarget)}>
                 <option>Pending</option><option>Verified</option><option>Resolved</option><option>Rejected</option>
               </select>
             </label>}

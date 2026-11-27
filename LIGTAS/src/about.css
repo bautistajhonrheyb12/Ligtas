@@ -30,6 +30,15 @@
   letter-spacing: -.045em;
 }
 .about-hero p { margin: 0 auto; color: #4d615a; font-size: 16.5px; line-height: 1.7; }
+/* The tagline breaks after "starts" on wide screens and wraps naturally on phones. */
+.about-hero h1 { text-wrap: balance; }
+.about-hero-break { display: block; }
+/* The landing page tints the last span of any h1 pale green; not here. */
+.about-hero h1 .about-hero-break { color: inherit; }
+@media (max-width: 600px) {
+  .about-hero h1 { font-size: clamp(30px, 8.4vw, 40px); }
+  .about-hero-break { display: inline; }
+}
 .about-hero b { color: var(--ui-ink); }
 
 .about-section { padding: 48px 0; }

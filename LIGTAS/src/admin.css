@@ -268,6 +268,11 @@ span.capacity-chip.capacity-chip--closed { color: #5d6964; background: #e6ebe8; 
 .admin-point-delete:hover,
 .admin-point-delete.is-confirming { color: #a2453f; background: #fff1ef; }
 .admin-recent-points { max-height: 320px; overflow: auto; }
+/* An "Other info" point shows what it is about; long text is cut short here
+   (the full text is in its title and on the map). */
+.admin-ui .admin-recent-points > div > small { max-width: 160px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.alert-form label.has-error textarea { border-color: #c4473f; }
+.alert-form .field-error { color: #b23f3c; font-size: 12px; font-weight: 700; }
 
 /* Teams */
 .admin-teams-layout { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(280px, 1fr); align-items: start; gap: 16px; }
@@ -324,7 +329,18 @@ span.capacity-chip.capacity-chip--closed { color: #5d6964; background: #e6ebe8; 
 .admin-analytics { display: grid; gap: 16px; }
 .analytics-toolbar { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 12px; }
 .analytics-toolbar h2 { margin: 3px 0 0; color: var(--ui-ink); font: 700 20px Manrope, sans-serif; }
-.analytics-range { width: min(100%, 420px); grid-template-columns: repeat(3, minmax(0, 1fr)); }
+/* Seven ranges: they wrap onto a second line rather than squeezing. */
+.rx-segment.analytics-range { display: flex; flex-wrap: wrap; width: auto; max-width: 100%; }
+.rx-segment.analytics-range button { flex: 1 0 auto; min-height: 38px; padding: 0 12px; font-size: 12.5px; white-space: nowrap; }
+.analytics-custom { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 10px 12px; padding: 14px; border: 1px solid var(--ui-border); border-radius: 14px; background: #fff; }
+.analytics-custom label { display: grid; gap: 5px; color: var(--ui-muted); font-size: 12px; font-weight: 800; }
+.analytics-custom input { min-height: 40px; padding: 0 10px; border: 1.5px solid var(--ui-border); border-radius: 10px; color: var(--ui-ink); background: #fff; font: 600 13px 'DM Sans', sans-serif; }
+.analytics-custom .secondary-action { display: inline-flex; align-items: center; gap: 6px; min-height: 40px; padding: 0 14px; }
+.analytics-custom small { flex-basis: 100%; color: var(--ui-muted); font-size: 11.5px; }
+.analytics-custom .form-error { flex-basis: 100%; margin: 0; }
+.analytics-loading { display: flex; align-items: center; gap: 8px; margin: 0; color: var(--ui-muted); font-size: 13px; font-weight: 600; }
+.analytics-loading .btn-spinner { width: 14px; height: 14px; margin: 0; border-color: rgba(39, 116, 91, .25); border-top-color: var(--ui-green); }
+.stat-tile small + small { color: #8a9a93; font-size: 10.5px; }
 .analytics-tiles { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
 .stat-tile {
   display: grid;

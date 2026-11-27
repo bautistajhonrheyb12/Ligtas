@@ -273,10 +273,21 @@ const defaultNames = { 'Danger zone': 'Danger zone', 'Closed road': 'Closed road
 export function PointForm({ pointType, position, onClose, onSaved }) {
   const [isSaving, setIsSaving] = useState(false)
   const [error, setError] = useState('')
+  // "Other info" must say what it is about ("Other, please specify"); the text
+  // is the point's description, shown wherever the point is.
+  const isOther = pointType === 'Other info'
+  const [specifyError, setSpecifyError] = useState('')
 
   const submit = async (event) => {
     event.preventDefault()
     const form = new FormData(event.currentTarget)
+    const description = form.get('description').replace(/\s+/g, ' ').trim()
+    if (isOther && description.length < 3) {
+      setSpecifyError('Say what this point is about (at least 3 characters).')
+      event.currentTarget.elements.description.focus()
+      return
+    }
+    setSpecifyError('')
     setIsSaving(true)
     setError('')
     try {
@@ -284,7 +295,7 @@ export function PointForm({ pointType, position, onClose, onSaved }) {
         name: form.get('name').trim(),
         pointType,
         severity: form.get('severity'),
-        description: form.get('description').trim() || null,
+        description: description || null,
         latitude: position.latitude,
         longitude: position.longitude,
       })
@@ -299,8 +310,14 @@ export function PointForm({ pointType, position, onClose, onSaved }) {
   return <Modal title={`New ${pointType.toLowerCase()}`} eyebrow={`${position.latitude.toFixed(5)}, ${position.longitude.toFixed(5)}`} onClose={onClose}>
     <form class="alert-form" onSubmit={submit}>
       <label>Name<input name="name" required minLength="2" maxLength="120" defaultValue={defaultNames[pointType]} autoFocus /></label>
-      <label>Severity<select name="severity" defaultValue={pointType === 'Danger zone' ? 'High' : 'Medium'}><option>High</option><option>Medium</option><option>Low</option></select></label>
-      <label>Details for the public<textarea name="description" rows="3" maxLength="300" placeholder="e.g. Waist-deep flooding, avoid this road" /></label>
+      {/* Preact ignores defaultValue on a select, so the default option is marked selected. */}
+      <label>Severity<select name="severity">{['High', 'Medium', 'Low'].map((level) => <option key={level} selected={level === (pointType === 'Danger zone' ? 'High' : 'Medium')}>{level}</option>)}</select></label>
+      {isOther
+        ? <label class={specifyError ? 'has-error' : ''}>Other, please specify
+          <textarea name="description" rows="3" required maxLength="300" placeholder="e.g. Relief goods distribution at the covered court, 1–5 PM" aria-invalid={specifyError ? true : undefined} aria-describedby={specifyError ? 'point-specify-error' : undefined} onInput={() => specifyError && setSpecifyError('')} />
+          {specifyError && <small id="point-specify-error" class="field-error" role="alert">{specifyError}</small>}
+        </label>
+        : <label>Details for the public<textarea name="description" rows="3" maxLength="300" placeholder="e.g. Waist-deep flooding, avoid this road" /></label>}
       {error && <p class="form-error" role="alert" key={error}>{error}</p>}
       <div class="alert-form-actions">
         <button type="button" class="alert-cancel-button" onClick={onClose}>Cancel</button>

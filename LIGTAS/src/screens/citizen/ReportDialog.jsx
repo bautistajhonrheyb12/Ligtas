@@ -4,11 +4,13 @@ import { PinPicker } from '../../components/PinPicker.jsx'
 import { coordinatesLabel, describeLocation } from '../../lib/geocode.js'
 import { queueReport } from '../../lib/offlineQueue.js'
 import { isInsideSantaMaria } from '../../lib/santaMaria.js'
-import { Icon, formatDistance, getCurrentPosition, reportTypeStyle } from '../../lib/ui.jsx'
+import { Icon, REPORT_CATEGORIES, formatDistance, getCurrentPosition, reportTypeStyle } from '../../lib/ui.jsx'
+import { bilingualReportType } from '../../lib/i18n.js'
 import { isRoughFix } from '../../lib/map.js'
 import { rescueHotline } from '../../lib/hotlines.js'
 
-const REPORT_TYPES = ['Flooding', 'Blocked road', 'Fallen tree', 'Power outage', 'Landslide', 'Fire', 'Medical', 'Other']
+// "Others" must say what kind of incident it is (stored as report_type_other).
+const OTHER_MAX = 60
 // Photos are resized before upload, so only reject files too big to process on a phone.
 const MAX_PHOTO_BYTES = 25 * 1024 * 1024
 
@@ -18,6 +20,9 @@ export function ReportDialog({ t, ownerId, hasPhone, onAddPhone, onClose, onDone
   // Decided when the form opens, so it never changes while a report is being sent.
   const [limit] = useState(limitNow)
   const [reportType, setReportType] = useState('Flooding')
+  const [otherType, setOtherType] = useState('')
+  const [otherError, setOtherError] = useState(false)
+  const otherRef = useRef(null)
   const [location, setLocation] = useState('')
   const [position, setPosition] = useState(null)
   const [isLocating, setIsLocating] = useState(false)
@@ -135,12 +140,26 @@ export function ReportDialog({ t, ownerId, hasPhone, onAddPhone, onClose, onDone
     setPhotoPreview(URL.createObjectURL(file))
   }
 
+  const chooseType = (type) => {
+    setReportType(type)
+    setOtherError(false)
+    // The "please specify" field appears below the tiles; move to it.
+    if (type === 'Other') setTimeout(() => otherRef.current?.focus(), 0)
+  }
+
   const submit = async (event) => {
     event.preventDefault()
+    const otherText = otherType.replace(/\s+/g, ' ').trim()
+    if (reportType === 'Other' && otherText.length < 2) {
+      setOtherError(true)
+      otherRef.current?.focus()
+      return
+    }
     setIsSubmitting(true)
     setError('')
     const report = {
       reportType,
+      reportTypeOther: reportType === 'Other' ? otherText : null,
       location: location.trim(),
       notes: notes.trim(),
       latitude: position?.latitude ?? null,
@@ -197,20 +216,38 @@ export function ReportDialog({ t, ownerId, hasPhone, onAddPhone, onClose, onDone
       <p class="incident-report-prompt">{t('reportPrompt')}</p>
       {!hasPhone &&<p class="report-phone-hint"><Icon name="phone" size={15} /><span>{t('phoneHint')}</span><button type="button" onClick={onAddPhone}>{t('addPhone')}</button></p>}
       <div class="report-type-grid" role="group" aria-label="Incident type">
-        {REPORT_TYPES.map((type) => {
+        {REPORT_CATEGORIES.map((type) => {
           const style = reportTypeStyle(type)
+          const name = bilingualReportType(type)
           return <button
             type="button"
             key={type}
             class={`report-type rx-tone--${style.tone}${reportType === type ? ' active' : ''}`}
             aria-pressed={reportType === type}
-            onClick={() => setReportType(type)}
+            aria-label={`${name.en} (${name.tl})`}
+            onClick={() => chooseType(type)}
           >
             <span class="report-type-icon"><Icon name={style.icon} size={18} /></span>
-            {t('types')[type]}
+            <span class="report-type-text"><span class="report-type-name">{name.en}</span><small class="report-type-sub">{name.tl}</small></span>
           </button>
         })}
       </div>
+      {reportType === 'Other' && <label class={`report-other-field${otherError ? ' has-error' : ''}`}>
+        {t('otherSpecifyLabel')}
+        <input
+          ref={otherRef}
+          name="report_type_other"
+          required
+          maxLength={OTHER_MAX}
+          autoComplete="off"
+          placeholder={t('otherSpecifyPlaceholder')}
+          value={otherType}
+          aria-invalid={otherError || undefined}
+          aria-describedby={otherError ? 'report-other-error' : undefined}
+          onInput={(event) => { setOtherType(event.currentTarget.value); if (otherError) setOtherError(false) }}
+        />
+        {otherError && <small id="report-other-error" class="field-error" role="alert">{t('otherSpecifyRequired')}</small>}
+      </label>}
       {error && <p class="form-error" role="alert" key={error}>{error}</p>}
       <form class="citizen-report-form" onSubmit={submit}>
         <label>

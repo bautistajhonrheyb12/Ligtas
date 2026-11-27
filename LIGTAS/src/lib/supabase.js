@@ -12,16 +12,19 @@ export const supabase = supabaseUrl && supabasePublishableKey
 const REPORT_COLUMNS_BASE = 'id, report_type, location, notes, status, created_at, latitude, longitude, photo_path, priority, people_affected, vulnerable_people, assigned_to, response_stage, assigned_at, resolution_note, resolved_at, contact_name, contact_phone, location_source, location_flag, priority_needs, priority_pending'
 // GPS accuracy and an open SOS's live position (SOS live-location migration).
 const REPORT_COLUMNS_LIVE = `${REPORT_COLUMNS_BASE}, location_accuracy, live_latitude, live_longitude, live_accuracy, live_updated_at`
-let reportColumns = REPORT_COLUMNS_LIVE
+// What an "Others" report is about (report categories migration).
+const REPORT_COLUMNS_OTHER = `${REPORT_COLUMNS_LIVE}, report_type_other`
+const REPORT_COLUMN_SETS = [REPORT_COLUMNS_OTHER, REPORT_COLUMNS_LIVE, REPORT_COLUMNS_BASE]
+let reportColumns = REPORT_COLUMNS_OTHER
 
 const isMissingColumn = (error) => error?.code === '42703' || error?.code === 'PGRST204'
 
-// Until the newest migration is applied, report queries fall back (once) to
-// the columns that exist, so the app keeps working in the meantime.
+// Until the newest migrations are applied, report queries fall back to the
+// columns that exist, so the app keeps working in the meantime.
 async function withReportColumns(run) {
   let result = await run(reportColumns)
-  if (isMissingColumn(result.error) && reportColumns !== REPORT_COLUMNS_BASE) {
-    reportColumns = REPORT_COLUMNS_BASE
+  while (isMissingColumn(result.error) && reportColumns !== REPORT_COLUMNS_BASE) {
+    reportColumns = REPORT_COLUMN_SETS[REPORT_COLUMN_SETS.indexOf(reportColumns) + 1]
     result = await run(reportColumns)
   }
   return result
@@ -583,6 +586,7 @@ async function uploadReportPhoto(userId, original) {
 
 export async function submitIncidentReport({
   reportType,
+  reportTypeOther = null,
   location,
   notes,
   latitude = null,
@@ -614,10 +618,22 @@ export async function submitIncidentReport({
     status: isSos ? 'Verified' : 'Pending',
     location_accuracy: latitude != null && locationSource === 'gps' && Number.isFinite(locationAccuracy) ? Math.round(locationAccuracy) : null,
   }
+  if (reportType === 'Other' && reportTypeOther) row.report_type_other = reportTypeOther
   let { data, error } = await client.from('incident_reports').insert(row).select('id')
+  // Before the report categories migration, what an "Others" report is about
+  // goes at the start of the notes instead, so it is not lost.
+  if (isMissingColumn(error) && row.report_type_other) {
+    row.notes = `${row.report_type_other}: ${row.notes}`.slice(0, 1000)
+    delete row.report_type_other
+    ;({ data, error } = await client.from('incident_reports').insert(row).select('id'))
+  }
   if (isMissingColumn(error)) {
     delete row.location_accuracy
     ;({ data, error } = await client.from('incident_reports').insert(row).select('id'))
+  }
+  // The new categories need the report categories migration.
+  if (error?.code === '23514' && /report_type/.test(error.message)) {
+    throw new Error('This kind of report is not accepted yet. Choose "Others" and describe it, or call MDRRMO Rescue at 0923 022 6973.')
   }
 
   if (error) {
@@ -843,6 +859,42 @@ export async function getRequestCountry() {
   return data
 }
 
+// Analytics: every report sent in [since, until) and every verification from
+// `since` on (since null: from the first record), read from the stored
+// records a page at a time, so long ranges are complete. Admins only (RLS).
+const ANALYTICS_PAGE = 1000
+const ANALYTICS_REPORT_COLUMNS = 'id, report_type, status, location, created_at, resolved_at'
+
+async function readAllPages(build) {
+  const rows = []
+  for (let from = 0; ; from += ANALYTICS_PAGE) {
+    const { data, error } = await build().range(from, from + ANALYTICS_PAGE - 1)
+    if (error) return { rows, error }
+    rows.push(...data)
+    if (data.length < ANALYTICS_PAGE) return { rows, error: null }
+  }
+}
+
+export async function getAnalyticsData({ since = null, until }) {
+  const client = requireClient()
+  const reportPages = (columns) => readAllPages(() => {
+    let query = client.from('incident_reports').select(columns).lt('created_at', until)
+    if (since) query = query.gte('created_at', since)
+    return query.order('created_at').order('id')
+  })
+  let reports = await reportPages(`${ANALYTICS_REPORT_COLUMNS}, report_type_other`)
+  if (isMissingColumn(reports.error)) reports = await reportPages(ANALYTICS_REPORT_COLUMNS)
+  if (reports.error) throw new Error(`Could not load reports for analytics: ${reports.error.message}`)
+
+  const events = await readAllPages(() => {
+    let query = client.from('report_events').select('id, report_id, created_at').eq('action', 'Verified')
+    if (since) query = query.gte('created_at', since)
+    return query.order('created_at').order('id')
+  })
+  if (events.error) throw new Error(`Could not load the activity log for analytics: ${events.error.message}`)
+  return { reports: reports.rows, events: events.rows }
+}
+
 export async function getReportEvents(limit = 40) {
   const { data, error } = await requireClient()
     .from('report_events')
@@ -1002,12 +1054,14 @@ export async function saveEvacuationCenter(center) {
   return data
 }
 
-// Quick changes from a center's card (occupants, open or closed): only those
-// fields are written, so nothing else about the center can be overwritten.
-export async function updateEvacuationCenterStatus(id, { occupants, isOpen }) {
+// Quick changes from a center's card (occupants, open or closed, pin checked
+// on site): only those fields are written, so nothing else about the center
+// can be overwritten.
+export async function updateEvacuationCenterStatus(id, { occupants, isOpen, locationStatus }) {
   const row = {}
   if (occupants !== undefined) row.occupants = occupants
   if (isOpen !== undefined) row.is_open = isOpen
+  if (locationStatus !== undefined) row.location_status = locationStatus
   const { data, error } = await requireClient().from('evacuation_centers').update(row).eq('id', id).select(centerColumns).single()
 
   if (error) {

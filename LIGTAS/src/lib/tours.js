@@ -53,23 +53,13 @@ export const TOURS = {
       },
     },
     {
-      target: '.safe-trigger',
-      prepare: 'home',
-      icon: 'heart',
-      title: { en: "I'm safe", tl: 'Ligtas ako' },
-      body: {
-        en: 'One tap tells responders you are safe, so they can focus on people who still need help.',
-        tl: 'Isang pindot para malaman ng mga tagatugon na ligtas ka, para matutukan nila ang mga nangangailangan pa ng tulong.',
-      },
-    },
-    {
-      target: '.citizen-sheet-peek button, .incident-report-trigger',
+      target: '.report-trigger',
       prepare: 'home',
       icon: 'flag',
       title: { en: 'Report an incident', tl: 'Mag-ulat ng insidente' },
       body: {
-        en: 'Flooding, a blocked road, a fallen tree, fire and more. Pin the spot on the map and the address fills in by itself. An admin checks each report before rescuers are sent.',
-        tl: 'Baha, saradong daan, natumbang puno, sunog at iba pa. I-pin ang lugar sa mapa at kusang mapupunan ang address. Sinusuri ng admin ang bawat ulat bago magpadala ng rescuer.',
+        en: 'Beside SOS. Flooding, fire, a road accident, a road obstruction, a downed power line and more. Pin the spot on the map and the address fills in by itself. An admin checks each report before rescuers are sent.',
+        tl: 'Katabi ng SOS. Baha, sunog, aksidente sa daan, nakaharang sa daan, nakalaylay na kable at iba pa. I-pin ang lugar sa mapa at kusang mapupunan ang address. Sinusuri ng admin ang bawat ulat bago magpadala ng rescuer.',
       },
     },
     {
@@ -99,8 +89,18 @@ export const TOURS = {
       icon: 'grid',
       title: { en: 'The tabs', tl: 'Ang mga tab' },
       body: {
-        en: 'Map: this home screen. Alerts: warnings from MDRRMO. My reports: what happened to the reports you sent. Prepare: hotlines, your family, priority rescue, a go-bag checklist and safety tips.',
+        en: 'Map: this home screen. Alerts: warnings from MDRRMO. My reports: what happened to the reports you sent. Prepare: your safety check-in, hotlines, your family, priority rescue, a go-bag checklist and safety tips.',
         tl: 'Mapa: ang home screen na ito. Alerto: mga babala mula sa MDRRMO. Aking ulat: ang nangyari sa mga ulat na ipinadala mo. Maghanda: mga hotline, ang pamilya mo, priority rescue, go-bag checklist at payo sa kaligtasan.',
+      },
+    },
+    {
+      target: '.safe-trigger',
+      prepare: 'prepare',
+      icon: 'heart',
+      title: { en: "I'm safe", tl: 'Ligtas ako' },
+      body: {
+        en: 'In Prepare, one tap tells responders and your family you are safe, so rescuers can focus on people who still need help. While an SOS is open, the same button is on the SOS panel.',
+        tl: 'Sa Maghanda, isang pindot para malaman ng mga tagatugon at ng pamilya mo na ligtas ka, para matutukan ng mga rescuer ang mga nangangailangan pa ng tulong. Habang bukas ang SOS, nasa SOS panel din ang button na ito.',
       },
     },
     {

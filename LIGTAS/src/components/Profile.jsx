@@ -4,7 +4,7 @@ import { NotificationSettings, useInstall } from './PhoneSetup.jsx'
 import { useConfirm } from './ConfirmDialog.jsx'
 import { Icon, PasswordChecklist, passwordProblem } from '../lib/ui.jsx'
 import { changePassword, getAvatarUrl, getMyAccount, getMyProfile, isOffline, removeAvatar, saveAvatar, signOutOtherDevices, updateMyProfile } from '../lib/supabase.js'
-import { squarePhoto } from '../lib/photo.js'
+import { cropAvatar, openAvatarSource } from '../lib/photo.js'
 import { isValidMobile, toStoredMobile } from '../lib/phone.js'
 import { usePush } from '../lib/push.js'
 import { privacyUrl, termsUrl } from '../lib/legal.js'
@@ -34,10 +34,14 @@ const TEXT = {
     photoHintHas: 'Change or remove your photo',
     photoEdit: 'Change your profile photo',
     photoIntro: 'Adding a photo is up to you. Without one, your initials are shown. Only you can see your photo, and you can remove it anytime.',
-    photoCrop: 'The middle of the picture is used.',
+    photoCrop: 'Drag the photo to move it, and zoom with the slider. What is inside the circle becomes your photo.',
+    photoCropFrame: 'Photo crop. Drag or use the arrow keys to move the photo; plus and minus zoom.',
+    photoZoom: 'Zoom',
+    photoZoomIn: 'Zoom in',
+    photoZoomOut: 'Zoom out',
     photoAdd: 'Choose a photo',
     photoOther: 'Choose a different photo',
-    photoUse: 'Use this photo',
+    photoUse: 'Save photo',
     photoRemove: 'Remove photo',
     photoSaved: 'Your photo was saved.',
     photoRemoved: 'Your photo was removed. Your initials are shown again.',
@@ -111,10 +115,14 @@ const TEXT = {
     photoHintHas: 'Palitan o alisin ang larawan mo',
     photoEdit: 'Palitan ang larawan sa profile',
     photoIntro: 'Ikaw ang bahala kung maglalagay ng larawan. Kung wala, ang initials mo ang makikita. Ikaw lang ang nakakakita ng larawan mo, at maaalis mo ito anumang oras.',
-    photoCrop: 'Ang gitna ng larawan ang gagamitin.',
+    photoCrop: 'I-drag ang larawan para ilipat, at mag-zoom gamit ang slider. Ang nasa loob ng bilog ang magiging larawan mo.',
+    photoCropFrame: 'Pag-crop ng larawan. I-drag o gamitin ang mga arrow key para ilipat; plus at minus para mag-zoom.',
+    photoZoom: 'Zoom',
+    photoZoomIn: 'Lakihan',
+    photoZoomOut: 'Liitan',
     photoAdd: 'Pumili ng larawan',
     photoOther: 'Pumili ng ibang larawan',
-    photoUse: 'Gamitin ang larawang ito',
+    photoUse: 'I-save ang larawan',
     photoRemove: 'Alisin ang larawan',
     photoSaved: 'Nai-save ang larawan mo.',
     photoRemoved: 'Naalis ang larawan mo. Initials mo na ulit ang makikita.',
@@ -286,12 +294,121 @@ function PersonalForm({ t, role, profile, email, onSaved }) {
   </form>
 }
 
+const MAX_ZOOM = 4
+
+// Keeps the crop square inside the picture.
+function clampCrop(image, { cx, cy, zoom }) {
+  const z = Math.min(MAX_ZOOM, Math.max(1, zoom))
+  const half = Math.min(image.naturalWidth, image.naturalHeight) / z / 2
+  return {
+    zoom: z,
+    cx: Math.min(image.naturalWidth - half, Math.max(half, cx)),
+    cy: Math.min(image.naturalHeight - half, Math.max(half, cy)),
+  }
+}
+
+// A square frame with a circle showing what the avatar will look like. Drag
+// (or the arrow keys) moves the picture; the slider, the +/− buttons, a
+// pinch or the mouse wheel zoom.
+function PhotoCropper({ t, source, crop, onChange }) {
+  const frameRef = useRef(null)
+  const pointers = useRef(new Map())
+  const pinch = useRef(null)
+  const { image, url } = source
+  const side = Math.min(image.naturalWidth, image.naturalHeight)
+  // Screen pixels per picture pixel, from the frame's current width.
+  const scale = () => (frameRef.current?.clientWidth ?? 260) / side * crop.zoom
+  const set = (next) => onChange(clampCrop(image, next))
+
+  const onPointerDown = (event) => {
+    event.currentTarget.setPointerCapture(event.pointerId)
+    pointers.current.set(event.pointerId, { x: event.clientX, y: event.clientY })
+    if (pointers.current.size === 2) {
+      const [a, b] = [...pointers.current.values()]
+      pinch.current = { distance: Math.hypot(a.x - b.x, a.y - b.y), zoom: crop.zoom }
+    }
+  }
+  const onPointerMove = (event) => {
+    const last = pointers.current.get(event.pointerId)
+    if (!last) return
+    pointers.current.set(event.pointerId, { x: event.clientX, y: event.clientY })
+    if (pointers.current.size === 2 && pinch.current) {
+      const [a, b] = [...pointers.current.values()]
+      set({ ...crop, zoom: pinch.current.zoom * Math.hypot(a.x - b.x, a.y - b.y) / pinch.current.distance })
+      return
+    }
+    const ratio = scale()
+    set({ ...crop, cx: crop.cx - (event.clientX - last.x) / ratio, cy: crop.cy - (event.clientY - last.y) / ratio })
+  }
+  const onPointerUp = (event) => {
+    pointers.current.delete(event.pointerId)
+    if (pointers.current.size < 2) pinch.current = null
+  }
+  const onKeyDown = (event) => {
+    const step = 12 / scale()
+    const moves = { ArrowLeft: [-step, 0], ArrowRight: [step, 0], ArrowUp: [0, -step], ArrowDown: [0, step] }
+    if (moves[event.key]) {
+      event.preventDefault()
+      set({ ...crop, cx: crop.cx + moves[event.key][0], cy: crop.cy + moves[event.key][1] })
+    } else if (event.key === '+' || event.key === '=') set({ ...crop, zoom: crop.zoom * 1.15 })
+    else if (event.key === '-') set({ ...crop, zoom: crop.zoom / 1.15 })
+  }
+  // The wheel needs a non-passive listener to stop the page scrolling.
+  useEffect(() => {
+    const frame = frameRef.current
+    if (!frame) return undefined
+    const onWheel = (event) => {
+      event.preventDefault()
+      onChange((current) => clampCrop(image, { ...current, zoom: current.zoom * (event.deltaY < 0 ? 1.1 : 1 / 1.1) }))
+    }
+    frame.addEventListener('wheel', onWheel, { passive: false })
+    return () => frame.removeEventListener('wheel', onWheel)
+  }, [image])
+
+  const width = image.naturalWidth / side * crop.zoom * 100
+  const height = image.naturalHeight / side * crop.zoom * 100
+  return <div class="photo-cropper">
+    <div
+      class="photo-crop-frame"
+      ref={frameRef}
+      tabIndex={0}
+      role="group"
+      aria-label={t.photoCropFrame}
+      onPointerDown={onPointerDown}
+      onPointerMove={onPointerMove}
+      onPointerUp={onPointerUp}
+      onPointerCancel={onPointerUp}
+      onKeyDown={onKeyDown}
+    >
+      <img
+        src={url}
+        alt=""
+        draggable={false}
+        style={{
+          width: `${width}%`,
+          height: `${height}%`,
+          left: `${(0.5 - crop.cx / side * crop.zoom) * 100}%`,
+          top: `${(0.5 - crop.cy / side * crop.zoom) * 100}%`,
+        }}
+      />
+      <span class="photo-crop-mask" aria-hidden="true" />
+    </div>
+    <div class="photo-crop-zoom">
+      <button type="button" aria-label={t.photoZoomOut} onClick={() => set({ ...crop, zoom: crop.zoom / 1.25 })} disabled={crop.zoom <= 1}><Icon name="zoomOut" size={18} /></button>
+      <input type="range" min="1" max={MAX_ZOOM} step="0.01" value={crop.zoom} aria-label={t.photoZoom} onInput={(event) => set({ ...crop, zoom: Number(event.currentTarget.value) })} />
+      <button type="button" aria-label={t.photoZoomIn} onClick={() => set({ ...crop, zoom: crop.zoom * 1.25 })} disabled={crop.zoom >= MAX_ZOOM}><Icon name="zoomIn" size={18} /></button>
+    </div>
+  </div>
+}
+
 function PhotoForm({ t, role, profile, email, photo, onSaved }) {
-  const [preview, setPreview] = useState(null)
+  // The photo being cropped: the picture, its address and the chosen square.
+  const [source, setSource] = useState(null)
+  const [crop, setCrop] = useState(null)
   const [busy, setBusy] = useState('')
   const [message, setMessage] = useState({ text: '', isError: false })
   const inputRef = useRef(null)
-  useEffect(() => () => { if (preview) URL.revokeObjectURL(preview.url) }, [preview])
+  useEffect(() => () => { if (source) URL.revokeObjectURL(source.url) }, [source])
 
   const choose = async (event) => {
     const file = event.currentTarget.files?.[0]
@@ -299,11 +416,18 @@ function PhotoForm({ t, role, profile, email, photo, onSaved }) {
     if (!file) return
     setMessage({ text: '', isError: false })
     try {
-      const square = await squarePhoto(file)
-      setPreview({ file: square, url: URL.createObjectURL(square) })
+      const image = await openAvatarSource(file)
+      setSource({ image, url: URL.createObjectURL(file) })
+      setCrop({ cx: image.naturalWidth / 2, cy: image.naturalHeight / 2, zoom: 1 })
     } catch (error) {
       setMessage({ text: error.message, isError: true })
     }
+  }
+  // Cancel: nothing is uploaded, and the current photo (or initials) stays.
+  const cancel = () => {
+    setSource(null)
+    setCrop(null)
+    setMessage({ text: '', isError: false })
   }
   const run = async (name, action, done) => {
     setBusy(name)
@@ -317,9 +441,12 @@ function PhotoForm({ t, role, profile, email, photo, onSaved }) {
       setBusy('')
     }
   }
+  // Save: the chosen square is made into the avatar and uploaded as before.
   const use = () => run('save', async () => {
-    const path = await saveAvatar(preview.file, profile.avatar_path)
-    setPreview(null)
+    const file = await cropAvatar(source.image, crop)
+    const path = await saveAvatar(file, profile.avatar_path)
+    setSource(null)
+    setCrop(null)
     onSaved({ avatar_path: path })
   }, t.photoSaved)
   const remove = () => run('remove', async () => {
@@ -328,19 +455,21 @@ function PhotoForm({ t, role, profile, email, photo, onSaved }) {
   }, t.photoRemoved)
 
   return <div class="profile-sub-form profile-photo-form">
-    <div class="profile-photo-preview">
-      <ProfileAvatar name={profile?.display_name} email={email} role={role} size="xlarge" photo={preview?.url ?? photo} />
-    </div>
-    <p class="profile-note">{preview ? t.photoCrop : t.photoIntro}</p>
+    {source && crop
+      ? <PhotoCropper t={t} source={source} crop={crop} onChange={setCrop} />
+      : <div class="profile-photo-preview">
+        <ProfileAvatar name={profile?.display_name} email={email} role={role} size="xlarge" photo={photo} />
+      </div>}
+    <p class="profile-note">{source ? t.photoCrop : t.photoIntro}</p>
     {message.text && <p class={message.isError ? 'form-error' : 'form-notice'} role={message.isError ? 'alert' : 'status'}>{!message.isError && <Icon name="check" size={15} />} {message.text}</p>}
     <input ref={inputRef} type="file" accept="image/*" class="profile-photo-input" onChange={choose} tabIndex={-1} aria-hidden="true" />
-    {preview
+    {source
       ? <>
         <button type="button" class="secondary-action" onClick={use} disabled={Boolean(busy)}>
           {busy === 'save' && <span class="btn-spinner" aria-hidden="true" />} {t.photoUse}
         </button>
         <button type="button" class="profile-quiet-button" onClick={() => inputRef.current?.click()} disabled={Boolean(busy)}>{t.photoOther}</button>
-        <button type="button" class="profile-quiet-button" onClick={() => setPreview(null)} disabled={Boolean(busy)}>{t.cancel}</button>
+        <button type="button" class="profile-quiet-button" onClick={cancel} disabled={Boolean(busy)}>{t.cancel}</button>
       </>
       : <>
         <button type="button" class="secondary-action" onClick={() => inputRef.current?.click()} disabled={Boolean(busy)}>

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'preact/hooks'
 import { hotlines } from '../../lib/hotlines.js'
-import { Icon } from '../../lib/ui.jsx'
+import { Icon, timeAgo } from '../../lib/ui.jsx'
 import { PrioritySection } from './Priority.jsx'
 import { FamilyCard } from './Family.jsx'
 
@@ -18,7 +18,25 @@ function readChecklist() {
   }
 }
 
-export function PreparePanel({ t, profile, priority, family }) {
+// "I'm safe": the same check-in as before (status Safe, with the position when
+// known), which responders and the family see.
+function SafetyCheckin({ t, status, saving, onMarkSafe }) {
+  const isSafe = status?.status === 'Safe'
+  const when = status?.updated_at ? timeAgo(status.updated_at).toLowerCase() : ''
+  return <section class="prepare-card safety-checkin" id="safety-checkin">
+    <h2><Icon name="heart" size={18} /> {t('checkinTitle')}</h2>
+    <p class="prepare-note">{t('checkinText')}</p>
+    <p class={`safety-checkin-status${isSafe ? ' is-safe' : status?.status === 'Need help' ? ' is-help' : ''}`} role="status">
+      {isSafe ? t('safeMarked', { time: when }) : status?.status === 'Need help' ? t('checkinNeedHelp', { time: when }) : t('checkinNone')}
+    </p>
+    <button type="button" class={`safe-trigger${isSafe ? ' is-marked' : ''}`} onClick={onMarkSafe} disabled={saving}>
+      <span class="safe-trigger-icon">{saving ? <span class="btn-spinner" aria-hidden="true" /> : <Icon name={isSafe ? 'check' : 'heart'} size={22} />}</span>
+      <span><strong>{t('safeButton')}</strong><small>{isSafe ? t('safeMarked', { time: when }) : t('safeHint')}</small></span>
+    </button>
+  </section>
+}
+
+export function PreparePanel({ t, profile, priority, family, checkin }) {
   const [packed, setPacked] = useState(readChecklist)
   const [hazard, setHazard] = useState('flood')
   const [phase, setPhase] = useState('before')
@@ -38,6 +56,8 @@ export function PreparePanel({ t, profile, priority, family }) {
     : [...current, index])
 
   return <div class="citizen-panel prepare-panel">
+    {checkin && <SafetyCheckin t={t} {...checkin} />}
+
     <section class="prepare-card">
       <h2><Icon name="phone" size={18} /> {t('hotlinesTitle')}</h2>
       <p class="prepare-note">{t('hotlinesNote')}</p>

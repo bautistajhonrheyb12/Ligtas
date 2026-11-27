@@ -5,7 +5,7 @@ import { describeLocation } from '../../lib/geocode.js'
 import { avoidAreas, hazardZones } from '../../lib/hazards.js'
 import { distanceM, formatMeters, formatMinutes } from '../../lib/navigation.js'
 import { requestTravelTimes } from '../../lib/routing.js'
-import { Icon, directionsUrl, reportTypeStyle, timeAgo } from '../../lib/ui.jsx'
+import { Icon, directionsUrl, reportTypeLabel, reportTypeStyle, timeAgo } from '../../lib/ui.jsx'
 
 // A call picked on the field map: where exactly it is and how sure that is,
 // how long it takes to get there by road, who is involved, and the same
@@ -71,11 +71,11 @@ export function CallSheet({ report, myPosition, points, reports, isTampered, act
   const straightM = myPosition ? distanceM([myPosition.latitude, myPosition.longitude], target) : null
   const accuracy = report.accuracy
 
-  return <section class={`rx-call-sheet rx-tone--${type.tone}${report.priority === 'Critical' ? ' is-critical' : ''}`} aria-label={`${report.report_type} call`}>
+  return <section class={`rx-call-sheet rx-tone--${type.tone}${report.priority === 'Critical' ? ' is-critical' : ''}`} aria-label={`${reportTypeLabel(report)} call`}>
     <div class="rx-sheet-head">
       <span class="rx-type-icon"><Icon name={type.icon} size={22} /></span>
       <div>
-        <strong>{report.report_type}</strong>
+        <strong>{reportTypeLabel(report)}</strong>
         <small><Icon name="clock" size={12} /> {timeAgo(report.created_at)}{report.priority !== 'Normal' ? ` · ${report.priority}` : ''}</small>
       </div>
       <button type="button" class="rx-sheet-close" onClick={onClose} aria-label="Close call details"><Icon name="x" size={18} /></button>

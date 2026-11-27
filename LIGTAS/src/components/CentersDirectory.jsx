@@ -1,8 +1,9 @@
-import { useEffect, useState } from 'preact/hooks'
+import { useEffect, useRef, useState } from 'preact/hooks'
 import { Icon, distanceKm, formatDistance } from '../lib/ui.jsx'
 import { Portal } from './Portal.jsx'
 import {
   BARANGAYS,
+  addressParts,
   centerCapacity,
   centerLoad,
   centerSummary,
@@ -10,6 +11,7 @@ import {
   classificationOf,
   contactNumbers,
   facilityTypeLabel,
+  googleMapsUrl,
   hasPin,
   locationStatusOf,
 } from '../lib/centers.js'
@@ -63,14 +65,17 @@ export function CenterDetails({ center, t, lang }) {
   const kind = classificationOf(center)
   const numbers = contactNumbers(center)
   const location = locationStatusOf(center)
+  const address = addressParts(center)
+  const mapsUrl = googleMapsUrl(center)
   return <dl class="center-details">
     {kind && <div><dt>{t('detailClassification')}</dt><dd><strong>{kind === 'official' ? t('centerOfficialLong') : t('centerTemporaryLong')}</strong><small>{kind === 'official' ? t('centerOfficialHelp') : t('centerTemporaryHelp')}</small></dd></div>}
     {center.facility_type && <div><dt>{t('detailType')}</dt><dd>{facilityTypeLabel(center.facility_type, lang)}</dd></div>}
     {center.barangay && <div><dt>{t('detailBarangay')}</dt><dd>{center.barangay}</dd></div>}
-    <div><dt>{t('detailAddress')}</dt><dd>{center.location}</dd></div>
+    <div><dt>{t('detailAddress')}</dt><dd><span>{address.text}</span>{address.plusCode && <small>{t('plusCode')}: <b class="center-plus-code">{address.plusCode}</b></small>}</dd></div>
     <div><dt>{t('detailCoordinates')}</dt><dd>{hasPin(center)
       ? <><span>{center.latitude.toFixed(5)}, {center.longitude.toFixed(5)}</span><small>{location === 'confirmed' ? t('locConfirmed') : t('locUnconfirmed')}</small></>
-      : <small>{t('locUnknown')}</small>}</dd></div>
+      : <small>{t('locUnknown')}</small>}
+      {mapsUrl && <a class="center-maps-link" href={mapsUrl} target="_blank" rel="noreferrer"><Icon name="external" size={13} /> {t('openInGoogleMaps')}</a>}</dd></div>
     <div><dt>{t('detailCapacity')}</dt><dd><CapacityDetail center={center} t={t} /></dd></div>
     {numbers.length > 0 && <div><dt>{t('detailContact')}</dt><dd class="center-contacts">{numbers.map((number) => <a href={`tel:${number.tel}`} key={number.tel}><Icon name="phone" size={14} /> {number.text}</a>)}</dd></div>}
     {center.source && <div><dt>{t('detailSource')}</dt><dd>{center.source}</dd></div>}
@@ -83,9 +88,11 @@ const sameText = (a, b) => (a ?? '').trim().toLowerCase() === (b ?? '').trim().t
 // Every evacuation center, official ones first, then the resident's own
 // barangay, then by distance when the location is known. Filters: official or
 // temporary, and barangay.
-export function CentersDirectory({ centers, userPosition, homeBarangay, t, lang, onClose, onNavigate, onShowOnMap }) {
+export function CentersDirectory({ centers, userPosition, homeBarangay, focusId = null, t, lang, onClose, onNavigate, onShowOnMap }) {
   const [kind, setKind] = useState('all')
   const [barangay, setBarangay] = useState('')
+  const [search, setSearch] = useState('')
+  const listRef = useRef(null)
 
   useEffect(() => {
     const closeOnEscape = (event) => { if (event.key === 'Escape') onClose() }
@@ -93,12 +100,24 @@ export function CentersDirectory({ centers, userPosition, homeBarangay, t, lang,
     return () => window.removeEventListener('keydown', closeOnEscape)
   }, [])
 
+  // Opened from a map popup's Details: open that center and bring it into view.
+  useEffect(() => {
+    if (!focusId) return
+    const entry = listRef.current?.querySelector(`[data-center-id="${CSS.escape(String(focusId))}"]`)
+    if (!entry) return
+    const details = entry.querySelector('details')
+    if (details) details.open = true
+    entry.scrollIntoView({ block: 'start' })
+  }, [focusId])
+
   const summary = centerSummary(centers)
   const counts = { all: centers.length, official: summary.official, temporary: summary.temporary }
   const barangays = BARANGAYS.filter((name) => centers.some((center) => center.barangay === name))
+  const words = search.trim().toLowerCase().split(/\s+/).filter(Boolean)
   const visible = centers
     .filter((center) => kind === 'all' || classificationOf(center) === kind)
     .filter((center) => !barangay || center.barangay === barangay)
+    .filter((center) => words.every((word) => `${center.name} ${center.barangay ?? ''} ${center.location}`.toLowerCase().includes(word)))
     .map((center) => ({ ...center, distance: userPosition && hasPin(center) ? distanceKm(userPosition, center) : null }))
     .sort((a, b) => {
       const rank = (center) => (classificationOf(center) === 'official' ? 0 : 1) * 2 + (sameText(center.barangay, homeBarangay) ? 0 : 1)
@@ -130,12 +149,17 @@ export function CentersDirectory({ centers, userPosition, homeBarangay, t, lang,
           <option value="">{t('allBarangays')}</option>
           {barangays.map((name) => <option value={name} key={name}>{name}</option>)}
         </select>
+        <label class="centers-search">
+          <Icon name="search" size={15} />
+          <input type="search" value={search} onInput={(event) => setSearch(event.currentTarget.value)} placeholder={t('searchCenters')} aria-label={t('searchCenters')} />
+        </label>
       </div>
-      <div class="centers-directory-list">
+      <div class="centers-directory-list" ref={listRef}>
         {visible.length === 0 && <p class="admin-empty-state">{t('noCentersMatch')}</p>}
         {visible.map((center) => {
           const centerKind = classificationOf(center)
-          return <article class={`center-entry${centerKind ? ` is-${centerKind}` : ''}${center.is_open ? '' : ' is-closed'}`} key={center.id}>
+          const phone = contactNumbers(center)[0]
+          return <article class={`center-entry${centerKind ? ` is-${centerKind}` : ''}${center.is_open ? '' : ' is-closed'}`} key={center.id} data-center-id={center.id}>
             <div class="center-entry-head">
               <span class="center-entry-icon" aria-hidden="true"><Icon name="home" size={16} /></span>
               <div>
@@ -150,9 +174,10 @@ export function CentersDirectory({ centers, userPosition, homeBarangay, t, lang,
               <summary>{t('centerDetails')}</summary>
               <CenterDetails center={center} t={t} lang={lang} />
             </details>
-            {hasPin(center) && <div class="evac-actions">
-              <button type="button" class="evac-navigate" onClick={() => onNavigate(center)}><Icon name="navigate" size={16} /> {t('navigate')}</button>
-              <button type="button" class="evac-show" onClick={() => onShowOnMap(center)}><Icon name="pin" size={16} /> {t('showOnMap')}</button>
+            {(hasPin(center) || phone) && <div class="evac-actions">
+              {hasPin(center) && <button type="button" class="evac-navigate" onClick={() => onNavigate(center)}><Icon name="navigate" size={16} /> {t('navigate')}</button>}
+              {hasPin(center) && <button type="button" class="evac-show" onClick={() => onShowOnMap(center)}><Icon name="pin" size={16} /> {t('showOnMap')}</button>}
+              {phone && <a class="evac-call" href={`tel:${phone.tel}`} aria-label={`${t('callCenter')} ${phone.text}`}><Icon name="phone" size={16} /> {t('callCenter')}</a>}
             </div>}
           </article>
         })}

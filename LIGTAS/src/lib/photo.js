@@ -35,21 +35,33 @@ export async function compressPhoto(file) {
   return new File([blob], file.name.replace(/\.[^.]+$/, '') + '.jpg', { type: 'image/jpeg' })
 }
 
-// A profile photo: the middle square of the picture, 320 px, as a small JPEG
-// (about 30 KB), so it loads instantly and can be kept on the phone.
+// A profile photo: a square of the picture, 320 px, as a small JPEG (about
+// 30 KB), so it loads instantly and can be kept on the phone.
 const AVATAR_SIDE = 320
+// Phone photos are rarely over 15 MB; larger files are not worth decoding.
+export const MAX_AVATAR_SOURCE_BYTES = 20 * 1024 * 1024
 
-export async function squarePhoto(file) {
+// Opens a chosen file for cropping. Checks it is a picture of a sensible size.
+export async function openAvatarSource(file) {
+  if (!file.type.startsWith('image/')) throw new Error('This file is not a picture. Choose a JPEG or PNG photo.')
+  if (file.size > MAX_AVATAR_SOURCE_BYTES) throw new Error('This photo is too large (over 20 MB). Choose a smaller one.')
   const image = await loadImage(file)
-  const side = Math.min(image.naturalWidth, image.naturalHeight)
-  if (!side) throw new Error('This photo could not be read. Choose another one.')
+  if (!image.naturalWidth || !image.naturalHeight) throw new Error('This photo could not be read. Choose another one.')
+  return image
+}
+
+// The square chosen in the cropper: centre (cx, cy) and zoom, in the
+// picture's own pixels; zoom 1 is the largest square that fits.
+export async function cropAvatar(image, { cx, cy, zoom }) {
+  const side = Math.min(image.naturalWidth, image.naturalHeight) / zoom
   const canvas = document.createElement('canvas')
   canvas.width = AVATAR_SIDE
   canvas.height = AVATAR_SIDE
   const context = canvas.getContext('2d')
   context.fillStyle = '#ffffff'
   context.fillRect(0, 0, AVATAR_SIDE, AVATAR_SIDE)
-  context.drawImage(image, (image.naturalWidth - side) / 2, (image.naturalHeight - side) / 2, side, side, 0, 0, AVATAR_SIDE, AVATAR_SIDE)
+  context.imageSmoothingQuality = 'high'
+  context.drawImage(image, cx - side / 2, cy - side / 2, side, side, 0, 0, AVATAR_SIDE, AVATAR_SIDE)
   const blob = await new Promise((resolve) => canvas.toBlob(resolve, 'image/jpeg', 0.85))
   if (!blob) throw new Error('This photo could not be prepared. Choose another one.')
   return new File([blob], 'photo.jpg', { type: 'image/jpeg' })

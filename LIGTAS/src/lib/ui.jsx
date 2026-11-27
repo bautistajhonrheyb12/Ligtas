@@ -139,19 +139,53 @@ export function timeAgo(value) {
   return new Date(value).toLocaleDateString()
 }
 
+// The categories residents choose from when they report, in this order. The
+// value is what the database stores; 'Blocked road' and 'Medical' keep their
+// stored names (their meaning is unchanged), so older reports stay as they were.
+export const REPORT_CATEGORIES = ['Flooding', 'Fire', 'Vehicular accident', 'Medical', 'Rescue', 'Blocked road', 'Downed power line', 'Other']
+
 export const reportTypeStyles = {
   Flooding: { icon: 'droplet', tone: 'blue' },
+  Fire: { icon: 'fire', tone: 'red' },
+  'Vehicular accident': { icon: 'car', tone: 'amber' },
+  Medical: { icon: 'medical', tone: 'red' },
+  Rescue: { icon: 'lifebuoy', tone: 'red' },
   'Blocked road': { icon: 'blocked', tone: 'amber' },
+  'Downed power line': { icon: 'powerLine', tone: 'violet' },
+  Other: { icon: 'alert', tone: 'blue' },
+  // Categories that are no longer offered, for reports sent before.
   'Fallen tree': { icon: 'tree', tone: 'green' },
   'Power outage': { icon: 'bolt', tone: 'violet' },
   Landslide: { icon: 'mountain', tone: 'amber' },
-  Fire: { icon: 'fire', tone: 'red' },
-  Medical: { icon: 'medical', tone: 'red' },
   SOS: { icon: 'sos', tone: 'red' },
 }
 
 export function reportTypeStyle(type) {
   return reportTypeStyles[type] ?? { icon: 'alert', tone: 'red' }
+}
+
+// Staff wording for a category, and for one report (an "Others" report shows
+// what the resident wrote, for example "Others: Gas leak").
+export const REPORT_TYPE_LABELS = {
+  Flooding: 'Flooding',
+  Fire: 'Fire',
+  'Vehicular accident': 'Vehicular Accident',
+  Medical: 'Medical Emergency',
+  Rescue: 'Rescue / Trapped',
+  'Blocked road': 'Road Obstruction',
+  'Downed power line': 'Downed Power Line',
+  Other: 'Others',
+  'Fallen tree': 'Fallen tree',
+  'Power outage': 'Power outage',
+  Landslide: 'Landslide',
+  SOS: 'SOS',
+}
+
+export function reportTypeLabel(report) {
+  const type = typeof report === 'string' ? report : report?.report_type
+  const label = REPORT_TYPE_LABELS[type] ?? type ?? 'Report'
+  const other = typeof report === 'object' ? report?.report_type_other : null
+  return type === 'Other' && other ? `${label}: ${other}` : label
 }
 
 export function capacityLevel(occupants, capacity) {
