@@ -887,7 +887,8 @@ export function RescuerDashboard({ onSignOut, canStartTour = true }) {
             <div>
               {RESCUE_OUTCOMES.map((outcome) => <label key={outcome} class={resolutionOutcome === outcome ? 'is-active' : ''}>
                 <input type="radio" name="outcome" value={outcome} checked={resolutionOutcome === outcome} onChange={() => { setResolutionOutcome(outcome); setResolveError('') }} />
-                {outcome}
+                <span class="rx-outcome-dot" aria-hidden="true" />
+                <span>{outcome}</span>
               </label>)}
             </div>
           </fieldset>

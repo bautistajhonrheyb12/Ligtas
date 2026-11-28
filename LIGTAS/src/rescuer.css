@@ -829,22 +829,63 @@ button.rx-duty.is-sharing i::after { animation: ligtas-ping 2.2s var(--ease-out)
 .rx-outcomes { display: grid; gap: 8px; margin: 0; padding: 0; border: 0; }
 .rx-outcomes legend { margin-bottom: 6px; padding: 0; color: #294d5c; font-size: 11px; font-weight: 800; }
 .rx-outcomes > div { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; }
+/* One option per chip: a small dot, then the outcome, left-aligned. The form's
+   text-input style (.alert-form input: full width, 39 px tall, focus glow)
+   must not reach the radio, so the native radio is hidden but still used by
+   the keyboard and screen readers, and the dot shows the choice. */
 .rx-outcomes label {
+  position: relative;
   display: flex;
-  min-height: 42px;
+  min-height: 44px;
   align-items: center;
-  gap: 8px;
-  padding: 0 10px;
+  justify-content: flex-start;
+  gap: 10px;
+  padding: 8px 12px;
   border: 1.5px solid var(--ui-border);
   border-radius: 12px;
   color: #3f564b;
   background: #fff;
   font-size: 13px;
   font-weight: 700;
+  line-height: 1.25;
+  text-align: left;
   cursor: pointer;
+  transition: border-color .15s ease, background-color .15s ease;
 }
+.rx-outcomes label:hover { border-color: #a9c9b3; background: #f6faf7; }
 .rx-outcomes label.is-active { border-color: #2f8a64; color: #1f5c43; background: #eaf5ee; }
-.rx-outcomes input { accent-color: #2f8a64; }
+.rx-outcomes input[type="radio"] {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  min-height: 0;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  border: 0;
+  box-shadow: none;
+  opacity: 0;
+  pointer-events: none;
+}
+.rx-outcome-dot {
+  position: relative;
+  width: 18px;
+  height: 18px;
+  flex: none;
+  border: 2px solid #b9c8be;
+  border-radius: 50%;
+  background: #fff;
+  transition: border-color .15s ease;
+}
+.rx-outcomes label.is-active .rx-outcome-dot { border-color: #2f8a64; }
+.rx-outcomes label.is-active .rx-outcome-dot::after {
+  position: absolute;
+  inset: 3px;
+  border-radius: 50%;
+  background: #2f8a64;
+  content: '';
+}
+.rx-outcomes label:has(input:focus-visible) { outline: 2px solid #2f8a64; outline-offset: 2px; }
 
 /* History */
 .rx-history-list { display: grid; gap: 10px; }
