@@ -16,6 +16,7 @@ import {
   getReportEvents,
   getRequestCountry,
   getRescuerLocations,
+  getRescuerStatuses,
   getSecurityFlags,
   getStaffProfiles,
   reviewPriorityMember,
@@ -156,6 +157,9 @@ export function AdminDashboard({ onSignOut, canStartTour = true }) {
     .finally(() => setCentersLoading(false))
   const loadStaff = () => getStaffProfiles().then(setStaff).catch(() => {})
   const loadLocations = () => getRescuerLocations().then(setLocations).catch(() => {})
+  // Each rescuer's availability (Available, Responding, Unavailable), set on their phone.
+  const [rescuerStatuses, setRescuerStatuses] = useState([])
+  const loadRescuerStatuses = () => getRescuerStatuses().then(setRescuerStatuses).catch(() => {})
   const loadEvents = () => getReportEvents(200)
     .then(setEvents)
     .catch(() => {})
@@ -175,6 +179,7 @@ export function AdminDashboard({ onSignOut, canStartTour = true }) {
     loadPoints()
     loadCenters()
     loadLocations()
+    loadRescuerStatuses()
     loadEvents()
     loadCheckins()
     loadSecurity()
@@ -192,6 +197,7 @@ export function AdminDashboard({ onSignOut, canStartTour = true }) {
     loadCenters()
     loadStaff()
     loadLocations()
+    loadRescuerStatuses()
     loadEvents()
     loadCheckins()
     loadSecurity()
@@ -213,6 +219,7 @@ export function AdminDashboard({ onSignOut, canStartTour = true }) {
       subscribeToTable('map_points', loadPoints),
       subscribeToTable('evacuation_centers', loadCenters),
       subscribeToTable('rescuer_locations', loadLocations),
+      subscribeToTable('rescuer_status', loadRescuerStatuses),
       subscribeToTable('security_flags', loadSecurity),
       subscribeToTable('priority_members', (change) => {
         if (change.eventType === 'INSERT') pushToast('New priority rescue proof to check', 'info')
@@ -559,7 +566,7 @@ export function AdminDashboard({ onSignOut, canStartTour = true }) {
 
       {activeTab === 'reports' && <>
         {noticeBanner}
-        <ReportsPanel key={reportFilter} reports={reports} integrity={integrity} loading={reportsLoading} staff={staff} updatingReportId={updatingReportId} onUpdate={updateReport} initialFilter={reportFilter} />
+        <ReportsPanel key={reportFilter} reports={reports} integrity={integrity} loading={reportsLoading} staff={staff} statuses={rescuerStatuses} updatingReportId={updatingReportId} onUpdate={updateReport} initialFilter={reportFilter} />
       </>}
 
       {activeTab === 'centers' && <>
@@ -570,7 +577,7 @@ export function AdminDashboard({ onSignOut, canStartTour = true }) {
       {activeTab === 'teams' && <div class="admin-teams-layout">
         <div>
           {noticeBanner}
-          <TeamsPanel staff={staff} locations={locations} reports={reports} onCreated={loadStaff} onNotice={showNotice} onDeactivate={handleDeactivate} onEndSessions={handleEndSessions} />
+          <TeamsPanel staff={staff} locations={locations} statuses={rescuerStatuses} reports={reports} onCreated={loadStaff} onNotice={showNotice} onDeactivate={handleDeactivate} onEndSessions={handleEndSessions} />
         </div>
         <section class="admin-recent-alerts admin-activity-panel">
           <div class="admin-section-heading"><h2>Activity log</h2><Icon name="history" size={16} /></div>

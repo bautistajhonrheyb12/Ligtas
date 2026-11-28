@@ -323,7 +323,10 @@ export function drawReports(layer, reports, { onSelect, selectedId } = {}) {
         interactive: false,
       }).addTo(layer)
     }
-    const classes = ['report-marker', isOpen ? '' : 'is-resolved', report.isLive && isOpen ? 'is-live' : '', report.id === selectedId ? 'is-selected' : ''].filter(Boolean).join(' ')
+    // Households with priority people (PWD, pregnant, senior, child) or other
+    // vulnerable people get a purple ring, so they stand out on the map.
+    const isPriorityHousehold = isOpen && Boolean(report.priority_needs?.length || report.priority_pending?.length || report.vulnerable_people)
+    const classes = ['report-marker', isOpen ? '' : 'is-resolved', report.isLive && isOpen ? 'is-live' : '', isPriorityHousehold ? 'is-priority' : '', report.id === selectedId ? 'is-selected' : ''].filter(Boolean).join(' ')
     const marker = L.marker([report.latitude, report.longitude], {
       icon: L.divIcon({
         className: classes,

@@ -661,3 +661,15 @@ span.capacity-chip.capacity-chip--closed { color: #5d6964; background: #e6ebe8; 
 }
 .admin-security-clear:hover:not(:disabled) { border-color: #9cc9ad; background: #eaf5ee; }
 .admin-security-clear.is-confirming { border-color: #27745b; color: #fff; background: #27745b; }
+
+/* Rescuer availability on the Teams panel (set on the rescuer's phone). */
+.admin-availability { --dot: #b9c4be; display: inline-flex; width: fit-content; align-items: center; gap: 6px; margin-top: 4px; padding: 2px 9px; border-radius: 999px; color: #4f5d57; background: #eef1ef; font-size: 11.5px; font-weight: 800; }
+.admin-availability i { width: 8px; height: 8px; border-radius: 50%; background: var(--dot); }
+.admin-availability small { color: inherit; font-weight: 600; opacity: .8; }
+.admin-availability.is-available { --dot: #2f8a64; color: #1f5c43; background: #e7f4eb; }
+.admin-availability.is-responding { --dot: #d08a1f; color: #8a5510; background: #fff4e0; }
+.admin-availability.is-unavailable { --dot: #8a9993; }
+.admin-availability.is-unset { font-weight: 600; }
+/* What came of a resolved call, and a rescuer's field note in the activity log. */
+.admin-outcome { display: inline-flex; margin-right: 4px; padding: 1px 8px; border-radius: 999px; color: #fff; background: #2f8a64; font-size: 11px; font-weight: 800; }
+.activity-note { margin: 4px 0 2px; padding: 6px 9px; border-left: 3px solid #d8c3e8; border-radius: 0 8px 8px 0; color: var(--ui-ink); background: #faf8fc; font-size: 12.5px; line-height: 1.4; overflow-wrap: anywhere; }

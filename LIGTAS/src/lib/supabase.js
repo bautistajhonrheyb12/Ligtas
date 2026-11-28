@@ -14,8 +14,10 @@ const REPORT_COLUMNS_BASE = 'id, report_type, location, notes, status, created_a
 const REPORT_COLUMNS_LIVE = `${REPORT_COLUMNS_BASE}, location_accuracy, live_latitude, live_longitude, live_accuracy, live_updated_at`
 // What an "Others" report is about (report categories migration).
 const REPORT_COLUMNS_OTHER = `${REPORT_COLUMNS_LIVE}, report_type_other`
-const REPORT_COLUMN_SETS = [REPORT_COLUMNS_OTHER, REPORT_COLUMNS_LIVE, REPORT_COLUMNS_BASE]
-let reportColumns = REPORT_COLUMNS_OTHER
+// What came of a resolved call (rescuer operations migration).
+const REPORT_COLUMNS_OUTCOME = `${REPORT_COLUMNS_OTHER}, resolution_outcome`
+const REPORT_COLUMN_SETS = [REPORT_COLUMNS_OUTCOME, REPORT_COLUMNS_OTHER, REPORT_COLUMNS_LIVE, REPORT_COLUMNS_BASE]
+let reportColumns = REPORT_COLUMNS_OUTCOME
 
 const isMissingColumn = (error) => error?.code === '42703' || error?.code === 'PGRST204'
 
@@ -788,16 +790,127 @@ export async function updateIncidentReport(reportId, changes) {
   return data
 }
 
+// Takes a call for this rescuer. The database lets only one team take it;
+// a second team gets a plain answer ("Another team already took this call").
 export async function claimIncidentReport(reportId) {
-  return updateIncidentReport(reportId, { assigned_to: await currentUserId() })
+  const client = requireClient()
+  const { error } = await client.rpc('claim_incident_report', { report_id: reportId })
+  if (error?.code === 'PGRST202') {
+    // Before the rescuer operations migration: the guarded update, which row
+    // security also limits to calls with no team.
+    const userId = await currentUserId()
+    const { data, error: updateError } = await withReportColumns((columns) => client
+      .from('incident_reports')
+      .update({ assigned_to: userId })
+      .eq('id', reportId)
+      .is('assigned_to', null)
+      .select(columns))
+    if (updateError) throw new Error(`Could not take the call: ${updateError.message}`)
+    if (!data?.length) throw new Error('Another team already took this call.')
+    requestPush('report', reportId)
+    return data[0]
+  }
+  if (error) {
+    await failIfSessionEnded(error)
+    throw new Error(error.message)
+  }
+  requestPush('report', reportId)
+  return getIncidentReport(reportId)
 }
 
-export async function resolveIncidentReport(reportId, resolutionNote) {
-  return updateIncidentReport(reportId, {
+async function getIncidentReport(reportId) {
+  const { data, error } = await withReportColumns((columns) => requireClient()
+    .from('incident_reports')
+    .select(columns)
+    .eq('id', reportId)
+    .single())
+  if (error) throw new Error(`Could not load the call: ${error.message}`)
+  return data
+}
+
+// outcome: one of RESCUE_OUTCOMES (lib/rescue.js); kept out until the rescuer
+// operations migration adds the column.
+export async function resolveIncidentReport(reportId, resolutionNote, outcome = null) {
+  const changes = {
     status: 'Resolved',
     assigned_to: await currentUserId(),
     resolution_note: resolutionNote?.trim() || null,
-  })
+  }
+  if (outcome) changes.resolution_outcome = outcome
+  try {
+    return await updateIncidentReport(reportId, changes)
+  } catch (error) {
+    if (!outcome || !/resolution_outcome/.test(error.message)) throw error
+    delete changes.resolution_outcome
+    changes.resolution_note = [outcome, changes.resolution_note].filter(Boolean).join(': ').slice(0, 500)
+    return updateIncidentReport(reportId, changes)
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Rescue operations: availability, field notes, activity for notifications
+// ---------------------------------------------------------------------------
+const isMissingTable = (error) => error?.code === '42P01' || error?.code === 'PGRST205'
+
+// Every rescuer's availability ([] until the rescuer operations migration).
+export async function getRescuerStatuses() {
+  const { data, error } = await requireClient()
+    .from('rescuer_status')
+    .select('rescuer_id, availability, updated_at')
+  if (isMissingTable(error)) return []
+  if (error) throw new Error(`Could not load team availability: ${error.message}`)
+  return data
+}
+
+export async function setMyAvailability(availability) {
+  const { data, error } = await requireClient()
+    .from('rescuer_status')
+    .upsert({ rescuer_id: await currentUserId(), availability })
+    .select('rescuer_id, availability, updated_at')
+    .single()
+  if (isMissingTable(error)) throw new Error('Availability needs the latest database update. Ask an admin to run it.')
+  if (error) {
+    await failIfSessionEnded(error)
+    throw new Error(`Could not change your availability: ${error.message}`)
+  }
+  return data
+}
+
+// Field notes for these calls, oldest first.
+export async function getFieldNotes(reportIds) {
+  if (!reportIds.length) return []
+  const { data, error } = await requireClient()
+    .from('report_events')
+    .select('id, report_id, actor_id, detail, created_at')
+    .eq('action', 'Field note')
+    .in('report_id', reportIds.slice(0, 200))
+    .order('created_at', { ascending: true })
+  if (error) throw new Error(`Could not load field notes: ${error.message}`)
+  return data
+}
+
+export async function addFieldNote(reportId, note) {
+  const { error } = await requireClient().rpc('add_field_note', { call_id: reportId, note })
+  if (error?.code === 'PGRST202') throw new Error('Field notes need the latest database update. Ask an admin to run it.')
+  if (error) {
+    await failIfSessionEnded(error)
+    throw new Error(error.message)
+  }
+}
+
+// Recent activity on the calls a rescuer can see: assignments, field notes
+// and priority changes, for the rescuer's notifications.
+export async function getRescuerActivity() {
+  const since = new Date(Date.now() - 24 * 3600000).toISOString()
+  const { data, error } = await requireClient()
+    .from('report_events')
+    .select('id, report_id, actor_id, action, detail, created_at')
+    .in('action', ['Assigned', 'Field note', 'Priority changed'])
+    .gte('created_at', since)
+    .order('created_at', { ascending: false })
+    .limit(200)
+  if (error) throw new Error(`Could not load recent activity: ${error.message}`)
+  return data
 }
 
 // Puts a call the rescuer can no longer handle back in the open queue.

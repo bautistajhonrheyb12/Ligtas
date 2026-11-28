@@ -6,6 +6,7 @@ import { avoidAreas, hazardZones } from '../../lib/hazards.js'
 import { distanceM, formatMeters, formatMinutes } from '../../lib/navigation.js'
 import { requestTravelTimes } from '../../lib/routing.js'
 import { Icon, directionsUrl, reportTypeLabel, reportTypeStyle, timeAgo } from '../../lib/ui.jsx'
+import { centerLoad, centerTitle, hasPin, mayHaveRoom } from '../../lib/centers.js'
 
 // A call picked on the field map: where exactly it is and how sure that is,
 // how long it takes to get there by road, who is involved, and the same
@@ -26,7 +27,25 @@ function positionLine(report) {
   return { tone: 'sent', text: `Location sent with the ${report.report_type === 'SOS' ? 'SOS' : 'report'} · ${timeAgo(report.created_at).toLowerCase()}` }
 }
 
-export function CallSheet({ report, myPosition, points, reports, isTampered, actions, onClose }) {
+// Free space at a center, said honestly: an estimate says so, and an unknown
+// capacity is never shown as a number.
+function spaceText(center) {
+  const load = centerLoad(center)
+  if (load.status === 'unverified') return center.occupants > 0 ? `${center.occupants} sheltered · capacity not confirmed` : 'Capacity not confirmed'
+  if (load.status === 'estimated') return `About ${load.spaceLow}–${load.spaceHigh} spaces free (estimate)`
+  return `${load.spaceLow} of ${center.capacity} spaces free`
+}
+
+// The open centers nearest the call (straight line), for where to bring people.
+function nearestCenters(centers, target, count = 2) {
+  return centers
+    .filter((center) => center.is_open && hasPin(center))
+    .map((center) => ({ center, meters: distanceM(target, [center.latitude, center.longitude]) }))
+    .sort((a, b) => a.meters - b.meters)
+    .slice(0, count)
+}
+
+export function CallSheet({ report, myPosition, points, reports, centers = [], isTampered, actions, onClose }) {
   const [address, setAddress] = useState({ status: 'idle', label: '' })
   const [road, setRoad] = useState({ status: 'idle' })
   const addressAtRef = useRef(null)
@@ -118,6 +137,16 @@ export function CallSheet({ report, myPosition, points, reports, isTampered, act
       {report.contact_phone
         ? <a href={`tel:${report.contact_phone.replace(/[^+\d]/g, '')}`}><Icon name="phone" size={15} /> Call</a>
         : <small>No phone number</small>}
+    </div>}
+
+    {centers.length > 0 && <div class="rx-sheet-centers">
+      <h4><Icon name="home" size={14} /> Nearest open evacuation centers</h4>
+      <ul>
+        {nearestCenters(centers, target).map(({ center, meters }) => <li key={center.id} class={mayHaveRoom(center) ? '' : 'is-full'}>
+          <strong>{centerTitle(center)}</strong>
+          <span>{formatMeters(meters)} from the call (straight line) · {mayHaveRoom(center) ? spaceText(center) : 'Full'}</span>
+        </li>)}
+      </ul>
     </div>}
 
     {actions}

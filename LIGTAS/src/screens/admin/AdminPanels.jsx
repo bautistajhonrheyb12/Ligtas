@@ -18,6 +18,7 @@ import {
   occupantLimit,
 } from '../../lib/centers.js'
 import { AlertTypeField, ExpiryField, alertTypeProblem, expiryFor } from '../../components/AlertFields.jsx'
+import { availabilityOf, responseStepLabel } from '../../lib/rescue.js'
 import { ConfirmAction, useConfirm } from '../../components/ConfirmDialog.jsx'
 
 // A button for something hard to undo: it asks in a confirmation box first.
@@ -236,7 +237,7 @@ export function CentersPanel({ centers, loading, onAdd, onEdit, onNotice, onChan
 // Teams
 // ---------------------------------------------------------------------------
 
-export function TeamsPanel({ staff, locations, reports, onCreated, onNotice, onDeactivate, onEndSessions }) {
+export function TeamsPanel({ staff, locations, statuses = [], reports, onCreated, onNotice, onDeactivate, onEndSessions }) {
   const [isFormOpen, setIsFormOpen] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
   const [error, setError] = useState('')
@@ -294,17 +295,21 @@ export function TeamsPanel({ staff, locations, reports, onCreated, onNotice, onD
         const isLive = location && Date.now() - new Date(location.updated_at).getTime() < 10 * 60000
         const active = reports.filter((report) => report.assigned_to === person.id && report.status === 'Verified')
         const resolved = reports.filter((report) => report.assigned_to === person.id && report.status === 'Resolved').length
+        const status = availabilityOf(statuses, person.id)
         return <article class="admin-team-card" key={person.id}>
           <span class="admin-team-avatar">{(person.display_name || 'R').split(/\s+/).map((word) => word[0]).join('').slice(0, 2).toUpperCase()}</span>
           <div class="admin-team-info">
             <strong>{person.display_name || 'Unnamed rescuer'}</strong>
             <small class={isLive ? 'is-live' : ''}><i /> {location ? `${isLive ? 'Sharing location' : 'Last seen'} · ${timeAgo(location.updated_at).toLowerCase()}` : 'Location not shared'}</small>
+            <span class={`admin-availability is-${(status?.availability ?? 'unset').toLowerCase()}`} title={status ? `Set ${timeAgo(status.updated_at).toLowerCase()}` : 'This rescuer has not set their availability'}>
+              <i aria-hidden="true" /> {status?.availability ?? 'Availability not set'}{status ? <small> · {timeAgo(status.updated_at).toLowerCase()}</small> : null}
+            </span>
           </div>
           <div class="admin-team-stats">
             <span><b>{active.length}</b> active</span>
             <span><b>{resolved}</b> resolved</span>
           </div>
-          {active[0] && <p class="admin-team-current"><Icon name="navigate" size={13} /> {reportTypeLabel(active[0])} · {active[0].location} · {active[0].response_stage ?? 'Assigned'}</p>}
+          {active.map((call) => <p class="admin-team-current" key={call.id}><Icon name="navigate" size={13} /> {reportTypeLabel(call)} · {call.location} · {responseStepLabel(call)}</p>)}
           <div class="admin-team-actions">
             <ConfirmButton class="admin-team-signout" label={`Sign ${person.display_name || 'rescuer'} out everywhere`} onConfirm={() => onEndSessions(person)} ask={{
               title: `Sign ${person.display_name || 'this rescuer'} out everywhere?`,
@@ -509,6 +514,7 @@ export function AlertList({ alerts, loading, error, onEnd, onDelete }) {
 const actionTone = { 'SOS sent': 'red', Rejected: 'red', Verified: 'blue', Assigned: 'amber', 'En route': 'amber', 'On scene': 'amber', Resolved: 'green', Submitted: 'violet', Cancelled: 'violet', Unassigned: 'amber' }
 const citizenActions = ['Submitted', 'SOS sent', 'Cancelled']
 const actionVerb = {
+  'Field note': 'added a field note to',
   Submitted: 'submitted',
   Verified: 'verified',
   Rejected: 'rejected',
@@ -536,6 +542,7 @@ export function ActivityFeed({ events, reports, staff, loading, limit = 8 }) {
         <span class="activity-dot"><Icon name={type.icon} size={13} /></span>
         <div>
           {event.action === 'SOS sent' ? <p><b>{actor}</b> sent an <b>SOS</b>{report ? ` from ${report.location}` : ''}</p> : <p><b>{actor}</b> {event.action === 'Assigned' ? (event.detail === event.actor_id ? 'took' : `assigned ${assignee ?? 'a team'} to`) : handedBack ? 'handed back' : actionVerb[event.action] ?? event.action.toLowerCase()} {report ? <>the <b>{report.report_type === 'SOS' ? 'SOS' : reportTypeLabel(report).toLowerCase()}</b> report at {report.location}</> : 'a report'}</p>}
+          {event.action === 'Field note' && event.detail && <blockquote class="activity-note">{event.detail}</blockquote>}
           <small>{timeAgo(event.created_at)}</small>
         </div>
       </li>

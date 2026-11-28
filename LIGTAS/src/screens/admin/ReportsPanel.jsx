@@ -5,6 +5,7 @@ import { STAFF_LABELS, countCategories } from '../../lib/priority.js'
 import { PriorityTags } from '../../components/PriorityTags.jsx'
 import { useConfirm } from '../../components/ConfirmDialog.jsx'
 import { assignQuestion, rejectQuestion, statusQuestion } from './reportDecisions.js'
+import { availabilityOf, responseStepLabel } from '../../lib/rescue.js'
 
 const FILTERS = ['All', 'Pending', 'Verified', 'Resolved', 'Rejected', 'Cancelled', 'SOS']
 const FILTER_LABELS = { Cancelled: 'Withdrawn' }
@@ -26,7 +27,7 @@ function ReportPhotoLink({ path }) {
   </button>
 }
 
-export function ReportsPanel({ reports, integrity = {}, loading, staff, updatingReportId, onUpdate, initialFilter = 'All' }) {
+export function ReportsPanel({ reports, integrity = {}, loading, staff, statuses = [], updatingReportId, onUpdate, initialFilter = 'All' }) {
   const [confirm, confirmDialog] = useConfirm()
   const [filter, setFilter] = useState(initialFilter)
   const [search, setSearch] = useState('')
@@ -73,7 +74,7 @@ export function ReportsPanel({ reports, integrity = {}, loading, staff, updating
   const exportCsv = () => {
     const rows = [[
       'Submitted', 'Type', 'Priority', 'Status', 'Location', 'Latitude', 'Longitude', 'People affected',
-      'Vulnerable people', 'Verified priority', 'Unverified priority', 'Notes', 'Reporter', 'Reporter phone', 'Assigned team', 'Response stage', 'Resolved at', 'Resolution note',
+      'Vulnerable people', 'Verified priority', 'Unverified priority', 'Notes', 'Reporter', 'Reporter phone', 'Assigned team', 'Response stage', 'Resolved at', 'Outcome', 'Resolution note',
     ]]
     const categories = (list) => countCategories(list).map(([category, count]) => `${STAFF_LABELS[category]}${count > 1 ? ` x${count}` : ''}`).join('; ')
     filtered.forEach((report) => rows.push([
@@ -94,6 +95,7 @@ export function ReportsPanel({ reports, integrity = {}, loading, staff, updating
       report.assigned_to ? staffName(report.assigned_to) : '',
       report.response_stage ?? '',
       report.resolved_at ? new Date(report.resolved_at).toLocaleString() : '',
+      report.resolution_outcome ?? '',
       report.resolution_note ?? '',
     ]))
     downloadCsv(`ligtas-reports-${new Date().toISOString().slice(0, 10)}.csv`, rows)
@@ -151,7 +153,7 @@ export function ReportsPanel({ reports, integrity = {}, loading, staff, updating
               {integrity[report.id] === 'valid' && <span class="is-signed" title="The signature matches: not changed since it was sent"><Icon name="shield" size={13} /> Signed</span>}
               {integrity[report.id] === 'unsigned' && <span class="is-unsigned" title="Sent before signing was set up, or the signature could not be saved">Not signed</span>}
             </div>
-            {report.resolution_note && <p class="admin-report-resolution"><b>{report.status === 'Rejected' ? 'Rejected:' : 'Resolution:'}</b> {report.resolution_note}</p>}
+            {(report.resolution_note || report.resolution_outcome) && <p class="admin-report-resolution"><b>{report.status === 'Rejected' ? 'Rejected:' : 'Resolution:'}</b> {report.resolution_outcome && <span class="admin-outcome">{report.resolution_outcome}</span>} {report.resolution_note}</p>}
           </div>
           <div class="admin-report-meta">
             <span class={`admin-report-status admin-report-status--${report.status.toLowerCase()}`}><span>{FILTER_LABELS[report.status] ?? report.status}</span></span>
@@ -169,9 +171,13 @@ export function ReportsPanel({ reports, integrity = {}, loading, staff, updating
               <span>Assigned team</span>
               <select disabled={isBusy} value={report.assigned_to ?? ''} onChange={(event) => changeTeam(report, event.currentTarget)}>
                 <option value="">Unassigned</option>
-                {rescuers.map((person) => <option value={person.id} key={person.id}>{person.display_name || 'Unnamed rescuer'}</option>)}
+                {rescuers.map((person) => {
+                  const availability = availabilityOf(statuses, person.id)?.availability
+                  const busy = reports.filter((item) => item.assigned_to === person.id && item.status === 'Verified').length
+                  return <option value={person.id} key={person.id}>{person.display_name || 'Unnamed rescuer'}{availability ? ` · ${availability}` : ''}{busy ? ` · ${busy} active` : ''}</option>
+                })}
               </select>
-              {report.assigned_to && <small>{report.response_stage ?? 'Assigned'}{report.assigned_at ? ` · ${timeAgo(report.assigned_at)}` : ''}</small>}
+              {report.assigned_to && <small>{responseStepLabel(report)}{report.assigned_at ? ` · ${timeAgo(report.assigned_at)}` : ''}</small>}
             </label>}
             {report.status === 'Resolved' && report.assigned_to && <small class="admin-report-by">by {staffName(report.assigned_to)}{report.resolved_at ? ` · ${timeAgo(report.resolved_at)}` : ''}</small>}
             {report.status !== 'Pending' && report.status !== 'Cancelled' && <label class="admin-status-override">
